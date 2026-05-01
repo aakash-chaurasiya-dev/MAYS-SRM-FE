@@ -3,7 +3,7 @@ import './App.css'
 function App() {
 
   return (
-    <div className='italic'>Mays computer</div>
+    <div className='italic'>Mays computer SRM</div>
   )
 }
 
