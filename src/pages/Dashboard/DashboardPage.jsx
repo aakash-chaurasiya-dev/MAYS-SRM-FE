@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   Box, Paper, Typography, Chip, Button, Divider,
 } from '@mui/material';
@@ -11,49 +12,6 @@ import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import List from '../../stereotype/AbstractList/List';
 
-/* ── Stat card data (matches "Admin Dashboard - Advanced Management" Stitch screen) ── */
-const STATS = [
-  {
-    title: 'Total Tickets', value: '142',
-    icon: <ConfirmationNumberOutlinedIcon />,
-    iconColor: '#0052cc', iconBg: '#0052cc14',
-  },
-  {
-    title: 'Admin Tickets', value: '34',
-    icon: <AdminPanelSettingsOutlinedIcon />,
-    iconColor: '#003d9b', iconBg: '#003d9b14',
-  },
-  {
-    title: 'Engineer Tickets', value: '58',
-    icon: <EngineeringOutlinedIcon />,
-    iconColor: '#006c47', iconBg: '#006c4714',
-  },
-  {
-    title: 'Manager Tickets', value: '22',
-    icon: <ManageAccountsOutlinedIcon />,
-    iconColor: '#B95000', iconBg: '#B9500014',
-  },
-  {
-    title: 'Purchase Tickets', value: '28',
-    icon: <ShoppingCartOutlinedIcon />,
-    iconColor: '#7b2600', iconBg: '#7b260014',
-  },
-];
-
-/* ── Ticket rows for the DataGrid ── */
-const TICKET_ROWS = [
-  { id: 'TK-1156', device: 'Surface Pro 7 - Cracked Screen', customer: 'Sarah Jenkins', status: 'Open', priority: 'Critical', assigned: 'Unassigned', days: 0, type: 'Admin' },
-  { id: 'TK-1155', device: 'Custom PC - PSU Failure', customer: 'Mike Ross', status: 'In Triage', priority: 'High', assigned: 'Alex Rivera', days: 1, type: 'Engineer' },
-  { id: 'TK-1154', device: 'MacBook Pro 16″ - Logic Board', customer: 'Johnathan Doe', status: 'In Repair', priority: 'High', assigned: 'Jordan Smith', days: 4, type: 'Engineer' },
-  { id: 'TK-1153', device: 'Dell XPS 13 - Battery Replacement', customer: 'Anna White', status: 'Ready', priority: 'Normal', assigned: 'Kevin Zhang', days: 2, type: 'Admin' },
-  { id: 'TK-1150', device: 'HP ZBook - Data Recovery', customer: 'Forensic Lab', status: 'In Repair', priority: 'Critical', assigned: 'Alex Rivera', days: 6, type: 'Manager' },
-  { id: 'TK-1148', device: 'Razer Blade 15 - Battery', customer: 'Chris Park', status: 'Waiting Parts', priority: 'Low', assigned: 'Sarah Chen', days: 3, type: 'Purchase' },
-  { id: 'TK-1146', device: 'ThinkPad T14s - Keyboard', customer: 'Emily Brown', status: 'Waiting Parts', priority: 'Normal', assigned: 'Jordan Smith', days: 5, type: 'Purchase' },
-  { id: 'TK-1144', device: 'iMac 27″ - GPU Reballing', customer: 'Design Studio', status: 'Outsourced', priority: 'High', assigned: 'External', days: 8, type: 'Manager' },
-  { id: 'TK-1142', device: 'Dell Precision 5550 - Motherboard', customer: 'Corp Account', status: 'In Repair', priority: 'Normal', assigned: 'Sarah Chen', days: 3, type: 'Engineer' },
-  { id: 'TK-1140', device: 'HP Pavilion - OS Reinstall', customer: 'Walk-in Client', status: 'Completed', priority: 'Low', assigned: 'Kevin Zhang', days: 1, type: 'Admin' },
-];
-
 const TICKET_COLUMNS = [
   { field: 'id', headerName: 'Ticket ID', width: 100, renderType: 'link' },
   { field: 'device', headerName: 'Device / Issue', flex: 1.5 },
@@ -61,18 +19,15 @@ const TICKET_COLUMNS = [
   {
     field: 'status', headerName: 'Status', width: 130, renderType: 'chip',
     chipColorMap: {
-      'Open': 'error', 'In Triage': 'warning', 'In Repair': 'primary',
-      'Ready': 'success', 'Waiting Parts': 'warning', 'Outsourced': 'secondary',
-      'Completed': 'success',
+      'OPEN': 'error', 'IN PROGRESS': 'warning', 'RESOLVED': 'success', 'CLOSED': 'success',
     },
   },
   {
-    field: 'priority', headerName: 'Priority', width: 100, renderType: 'chip',
-    chipColorMap: { Critical: 'error', High: 'warning', Normal: 'primary', Low: 'success' },
+    field: 'warranty', headerName: 'Warranty', width: 120, renderType: 'chip',
+    chipColorMap: { 'In Warranty': 'success', 'Out of Warranty': 'error' },
   },
   { field: 'assigned', headerName: 'Assigned To', flex: 1 },
   { field: 'type', headerName: 'Type', width: 100 },
-  { field: 'days', headerName: 'Days', width: 70, type: 'number' },
 ];
 
 /* ── Stat Card Component ── */
@@ -112,18 +67,86 @@ function StatCard({ title, value, icon, iconColor, iconBg }) {
 export default function DashboardPage() {
   const theme = useTheme();
   const navigate = useNavigate();
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/tickets')
+      .then(res => res.json())
+      .then(data => {
+        setTickets(data || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch tickets', err);
+        setLoading(false);
+      });
+  }, []);
+
+  // Compute dynamic stats
+  const adminCount = tickets.filter(t => t.employee?.department?.departmentName === 'Admin').length;
+  const engineerCount = tickets.filter(t => t.employee?.department?.departmentName === 'Engineer').length;
+  const managerCount = tickets.filter(t => t.employee?.department?.departmentName === 'Management').length;
+  const purchaseCount = tickets.filter(t => t.employee?.department?.departmentName === 'Purchase Team').length;
+
+  const STATS = [
+    {
+      title: 'Total Tickets', value: tickets.length,
+      icon: <ConfirmationNumberOutlinedIcon />,
+      iconColor: '#0052cc', iconBg: '#0052cc14',
+    },
+    {
+      title: 'Admin Tickets', value: adminCount,
+      icon: <AdminPanelSettingsOutlinedIcon />,
+      iconColor: '#003d9b', iconBg: '#003d9b14',
+    },
+    {
+      title: 'Engineer Tickets', value: engineerCount,
+      icon: <EngineeringOutlinedIcon />,
+      iconColor: '#006c47', iconBg: '#006c4714',
+    },
+    {
+      title: 'Manager Tickets', value: managerCount,
+      icon: <ManageAccountsOutlinedIcon />,
+      iconColor: '#B95000', iconBg: '#B9500014',
+    },
+    {
+      title: 'Purchase Tickets', value: purchaseCount,
+      icon: <ShoppingCartOutlinedIcon />,
+      iconColor: '#7b2600', iconBg: '#7b260014',
+    },
+  ];
+
+  // Map raw API data to rows
+  const mappedRows = tickets.map(t => {
+    const brand = t.device?.model?.brand?.brandName || 'Unknown Brand';
+    const model = t.device?.model?.modelName || 'Unknown Model';
+    const desc = t.ticketDescription ? t.ticketDescription.substring(0, 30) + '...' : '';
+    
+    return {
+      id: `TK-${t.ticketId}`,
+      device: `${brand} ${model} - ${desc}`,
+      customer: `${t.userMaster?.firstName || ''} ${t.userMaster?.lastName || ''}`,
+      status: t.ticketStatus?.statusName || 'UNKNOWN',
+      warranty: t.warrantyType || 'Unknown',
+      assigned: t.employee?.employeeName || 'Unassigned',
+      type: t.ticketType?.ticketTypeName || 'Unknown',
+      rawId: t.ticketId
+    };
+  });
 
   const listConfig = {
     title: 'Tickets',
-    rows: TICKET_ROWS,
+    rows: mappedRows,
     columns: TICKET_COLUMNS,
+    loading: loading,
     actions: [
       { label: 'New Ticket', icon: <AddOutlinedIcon />, onClick: () => navigate('/tickets/new') },
     ],
     pagination: { pageSize: 10 },
     searchPlaceholder: 'Search tickets…',
     getRowId: (row) => row.id,
-    onRowClick: (params) => navigate(`/tickets/${params.id}`),
+    onRowClick: (params) => navigate(`/tickets/${params.row.rawId}`),
     height: 480,
   };
 
