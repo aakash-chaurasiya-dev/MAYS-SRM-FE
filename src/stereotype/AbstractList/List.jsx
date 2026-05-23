@@ -90,7 +90,7 @@ const builtInRenderers = {
             height: 32,
             fontSize: '0.8rem',
             fontWeight: 700,
-            background: 'linear-gradient(135deg, #4F46E5 0%, #06B6D4 100%)',
+            background: 'linear-gradient(135deg, #003d9b 0%, #0c56d0 100%)',
           }}
         >
           {initials}
@@ -288,7 +288,7 @@ export default function List({ config }) {
     <Paper
       elevation={2}
       sx={{
-        borderRadius: 3,
+        borderRadius: '3px',
         overflow: 'hidden',
         border: `1px solid ${theme.palette.divider}`,
       }}

@@ -96,7 +96,7 @@ export default function Tabs({
       opacity: isDisabled ? 0.45 : 1,
       userSelect: 'none',
       whiteSpace: 'nowrap',
-      borderRadius: '8px 8px 0 0',
+      borderRadius: '4px 4px 0 0',
       transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
       bgcolor: isActive ? theme.palette.background.paper : 'transparent',
       boxShadow: isActive
@@ -139,7 +139,7 @@ export default function Tabs({
       bottom: 0,
       height: '2.5px',
       borderRadius: '2px 2px 0 0',
-      background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+      background: theme.palette.primary.main,
       transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     },
     addBtn: {
