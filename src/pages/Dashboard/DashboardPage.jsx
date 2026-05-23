@@ -13,9 +13,13 @@ import { useNavigate } from 'react-router-dom';
 import List from '../../stereotype/AbstractList/List';
 
 const TICKET_COLUMNS = [
-  { field: 'id', headerName: 'Ticket ID', width: 100, renderType: 'link' },
-  { field: 'device', headerName: 'Device / Issue', flex: 1.5 },
-  { field: 'customer', headerName: 'Customer', flex: 1 },
+  { field: 'id', headerName: 'Ticket ID', width: 110, renderType: 'link' },
+  { field: 'customer', headerName: 'Customer', width: 170 },
+  { field: 'email', headerName: 'Email', width: 220 },
+  { field: 'device', headerName: 'Device', width: 170 },
+  { field: 'description', headerName: 'Issue Description', flex: 1.8 },
+  { field: 'serialNo', headerName: 'Serial No', width: 140 },
+  { field: 'branch', headerName: 'Branch', width: 140 },
   {
     field: 'status', headerName: 'Status', width: 130, renderType: 'chip',
     chipColorMap: {
@@ -23,11 +27,12 @@ const TICKET_COLUMNS = [
     },
   },
   {
-    field: 'warranty', headerName: 'Warranty', width: 120, renderType: 'chip',
+    field: 'warranty', headerName: 'Warranty', width: 130, renderType: 'chip',
     chipColorMap: { 'In Warranty': 'success', 'Out of Warranty': 'error' },
   },
-  { field: 'assigned', headerName: 'Assigned To', flex: 1 },
-  { field: 'type', headerName: 'Type', width: 100 },
+  { field: 'assigned', headerName: 'Assigned To', width: 180 },
+  { field: 'department', headerName: 'Department', width: 150 },
+  { field: 'type', headerName: 'Type', width: 130 },
 ];
 
 /* ── Stat Card Component ── */
@@ -121,17 +126,22 @@ export default function DashboardPage() {
   const mappedRows = tickets.map(t => {
     const brand = t.device?.model?.brand?.brandName || 'Unknown Brand';
     const model = t.device?.model?.modelName || 'Unknown Model';
-    const desc = t.ticketDescription ? t.ticketDescription.substring(0, 30) + '...' : '';
-    
+    const customerName = `${t.userMaster?.firstName || ''} ${t.userMaster?.lastName || ''}`.trim() || 'Unknown Customer';
+
     return {
       id: `TK-${t.ticketId}`,
-      device: `${brand} ${model} - ${desc}`,
-      customer: `${t.userMaster?.firstName || ''} ${t.userMaster?.lastName || ''}`,
+      customer: customerName,
+      email: t.emailId || t.userMaster?.emailId || 'N/A',
+      device: `${brand} ${model}`,
+      description: t.ticketDescription || 'No description provided',
+      serialNo: t.device?.serialNo || 'N/A',
+      branch: t.ticketBranch?.branchName || 'Unknown Branch',
       status: t.ticketStatus?.statusName || 'UNKNOWN',
       warranty: t.warrantyType || 'Unknown',
       assigned: t.employee?.employeeName || 'Unassigned',
+      department: t.employee?.department?.departmentName || 'Unassigned',
       type: t.ticketType?.ticketTypeName || 'Unknown',
-      rawId: t.ticketId
+      rawId: t.ticketId,
     };
   });
 

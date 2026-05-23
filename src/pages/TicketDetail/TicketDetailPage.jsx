@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Box, Paper, Typography, TextField, Button, Divider, Chip,
-  Stack, Avatar, IconButton, Tooltip,
+  Stack, Avatar, IconButton,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import LaptopMacIcon from '@mui/icons-material/LaptopMac';
@@ -14,14 +14,9 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
 import { useTheme } from '@mui/material/styles';
-import { useNavigate } from 'react-router-dom';
-
-const TIMELINE = [
-  { time: 'Oct 25, 10:32 AM', user: 'Alex Rivera', action: 'Updated diagnosis: LDO voltage regulator circuit shows visible corrosion.', type: 'update' },
-  { time: 'Oct 24, 4:15 PM', user: 'Jordan Smith', action: 'Attached 3 photos from initial teardown inspection.', type: 'attachment' },
-  { time: 'Oct 24, 2:00 PM', user: 'System', action: 'Ticket assigned to Alex Rivera (Hardware Division).', type: 'system' },
-  { time: 'Oct 24, 1:45 PM', user: 'Sarah Jenkins', action: 'Ticket created. Device checked in at front desk.', type: 'create' },
-];
+import { useNavigate, useParams } from 'react-router-dom';
+import Dialog from '@mui/material/Dialog';
+import DialogContent from '@mui/material/DialogContent';
 
 const MILESTONES = [
   { label: 'Check-In', date: 'Oct 24, 2023', done: true },
@@ -32,15 +27,210 @@ const MILESTONES = [
   { label: 'Ready for Pickup', date: '—', done: false },
 ];
 
+const formatTimestamp = (value) => {
+  if (!value) {
+    return 'Not available';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+};
+
+const createTimelineEntry = (log) => {
+  const actor = log?.assignorEmployee?.employeeName || log?.assigneeEmployee?.employeeName || 'System';
+  const timestamp = formatTimestamp(log?.timestamp);
+
+  if (log?.assignorRemarks) {
+    return {
+      user: actor,
+      action: log.assignorRemarks,
+      timestamp,
+      type: 'update',
+    };
+  }
+
+  if (log?.columnName) {
+    const oldValue = log.oldValue || 'Not available';
+    const newValue = log.newValue || 'Not available';
+
+    return {
+      user: actor,
+      action: `${log.columnName} updated from ${oldValue} to ${newValue}`,
+      timestamp,
+      type: 'update',
+    };
+  }
+
+  return {
+    user: actor,
+    action: 'Ticket updated',
+    timestamp,
+    type: 'update',
+  };
+};
+
 export default function TicketDetailPage() {
   const theme = useTheme();
   const navigate = useNavigate();
+  const { id } = useParams();
+  const fileInputRef = useRef(null);
+  const [ticket, setTicket] = useState(null);
+  const [attachments, setAttachments] = useState([]);
+  const [timeline, setTimeline] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const [uploadMessage, setUploadMessage] = useState('');
   const [internalNote, setInternalNote] = useState('');
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImg, setLightboxImg] = useState(null);
+
+  const loadTicketDetails = async () => {
+    setLoading(true);
+    setError('');
+
+    const [ticketResponse, logsResponse, attachmentsResponse] = await Promise.allSettled([
+      fetch(`/api/tickets/${id}`),
+      fetch('/api/ticket-logs'),
+      fetch(`/api/tickets/${id}/attachments`),
+    ]);
+
+    if (ticketResponse.status === 'rejected' || !ticketResponse.value?.ok) {
+      throw new Error('Failed to fetch ticket details');
+    }
+
+    const [ticketData, logsData, attachmentsData] = await Promise.all([
+      ticketResponse.value.json(),
+      logsResponse.status === 'fulfilled' && logsResponse.value?.ok
+        ? logsResponse.value.json()
+        : Promise.resolve([]),
+      attachmentsResponse.status === 'fulfilled' && attachmentsResponse.value?.ok
+        ? attachmentsResponse.value.json()
+        : Promise.resolve([]),
+    ]);
+
+    const currentTicketId = Number(id);
+    const filteredLogs = Array.isArray(logsData)
+      ? logsData
+          .filter((log) => Number(log?.ticket?.ticketId) === currentTicketId)
+          .map(createTimelineEntry)
+      : [];
+
+    setTicket(ticketData);
+    setAttachments(Array.isArray(attachmentsData) ? attachmentsData : []);
+    setTimeline(filteredLogs);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    let isActive = true;
+
+    loadTicketDetails()
+      .catch((err) => {
+        if (!isActive) {
+          return;
+        }
+
+        setError(err.message || 'Unable to load ticket details');
+        setLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [id]);
+
+  const handleAttachmentUpload = async (event) => {
+    const selectedFile = event.target.files?.[0];
+
+    if (!selectedFile) {
+      return;
+    }
+
+    setUploading(true);
+    setUploadMessage('');
+    setError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const response = await fetch(`/api/tickets/${id}/attachments`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload attachment');
+      }
+
+      setUploadMessage(`Uploaded ${selectedFile.name}`);
+      await loadTicketDetails();
+    } catch (err) {
+      setError(err.message || 'Unable to upload attachment');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   const lbl = {
     fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary,
     textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.5,
   };
+
+  const valueOrNA = (value) => {
+    if (value === undefined || value === null || value === '') {
+      return 'Not available';
+    }
+
+    return String(value);
+  };
+
+  const status = valueOrNA(ticket?.ticketStatus?.statusName);
+  const statusChipColor = status === 'OPEN' ? 'error' : status === 'CLOSED' ? 'success' : 'default';
+
+  const customerName = [ticket?.userMaster?.firstName, ticket?.userMaster?.lastName]
+    .filter(Boolean)
+    .join(' ');
+
+  const customerInitials = customerName
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'NA';
+
+  const brand = valueOrNA(ticket?.device?.model?.brand?.brandName);
+  const model = valueOrNA(ticket?.device?.model?.modelName);
+  const deviceName = [ticket?.device?.model?.brand?.brandName, ticket?.device?.model?.modelName]
+    .filter(Boolean)
+    .join(' ') || 'Not available';
+
+  const ticketCode = ticket?.ticketId ? `TK-${ticket.ticketId}` : 'Not available';
+  const ticketTitle = deviceName !== 'Not available' ? `${deviceName}` : 'Ticket details';
+  const issueDescription = valueOrNA(ticket?.ticketDescription);
+  const customerEmail = valueOrNA(ticket?.emailId || ticket?.userMaster?.emailId);
+  const customerPhone = valueOrNA(ticket?.userMaster?.mobileNo);
+  const assignedTo = valueOrNA(ticket?.employee?.employeeName);
+  const department = valueOrNA(ticket?.employee?.department?.departmentName);
+  const ticketType = valueOrNA(ticket?.ticketType?.ticketTypeName);
+  const branch = valueOrNA(ticket?.ticketBranch?.branchName);
+  const serialNo = valueOrNA(ticket?.device?.serialNo);
+  const warranty = valueOrNA(ticket?.warrantyType);
 
   return (
     <Box>
@@ -54,13 +244,28 @@ export default function TicketDetailPage() {
         </Typography>
       </Box>
 
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5, flexWrap: 'wrap' }}>
         <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>
-          MacBook Pro 16″ - Logic Board Cleaning
+          {loading ? 'Loading ticket details…' : ticketTitle}
         </Typography>
-        <Chip label="#TK-1154" size="small" sx={{ fontWeight: 600, borderRadius: '2px', bgcolor: `${theme.palette.primary.main}14`, color: theme.palette.primary.main, height: 22 }} />
-        <Chip label="In Repair" size="small" sx={{ fontWeight: 600, borderRadius: '2px', bgcolor: '#0052cc14', color: '#0052cc', height: 22 }} />
+        <Chip
+          label={ticketCode}
+          size="small"
+          sx={{ fontWeight: 600, borderRadius: '2px', bgcolor: `${theme.palette.primary.main}14`, color: theme.palette.primary.main, height: 22 }}
+        />
+        <Chip
+          label={status}
+          size="small"
+          color={statusChipColor}
+          sx={{ fontWeight: 600, borderRadius: '2px', height: 22 }}
+        />
       </Box>
+
+      {error && (
+        <Typography sx={{ fontSize: '13px', color: 'error.main', mt: 1, mb: 2 }}>
+          {error}
+        </Typography>
+      )}
 
       <Box sx={{ display: 'flex', gap: 1.5, mb: 3 }}>
         <Button variant="outlined" size="small" startIcon={<EditOutlinedIcon />} sx={{ fontSize: '12px' }}>Edit</Button>
@@ -79,8 +284,8 @@ export default function TicketDetailPage() {
             <Divider />
             <Box sx={{ p: 2.5 }}>
               <Box sx={{ bgcolor: theme.palette.background.default, borderRadius: '3px', border: `1px solid ${theme.palette.divider}`, p: 2, borderLeft: `3px solid ${theme.palette.primary.main}` }}>
-                <Typography sx={{ fontSize: '13px', color: theme.palette.text.primary, lineHeight: 1.7, fontStyle: 'italic' }}>
-                  "Customer reported a coffee spill on the keyboard area. The device initially turned on but shut down abruptly after 10 minutes. Now it fails to boot, though the trackpad haptic feedback is still present. No visible screen activity."
+                <Typography sx={{ fontSize: '13px', color: theme.palette.text.primary, lineHeight: 1.7, fontStyle: issueDescription === 'Not available' ? 'normal' : 'italic' }}>
+                  {issueDescription}
                 </Typography>
               </Box>
             </Box>
@@ -88,20 +293,98 @@ export default function TicketDetailPage() {
 
           {/* Attachments */}
           <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
-            <Box sx={{ px: 2.5, py: 1.8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Attachments (3)</Typography>
-              <Button size="small" sx={{ fontSize: '12px' }}>Upload</Button>
+            <Box sx={{ px: 2.5, py: 1.8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+              <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Attachments ({attachments.length})</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                  hidden
+                  onChange={handleAttachmentUpload}
+                />
+                <Button
+                  size="small"
+                  sx={{ fontSize: '12px' }}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? 'Uploading…' : 'Upload'}
+                </Button>
+              </Box>
             </Box>
             <Divider />
             <Box sx={{ p: 2.5 }}>
-              <Stack direction="row" spacing={1.5}>
-                {['Teardown Front', 'Logic Board', 'Corrosion Close-up'].map((alt, i) => (
-                  <Box key={i} sx={{ width: 120, height: 90, borderRadius: '3px', bgcolor: theme.palette.background.default, border: `1px solid ${theme.palette.divider}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'border-color 0.15s', '&:hover': { borderColor: theme.palette.primary.main } }}>
-                    <ImageOutlinedIcon sx={{ fontSize: 28, color: theme.palette.divider, mb: 0.5 }} />
-                    <Typography sx={{ fontSize: '10px', color: theme.palette.text.secondary }}>{alt}</Typography>
-                  </Box>
-                ))}
-              </Stack>
+              {uploadMessage && (
+                <Typography sx={{ fontSize: '12px', color: 'success.main', mb: 1.5 }}>
+                  {uploadMessage}
+                </Typography>
+              )}
+              {attachments.length === 0 ? (
+                <Typography sx={{ fontSize: '13px', color: theme.palette.text.secondary }}>
+                  No attachments available for this ticket.
+                </Typography>
+              ) : (
+                <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+                  {attachments.map((attachment) => {
+                    const isImage = /\.(jpe?g|png|gif|bmp|webp)$/i.test(attachment.fileName || '');
+                    return (
+                      <Box
+                        key={attachment.attachmentId || attachment.fileName}
+                        component={isImage && attachment.fileUrl ? 'div' : 'a'}
+                        href={!isImage ? (attachment.fileUrl || '#') : undefined}
+                        target={!isImage ? '_blank' : undefined}
+                        rel={!isImage ? 'noreferrer' : undefined}
+                        sx={{
+                          width: 150,
+                          minHeight: 140,
+                          borderRadius: '6px',
+                          bgcolor: theme.palette.background.default,
+                          border: `1.5px solid ${theme.palette.divider}`,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: isImage && attachment.fileUrl ? 'zoom-in' : (attachment.fileUrl ? 'pointer' : 'default'),
+                          textDecoration: 'none',
+                          px: 1.5,
+                          py: 1.5,
+                          boxShadow: '0 1px 4px 0 rgba(0,0,0,0.04)',
+                          transition: 'box-shadow 0.18s, border-color 0.18s',
+                          '&:hover': attachment.fileUrl ? { borderColor: theme.palette.primary.main, boxShadow: '0 4px 16px 0 rgba(0,82,204,0.10)' } : undefined,
+                        }}
+                        onClick={isImage && attachment.fileUrl ? () => { setLightboxImg({ url: attachment.fileUrl, name: attachment.fileName }); setLightboxOpen(true); } : undefined}
+                      >
+                        {isImage && attachment.fileUrl ? (
+                          <Box
+                            component="img"
+                            src={attachment.fileUrl}
+                            alt={attachment.fileName || 'Attachment'}
+                            sx={{
+                              width: 90,
+                              height: 90,
+                              objectFit: 'cover',
+                              borderRadius: '4px',
+                              mb: 1,
+                              background: theme.palette.background.paper,
+                              border: `1px solid ${theme.palette.divider}`,
+                              boxShadow: '0 1px 6px 0 rgba(0,0,0,0.08)',
+                            }}
+                          />
+                        ) : (
+                          <ImageOutlinedIcon sx={{ fontSize: 36, color: theme.palette.divider, mb: 1 }} />
+                        )}
+                        <Typography sx={{ fontSize: '12px', color: theme.palette.text.primary, textAlign: 'center', fontWeight: 600, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {attachment.fileName || 'Attachment'}
+                        </Typography>
+                        <Typography sx={{ fontSize: '10px', color: theme.palette.text.secondary, textAlign: 'center', mt: 0.5 }}>
+                          {formatTimestamp(attachment.uploadedAt)}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              )}
             </Box>
           </Paper>
 
@@ -128,20 +411,26 @@ export default function TicketDetailPage() {
             </Box>
             <Divider />
             <Box sx={{ p: 2.5 }}>
-              {TIMELINE.map((entry, i) => (
-                <Box key={i} sx={{ display: 'flex', gap: 1.5, mb: i < TIMELINE.length - 1 ? 2.5 : 0, position: 'relative' }}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 0.3 }}>
-                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: entry.type === 'system' ? theme.palette.text.secondary : theme.palette.primary.main, flexShrink: 0 }} />
-                    {i < TIMELINE.length - 1 && <Box sx={{ width: 1, flex: 1, bgcolor: theme.palette.divider, mt: 0.5 }} />}
+              {timeline.length === 0 ? (
+                <Typography sx={{ fontSize: '13px', color: theme.palette.text.secondary }}>
+                  No activity available for this ticket yet.
+                </Typography>
+              ) : (
+                timeline.map((entry, i) => (
+                  <Box key={`${entry.user}-${entry.timestamp}-${i}`} sx={{ display: 'flex', gap: 1.5, mb: i < timeline.length - 1 ? 2.5 : 0, position: 'relative' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 0.3 }}>
+                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: entry.type === 'system' ? theme.palette.text.secondary : theme.palette.primary.main, flexShrink: 0 }} />
+                      {i < timeline.length - 1 && <Box sx={{ width: 1, flex: 1, bgcolor: theme.palette.divider, mt: 0.5 }} />}
+                    </Box>
+                    <Box>
+                      <Typography sx={{ fontSize: '13px', fontWeight: 500 }}>
+                        <Box component="span" sx={{ fontWeight: 600 }}>{entry.user}</Box>{' — '}{entry.action}
+                      </Typography>
+                      <Typography sx={{ fontSize: '11px', color: theme.palette.text.secondary, mt: 0.3 }}>{entry.timestamp}</Typography>
+                    </Box>
                   </Box>
-                  <Box>
-                    <Typography sx={{ fontSize: '13px', fontWeight: 500 }}>
-                      <Box component="span" sx={{ fontWeight: 600 }}>{entry.user}</Box>{' — '}{entry.action}
-                    </Typography>
-                    <Typography sx={{ fontSize: '11px', color: theme.palette.text.secondary, mt: 0.3 }}>{entry.time}</Typography>
-                  </Box>
-                </Box>
-              ))}
+                ))
+              )}
             </Box>
           </Paper>
         </Box>
@@ -157,13 +446,13 @@ export default function TicketDetailPage() {
             <Divider />
             <Box sx={{ p: 2.5 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                <Avatar sx={{ width: 36, height: 36, bgcolor: theme.palette.primary.main, fontSize: '0.85rem', fontWeight: 700 }}>JD</Avatar>
+                <Avatar sx={{ width: 36, height: 36, bgcolor: theme.palette.primary.main, fontSize: '0.85rem', fontWeight: 700 }}>{customerInitials}</Avatar>
                 <Box>
-                  <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Johnathan Doe</Typography>
+                  <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>{valueOrNA(customerName)}</Typography>
                   <Chip label="Professional Client" size="small" sx={{ fontSize: '10px', height: 18, borderRadius: '2px', bgcolor: `${theme.palette.secondary.main}14`, color: theme.palette.secondary.main }} />
                 </Box>
               </Box>
-              {[['Email', 'john.doe@company.com'], ['Phone', '+1 (555) 234-5678'], ['Account', 'ACC-PRO-0089']].map(([l, v]) => (
+              {[['Email', customerEmail], ['Phone', customerPhone], ['Branch', branch]].map(([l, v]) => (
                 <Box key={l} sx={{ mb: 1.2 }}>
                   <Typography sx={lbl}>{l}</Typography>
                   <Typography sx={{ fontSize: '13px' }}>{v}</Typography>
@@ -180,7 +469,7 @@ export default function TicketDetailPage() {
             </Box>
             <Divider />
             <Box sx={{ p: 2.5 }}>
-              {[['Brand', 'Apple'], ['Model', 'MacBook Pro 16″ (2023, M2 Max)'], ['Serial No.', 'C02ZW1XHMD6T'], ['Warranty', 'Expired (Out-of-Warranty)']].map(([l, v]) => (
+              {[['Brand', brand], ['Model', model], ['Serial No.', serialNo], ['Warranty', warranty], ['Type', ticketType], ['Assigned To', assignedTo], ['Department', department]].map(([l, v]) => (
                 <Box key={l} sx={{ mb: 1.2 }}>
                   <Typography sx={lbl}>{l}</Typography>
                   <Typography sx={{ fontSize: '13px', fontFamily: l === 'Serial No.' ? '"JetBrains Mono", monospace' : 'inherit' }}>{v}</Typography>
@@ -225,6 +514,31 @@ export default function TicketDetailPage() {
           </Paper>
         </Box>
       </Stack>
+
+      {/* Lightbox Dialog */}
+      <Dialog open={lightboxOpen} onClose={() => setLightboxOpen(false)} maxWidth="md" fullWidth>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 3 }}>
+          {lightboxImg && (
+            <>
+              <Box
+                component="img"
+                src={lightboxImg.url}
+                alt={lightboxImg.name || 'Preview'}
+                sx={{
+                  maxWidth: '100%',
+                  maxHeight: '70vh',
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 16px 0 rgba(0,0,0,0.18)',
+                  mb: 2,
+                }}
+              />
+              <Typography sx={{ fontSize: '14px', fontWeight: 600, color: theme.palette.text.primary, textAlign: 'center', mb: 1 }}>
+                {lightboxImg.name}
+              </Typography>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }

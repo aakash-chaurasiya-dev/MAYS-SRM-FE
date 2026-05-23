@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -13,6 +13,13 @@ import {
   Divider,
   Avatar,
   LinearProgress,
+  Menu,
+  MenuItem,
+  Checkbox,
+  ListItemText,
+  Select,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import SearchIcon from '@mui/icons-material/Search';
@@ -210,28 +217,138 @@ export default function List({ config }) {
   } = config;
 
   const [search, setSearch] = useState('');
+  const [columnMenuAnchorEl, setColumnMenuAnchorEl] = useState(null);
+  const [filterMenuAnchorEl, setFilterMenuAnchorEl] = useState(null);
+  const [visibleColumnFields, setVisibleColumnFields] = useState(() => columns.map((col) => col.field));
+  const [selectedColumnForFilter, setSelectedColumnForFilter] = useState('');
+  const [selectedFilterValues, setSelectedFilterValues] = useState([]);
+  const [activeFilters, setActiveFilters] = useState([]);
   const [paginationModel, setPaginationModel] = useState({
     pageSize: pagination.pageSize || 10,
     page: 0,
   });
 
-  const resolvedColumns = useMemo(() => resolveColumns(columns), [columns]);
+  useEffect(() => {
+    setVisibleColumnFields(columns.map((col) => col.field));
+  }, [columns]);
 
-  /* ── global search filter ── */
+  const visibleColumns = useMemo(() =>
+    resolveColumns(columns.filter((col) => visibleColumnFields.includes(col.field))),
+  [columns, visibleColumnFields]);
+
+  const columnFilterOptions = useMemo(() => {
+    const options = {};
+
+    columns.forEach((col) => {
+      if (!col.field) return;
+      const values = rows
+        .map((row) => row[col.field])
+        .filter((value) => value !== undefined && value !== null && value !== '')
+        .map((value) => String(value));
+
+      options[col.field] = [...new Set(values)].sort((left, right) => left.localeCompare(right));
+    });
+
+    return options;
+  }, [columns, rows]);
+
   const filteredRows = useMemo(() => {
-    if (!search.trim()) return rows;
-    const q = search.toLowerCase();
-    return rows.filter((row) =>
-      Object.values(row).some((val) =>
+    const query = search.trim().toLowerCase();
+
+    return rows.filter((row) => {
+      const matchesFilters = activeFilters.every((filter) => {
+        const rowValue = row[filter.field];
+
+        if (rowValue === undefined || rowValue === null || rowValue === '') {
+          return false;
+        }
+
+        const normalizedRowValue = String(rowValue).trim().toLowerCase();
+        return filter.values.some((value) => normalizedRowValue === String(value).trim().toLowerCase());
+      });
+
+      if (!matchesFilters) {
+        return false;
+      }
+
+      if (!query) {
+        return true;
+      }
+
+      return Object.values(row).some((val) =>
         String(val ?? '')
           .toLowerCase()
-          .includes(q)
-      )
-    );
-  }, [rows, search]);
+          .includes(query)
+      );
+    });
+  }, [rows, search, activeFilters]);
 
   const handleSearchChange = useCallback((e) => {
     setSearch(e.target.value);
+  }, []);
+
+  const handleColumnMenuOpen = useCallback((event) => {
+    setColumnMenuAnchorEl(event.currentTarget);
+  }, []);
+
+  const handleColumnMenuClose = useCallback(() => {
+    setColumnMenuAnchorEl(null);
+  }, []);
+
+  const handleFilterMenuOpen = useCallback((event) => {
+    setFilterMenuAnchorEl(event.currentTarget);
+  }, []);
+
+  const handleFilterMenuClose = useCallback(() => {
+    setFilterMenuAnchorEl(null);
+    setSelectedColumnForFilter('');
+    setSelectedFilterValues([]);
+  }, []);
+
+  const handleColumnVisibilityToggle = useCallback((field) => {
+    setVisibleColumnFields((current) => {
+      const isVisible = current.includes(field);
+      const next = isVisible
+        ? current.filter((item) => item !== field)
+        : [...current, field];
+
+      return next.length > 0 ? next : current;
+    });
+  }, []);
+
+  const handleColumnSelectionChange = useCallback((event) => {
+    setSelectedColumnForFilter(event.target.value);
+    setSelectedFilterValues([]);
+  }, [setSelectedColumnForFilter, setSelectedFilterValues]);
+
+  const handleFilterValueChange = useCallback((event) => {
+    setSelectedFilterValues(event.target.value);
+  }, [setSelectedFilterValues]);
+
+  const handleAddFilter = useCallback(() => {
+    if (!selectedColumnForFilter || selectedFilterValues.length === 0) {
+      return;
+    }
+
+    setActiveFilters((current) =>
+      current.filter((filter) => filter.field !== selectedColumnForFilter)
+        .concat({
+          field: selectedColumnForFilter,
+          values: selectedFilterValues,
+        })
+    );
+
+    setSelectedColumnForFilter('');
+    setSelectedFilterValues([]);
+    setFilterMenuAnchorEl(null);
+  }, [selectedColumnForFilter, selectedFilterValues]);
+
+  const handleRemoveFilter = useCallback((field) => {
+    setActiveFilters((current) => current.filter((filter) => filter.field !== field));
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setActiveFilters([]);
   }, []);
 
   /* ── DataGrid sx ── */
@@ -344,15 +461,97 @@ export default function List({ config }) {
 
         {/* Built-in toolbar icons */}
         <Tooltip title="Filter">
-          <IconButton size="small" sx={{ color: 'text.secondary' }}>
+          <IconButton
+            size="small"
+            sx={{ color: activeFilters.length > 0 ? 'primary.main' : 'text.secondary' }}
+            onClick={handleFilterMenuOpen}
+          >
             <FilterListIcon fontSize="small" />
           </IconButton>
         </Tooltip>
+        <Menu
+          anchorEl={filterMenuAnchorEl}
+          open={Boolean(filterMenuAnchorEl)}
+          onClose={handleFilterMenuClose}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <Box sx={{ width: 320, px: 2, py: 1.5 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5 }}>
+              Add filter
+            </Typography>
+            <FormControl size="small" fullWidth sx={{ mb: 1.5 }}>
+              <InputLabel id="column-filter-label">Column</InputLabel>
+              <Select
+                labelId="column-filter-label"
+                value={selectedColumnForFilter}
+                label="Column"
+                onChange={handleColumnSelectionChange}
+              >
+                {columns.map((col) => (
+                  <MenuItem key={col.field} value={col.field}>
+                    {col.headerName || col.field}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl size="small" fullWidth disabled={!selectedColumnForFilter} sx={{ mb: 1.5 }}>
+              <InputLabel id="filter-value-label">Value</InputLabel>
+              <Select
+                labelId="filter-value-label"
+                multiple
+                value={selectedFilterValues}
+                label="Value"
+                onChange={handleFilterValueChange}
+                renderValue={(selected) => selected.join(', ')}
+              >
+                {(selectedColumnForFilter ? columnFilterOptions[selectedColumnForFilter] : []).map((option) => (
+                  <MenuItem key={option} value={option}>
+                    <Checkbox checked={selectedFilterValues.includes(option)} />
+                    <ListItemText primary={option} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Stack direction="row" spacing={1} justifyContent="flex-end">
+              <Button size="small" onClick={handleFilterMenuClose}>
+                Cancel
+              </Button>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={handleAddFilter}
+                disabled={!selectedColumnForFilter || selectedFilterValues.length === 0}
+              >
+                Add
+              </Button>
+            </Stack>
+          </Box>
+        </Menu>
         <Tooltip title="Columns">
-          <IconButton size="small" sx={{ color: 'text.secondary' }}>
+          <IconButton size="small" sx={{ color: 'text.secondary' }} onClick={handleColumnMenuOpen}>
             <ViewColumnIcon fontSize="small" />
           </IconButton>
         </Tooltip>
+        <Menu
+          anchorEl={columnMenuAnchorEl}
+          open={Boolean(columnMenuAnchorEl)}
+          onClose={handleColumnMenuClose}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <Box sx={{ minWidth: 220, px: 1.5, py: 1 }}>
+            <Typography variant="subtitle2" sx={{ px: 1, mb: 1, fontWeight: 700 }}>
+              Visible columns
+            </Typography>
+            {columns.map((col) => (
+              <MenuItem key={col.field} onClick={() => handleColumnVisibilityToggle(col.field)} dense>
+                <Checkbox checked={visibleColumnFields.includes(col.field)} />
+                <ListItemText primary={col.headerName || col.field} />
+              </MenuItem>
+            ))}
+          </Box>
+        </Menu>
         <Tooltip title="Export">
           <IconButton size="small" sx={{ color: 'text.secondary' }}>
             <FileDownloadOutlinedIcon fontSize="small" />
@@ -381,13 +580,34 @@ export default function List({ config }) {
         ))}
       </Box>
 
+      {activeFilters.length > 0 && (
+        <Box sx={{ px: 3, pb: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+            Active filters:
+          </Typography>
+          {activeFilters.map((filter) => (
+            <Chip
+              key={filter.field}
+              label={`${columns.find((col) => col.field === filter.field)?.headerName || filter.field}: ${filter.values.join(', ')}`}
+              onDelete={() => handleRemoveFilter(filter.field)}
+              color="primary"
+              variant="outlined"
+              size="small"
+            />
+          ))}
+          <Button size="small" onClick={handleClearFilters}>
+            Clear all
+          </Button>
+        </Box>
+      )}
+
       <Divider />
 
       {/* ── DataGrid ── */}
       <Box sx={{ height, width: '100%' }}>
         <DataGrid
           rows={filteredRows}
-          columns={resolvedColumns}
+          columns={visibleColumns}
           loading={loading}
           density={density}
           checkboxSelection={checkboxSelection}
