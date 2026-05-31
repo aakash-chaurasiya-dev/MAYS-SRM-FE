@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#ffb59b",
+                        "surface-container-highest": "#e1e2ec",
+                        "surface-container-lowest": "#ffffff",
+                        "error": "#ba1a1a",
+                        "primary": "#003d9b",
+                        "tertiary-container": "#a33500",
+                        "background": "#faf8ff",
+                        "on-primary": "#ffffff",
+                        "surface-container": "#ededf8",
+                        "secondary-fixed": "#82f9be",
+                        "on-primary-fixed-variant": "#0040a2",
+                        "surface-variant": "#e1e2ec",
+                        "on-background": "#191b23",
+                        "on-primary-container": "#c4d2ff",
+                        "inverse-on-surface": "#f0f0fb",
+                        "on-tertiary-fixed": "#380d00",
+                        "outline-variant": "#c3c6d6",
+                        "on-secondary-container": "#00734c",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed-variant": "#005235",
+                        "on-secondary-fixed": "#002113",
+                        "surface-container-low": "#f3f3fd",
+                        "secondary-container": "#82f9be",
+                        "on-tertiary-container": "#ffc6b2",
+                        "outline": "#737685",
+                        "secondary": "#006c47",
+                        "primary-container": "#0052cc",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed": "#001848",
+                        "on-surface": "#191b23",
+                        "primary-fixed-dim": "#b2c5ff",
+                        "surface": "#faf8ff",
+                        "primary-fixed": "#dae2ff",
+                        "surface-tint": "#0c56d0",
+                        "on-surface-variant": "#434654",
+                        "on-tertiary-fixed-variant": "#812800",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#7b2600",
+                        "tertiary-fixed": "#ffdbcf",
+                        "inverse-primary": "#b2c5ff",
+                        "inverse-surface": "#2e3038",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#faf8ff",
+                        "secondary-fixed-dim": "#65dca4",
+                        "surface-container-high": "#e7e7f2",
+                        "surface-dim": "#d9d9e4"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "tab-height": "40px",
+                        "gutter": "16px",
+                        "sidebar-width": "240px",
+                        "container-padding": "24px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "h2": ["Inter"],
+                        "code": ["JetBrains Mono"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "h1": ["Inter"],
+                        "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "h2": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "code": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "h1": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen flex overflow-hidden">
+<!-- SideNavBar -->
+<aside class="w-sidebar-width h-screen bg-surface-container border-r border-outline-variant flex flex-col py-container-padding shrink-0">
+<div class="px-4 mb-8">
+<h1 class="font-h1 text-h1 text-on-surface">Main Workshop</h1>
+<p class="font-label-md text-label-md text-on-surface-variant">Terminal A-12</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 py-2 px-4 bg-secondary-container text-on-secondary-container rounded-xl mx-2 scale-95 duration-100" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 py-2 px-4 text-on-surface-variant hover:bg-surface-container-high rounded-xl mx-2 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="Confirmation_number">confirmation_number</span>
+<span class="font-label-md text-label-md">My Tickets</span>
+</a>
+<a class="flex items-center gap-3 py-2 px-4 text-on-surface-variant hover:bg-surface-container-high rounded-xl mx-2 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="view_kanban">view_kanban</span>
+<span class="font-label-md text-label-md">Kanban Board</span>
+</a>
+<a class="flex items-center gap-3 py-2 px-4 text-on-surface-variant hover:bg-surface-container-high rounded-xl mx-2 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+<a class="flex items-center gap-3 py-2 px-4 text-on-surface-variant hover:bg-surface-container-high rounded-xl mx-2 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label-md text-label-md">Customers</span>
+</a>
+</nav>
+<div class="px-4 mt-auto space-y-4">
+<button class="w-full py-3 bg-primary text-on-primary rounded-xl font-label-md text-label-md flex items-center justify-center gap-2 shadow-sm">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                New Ticket
+            </button>
+<div class="pt-4 border-t border-outline-variant space-y-1">
+<a class="flex items-center gap-3 py-2 px-2 text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+<a class="flex items-center gap-3 py-2 px-2 text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="contact_support">contact_support</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col min-w-0 bg-surface-container-low overflow-hidden">
+<!-- TopNavBar -->
+<header class="bg-surface-container-low border-b border-outline-variant h-[56px] flex items-center justify-between px-gutter shrink-0">
+<div class="flex items-center gap-4 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" data-icon="search">search</span>
+<input class="w-full pl-10 pr-4 py-1.5 bg-surface border border-outline-variant rounded-full text-body-md focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Search tickets..." type="text"/>
+</div>
+<!-- Branch Selection Dropdown -->
+<div class="relative">
+<button class="flex items-center gap-2 px-4 py-1.5 bg-surface border border-outline-variant rounded-full text-body-md hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="store">store</span>
+<span>Main Workshop (Terminal A-12)</span>
+<span class="material-symbols-outlined text-[20px]" data-icon="expand_more">expand_more</span>
+</button>
+</div>
+</div>
+<div class="flex items-center gap-4 ml-4">
+<div class="flex items-center gap-2">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full"><span class="material-symbols-outlined" data-icon="notifications">notifications</span></button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full"><span class="material-symbols-outlined" data-icon="help">help</span></button>
+<img alt="Technician Avatar" class="w-8 h-8 rounded-full border border-outline-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA3F5CB6jkNNp7ZW1W_dzwlZRX9jIOREbcg1gxvy8SPqVQWCcqw5Q9KqJbVBgt27XMKVsbMaMDUdyMY9mMqMONAiBZtWy4W836J3P8eORTRvLEmRopXUWP-S7WjPF_sB8iUlrqvBqhQnkuDSw6zyfGiWJGt-qJ0w2Qz8e6gtorEjIrzaM0lL7GUuh315-QMMqccheUKCIxMPDVW8a9K5olrBoAz6-1aOhszH3hovoSyuwlLJZOxatTQiTL0NYqD43M67mEje-cjbuqK"/>
+</div>
+</div>
+</header>
+<!-- Canvas Area -->
+<div class="flex-1 overflow-y-auto">
+<!-- Sticky Metric Cards -->
+<div class="sticky top-0 z-10 bg-surface-container-low/95 backdrop-blur-sm p-gutter border-b border-outline-variant">
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+<div class="bg-white border border-outline-variant p-4 rounded-xl shadow-sm">
+<p class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase tracking-wider">Total Tickets</p>
+<h2 class="font-h1 text-h1">142</h2>
+<p class="text-secondary text-[12px] mt-1">+12% vs last month</p>
+</div>
+<div class="bg-white border border-outline-variant p-4 rounded-xl shadow-sm">
+<p class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase tracking-wider">Open Tickets</p>
+<h2 class="font-h1 text-h1 text-primary">24</h2>
+<p class="text-on-surface-variant text-[12px] mt-1">Waiting for initial triage</p>
+</div>
+<div class="bg-white border border-outline-variant p-4 rounded-xl shadow-sm border-l-4 border-l-error">
+<p class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase tracking-wider">Overdue</p>
+<h2 class="font-h1 text-h1 text-error">6</h2>
+<p class="text-error text-[12px] mt-1">Immediate attention req.</p>
+</div>
+<div class="bg-white border border-outline-variant p-4 rounded-xl shadow-sm">
+<p class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase tracking-wider">In Repair</p>
+<h2 class="font-h1 text-h1 text-secondary">18</h2>
+<p class="text-secondary text-[12px] mt-1">12 On Schedule</p>
+</div>
+<div class="bg-white border border-outline-variant p-4 rounded-xl shadow-sm">
+<p class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase tracking-wider">Completed</p>
+<h2 class="font-h1 text-h1">94</h2>
+<p class="text-on-surface-variant text-[12px] mt-1">Processed this month</p>
+</div>
+</div>
+</div>
+<!-- Content Area: Ticket List -->
+<div class="p-gutter">
+<section class="bg-white border border-outline-variant rounded-xl shadow-sm flex flex-col overflow-hidden">
+<div class="p-4 border-b border-outline-variant flex justify-between items-center">
+<h3 class="font-h2 text-h2">Recent Action Items</h3>
+<div class="flex gap-4 items-center">
+<button class="flex items-center gap-2 px-3 py-1 text-on-surface-variant border border-outline-variant rounded-lg font-label-md text-label-md hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="filter_list">filter_list</span>
+                                Filter
+                            </button>
+<button class="text-primary font-label-md hover:underline">View All Tickets</button>
+</div>
+</div>
+<div class="divide-y divide-outline-variant">
+<!-- Ticket Item 1 -->
+<div class="p-4 hover:bg-surface-container-low transition-colors flex items-center gap-4">
+<div class="w-10 h-10 bg-error-container text-on-error-container rounded-full flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined" data-icon="priority_high">priority_high</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-primary">#TK-1156</span>
+<span class="font-h2 text-[14px]">Surface Pro 7 - Cracked Screen</span>
+</div>
+<p class="text-on-surface-variant text-body-md mt-0.5">Reported by Sarah Jenkins • 2 hours ago</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-4 py-1.5 text-primary border border-primary rounded-lg font-label-md text-label-md hover:bg-primary/5 transition-colors">Approve</button>
+<button class="px-4 py-1.5 bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:bg-primary-container transition-colors">Assign</button>
+</div>
+</div>
+<!-- Ticket Item 2 -->
+<div class="p-4 hover:bg-surface-container-low transition-colors flex items-center gap-4">
+<div class="w-10 h-10 bg-surface-container-highest text-on-surface-variant rounded-full flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined" data-icon="schedule">schedule</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-primary">#TK-1155</span>
+<span class="font-h2 text-[14px]">Custom PC - PSU Failure Diagnostic</span>
+</div>
+<p class="text-on-surface-variant text-body-md mt-0.5">Reported by Mike Ross • 4 hours ago</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-4 py-1.5 text-primary border border-primary rounded-lg font-label-md text-label-md hover:bg-primary/5 transition-colors">Approve</button>
+<button class="px-4 py-1.5 bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:bg-primary-container transition-colors">Assign</button>
+</div>
+</div>
+<!-- Ticket Item 3 -->
+<div class="p-4 hover:bg-surface-container-low transition-colors flex items-center gap-4">
+<div class="w-10 h-10 bg-surface-container-highest text-on-surface-variant rounded-full flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined" data-icon="sync">sync</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-primary">#TK-1154</span>
+<span class="font-h2 text-[14px]">MacBook Pro 16" - Logic Board Cleaning</span>
+</div>
+<p class="text-on-surface-variant text-body-md mt-0.5">Reported by Tech Support • 5 hours ago</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-4 py-1.5 text-primary border border-primary rounded-lg font-label-md text-label-md hover:bg-primary/5 transition-colors">Approve</button>
+<button class="px-4 py-1.5 bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:bg-primary-container transition-colors">Assign</button>
+</div>
+</div>
+<!-- Ticket Item 4 (Extended list) -->
+<div class="p-4 hover:bg-surface-container-low transition-colors flex items-center gap-4">
+<div class="w-10 h-10 bg-surface-container-highest text-on-surface-variant rounded-full flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-primary">#TK-1153</span>
+<span class="font-h2 text-[14px]">Dell XPS 13 - Battery Replacement</span>
+</div>
+<p class="text-on-surface-variant text-body-md mt-0.5">Reported by Anna White • 6 hours ago</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-4 py-1.5 text-primary border border-primary rounded-lg font-label-md text-label-md hover:bg-primary/5 transition-colors">Invoice</button>
+<button class="px-4 py-1.5 bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:bg-primary-container transition-colors">Release</button>
+</div>
+</div>
+<!-- Ticket Item 5 -->
+<div class="p-4 hover:bg-surface-container-low transition-colors flex items-center gap-4">
+<div class="w-10 h-10 bg-surface-container-highest text-on-surface-variant rounded-full flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined" data-icon="biotech">biotech</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-primary">#TK-1150</span>
+<span class="font-h2 text-[14px]">HP ZBook - Data Recovery Request</span>
+</div>
+<p class="text-on-surface-variant text-body-md mt-0.5">Reported by Forensic Lab • 1 day ago</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-4 py-1.5 text-primary border border-primary rounded-lg font-label-md text-label-md hover:bg-primary/5 transition-colors">Approve</button>
+<button class="px-4 py-1.5 bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:bg-primary-container transition-colors">Assign</button>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+</body></html>

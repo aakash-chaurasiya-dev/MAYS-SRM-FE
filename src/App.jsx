@@ -1,38 +1,55 @@
-import { Box, Container, Typography } from '@mui/material';
-import EmployeeListExample from './pages/EmployeeListExample/EmployeeListExample';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Box } from '@mui/material';
+
+// Layout
+import AppLayout from './components/Layout/AppLayout';
+
+// Pages
+import LoginPage from './pages/Login/LoginPage';
+import RegisterPage from './pages/Register/RegisterPage';
+import DashboardPage from './pages/Dashboard/DashboardPage';
+import DiagnosisPage from './pages/EngineerDiagnosis/DiagnosisPage';
+import InventoryPage from './pages/Inventory/InventoryPage';
+import KanbanPage from './pages/KanbanBoard/KanbanPage';
+import NewTicketPage from './pages/NewTicket/NewTicketPage';
+import TicketDetailPage from './pages/TicketDetail/TicketDetailPage';
+import MaintenancePage from './pages/Maintenance/MaintenancePage';
+import BrandManagementPage from './pages/Maintenance/BrandManagementPage';
 
 function App() {
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        bgcolor: 'background.default',
-        py: 5,
-        px: 2,
-      }}
-    >
-      <Container maxWidth="xl">
-        <Box sx={{ mb: 4 }}>
-          <Typography
-            variant="h4"
-            color="text.primary"
-            sx={{
-              background: 'linear-gradient(135deg, #4F46E5 0%, #06B6D4 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              display: 'inline-block',
-            }}
-          >
-            MAYS SRM
-          </Typography>
-          <Typography variant="body2" sx={{ mt: 0.5 }}>
-            Supplier Relationship Management — Abstract List Demo
-          </Typography>
-        </Box>
+    <BrowserRouter>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
-        <EmployeeListExample />
-      </Container>
-    </Box>
+        {/* Authenticated Routes with Sidebar & TopBar */}
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/diagnosis" element={<DiagnosisPage />} />
+          <Route path="/kanban" element={<KanbanPage />} />
+          <Route path="/inventory" element={<InventoryPage />} />
+
+          {/* Ticket Routes */}
+          <Route path="/tickets/new" element={<NewTicketPage />} />
+          <Route path="/tickets/:id" element={<TicketDetailPage />} />
+
+          {/* Maintenance Routes */}
+          <Route path="/maintenance" element={<MaintenancePage />} />
+          <Route path="/maintenance/brands" element={<BrandManagementPage />} />
+
+          {/* Placeholder routes for navigation items */}
+          <Route path="/maintenance/:section" element={<Box sx={{ p: 3 }}>Maintenance Section (WIP)</Box>} />
+          <Route path="/reports" element={<Box sx={{ p: 3 }}>Reports Page (WIP)</Box>} />
+          <Route path="/employees" element={<Box sx={{ p: 3 }}>Employee Management (WIP)</Box>} />
+          <Route path="/customers" element={<Box sx={{ p: 3 }}>Customers Page (WIP)</Box>} />
+          <Route path="/settings" element={<Box sx={{ p: 3 }}>Settings Page (WIP)</Box>} />
+          <Route path="/support" element={<Box sx={{ p: 3 }}>Support Desk (WIP)</Box>} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
 
