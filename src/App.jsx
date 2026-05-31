@@ -15,6 +15,8 @@ import NewTicketPage from './pages/NewTicket/NewTicketPage';
 import TicketDetailPage from './pages/TicketDetail/TicketDetailPage';
 import MaintenancePage from './pages/Maintenance/MaintenancePage';
 import BrandManagementPage from './pages/Maintenance/BrandManagementPage';
+import InvoiceHistoryPage from './pages/InvoiceHistory/InvoiceHistoryPage';
+import CreateInvoicePage from './pages/CreateInvoice/CreateInvoicePage';
 
 function App() {
   return (
@@ -39,6 +41,10 @@ function App() {
           {/* Maintenance Routes */}
           <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="/maintenance/brands" element={<BrandManagementPage />} />
+
+          {/* Billing Routes */}
+          <Route path="/billing/invoice-history" element={<InvoiceHistoryPage />} />
+          <Route path="/billing/create" element={<CreateInvoicePage />} />
 
           {/* Placeholder routes for navigation items */}
           <Route path="/maintenance/:section" element={<Box sx={{ p: 3 }}>Maintenance Section (WIP)</Box>} />
