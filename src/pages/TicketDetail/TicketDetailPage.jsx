@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Box, Paper, Typography, TextField, Button, Divider, Chip,
-  Stack, Avatar, IconButton,
+  Stack, Avatar, IconButton, MenuItem
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import LaptopMacIcon from '@mui/icons-material/LaptopMac';
@@ -19,15 +19,16 @@ import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import api from '../../services/api';
 
+const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 
-const MILESTONES = [
-  { label: 'Check-In', date: 'Oct 24, 2023', done: true },
-  { label: 'Triage', date: 'Oct 24, 2023', done: true },
-  { label: 'Diagnosis', date: 'Oct 25, 2023', done: true },
-  { label: 'Repair', date: 'Pending', done: false },
-  { label: 'QA Check', date: '—', done: false },
-  { label: 'Ready for Pickup', date: '—', done: false },
-];
+// const MILESTONES = [
+//   { label: 'Check-In', date: 'Oct 24, 2023', done: true },
+//   { label: 'Triage', date: 'Oct 24, 2023', done: true },
+//   { label: 'Diagnosis', date: 'Oct 25, 2023', done: true },
+//   { label: 'Repair', date: 'Pending', done: false },
+//   { label: 'QA Check', date: '—', done: false },
+//   { label: 'Ready for Pickup', date: '—', done: false },
+// ];
 
 const formatTimestamp = (value) => {
   if (!value) {
@@ -50,33 +51,28 @@ const formatTimestamp = (value) => {
 };
 
 const createTimelineEntry = (log) => {
-  const actor = log?.assignorEmployee?.employeeName || log?.assigneeEmployee?.employeeName || 'System';
-  const timestamp = formatTimestamp(log?.timestamp);
+  const actor = log?.assignorEmployeeName || 'System';
+  const timestamp = formatTimestamp(log?.modificationDate);
+
+  let actionParts = [];
+
+  if (log?.oldStatus && log?.newStatus && log.oldStatus !== log.newStatus) {
+    actionParts.push(`Status updated from ${log.oldStatus} to ${log.newStatus}`);
+  }
+
+  if (log?.assigneeEmployeeName) {
+    actionParts.push(`Assigned to ${log.assigneeEmployeeName}`);
+  }
 
   if (log?.assignorRemarks) {
-    return {
-      user: actor,
-      action: log.assignorRemarks,
-      timestamp,
-      type: 'update',
-    };
+    actionParts.push(`Remarks: ${log.assignorRemarks}`);
   }
 
-  if (log?.columnName) {
-    const oldValue = log.oldValue || 'Not available';
-    const newValue = log.newValue || 'Not available';
-
-    return {
-      user: actor,
-      action: `${log.columnName} updated from ${oldValue} to ${newValue}`,
-      timestamp,
-      type: 'update',
-    };
-  }
+  const action = actionParts.length > 0 ? actionParts.join(' | ') : 'Ticket updated';
 
   return {
     user: actor,
-    action: 'Ticket updated',
+    action,
     timestamp,
     type: 'update',
   };
@@ -97,6 +93,61 @@ export default function TicketDetailPage() {
   const [internalNote, setInternalNote] = useState('');
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImg, setLightboxImg] = useState(null);
+
+  // Dynamic dropdown state
+  const [departments, setDepartments] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [statuses, setStatuses] = useState([]);
+
+  // Edit mode state
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editForm, setEditForm] = useState({
+    employeeId: '',
+    departmentId: '',
+    ticketStatusId: '',
+  });
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await api.get('/departments');
+        setDepartments(Array.isArray(response.data) ? response.data : []);
+      } catch (err) {
+        console.error('Failed to fetch departments', err);
+      }
+    };
+    fetchDepartments();
+  }, []);
+
+  useEffect(() => {
+    const fetchStatuses = async () => {
+      try {
+        const statustype = 'Ticket';
+        const response = await api.get(`/statuses/type/${statustype}`);
+        setStatuses(Array.isArray(response.data) ? response.data : []);
+      } catch (err) {
+        console.error('Failed to fetch statuses', err);
+      }
+    };
+    fetchStatuses();
+  }, []);
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      if (!editForm.departmentId) {
+        setEmployees([]);
+        return;
+      }
+      try {
+        const response = await api.get(`/employees/department/${editForm.departmentId}`);
+        setEmployees(Array.isArray(response.data) ? response.data : []);
+      } catch (err) {
+        console.error('Failed to fetch employees', err);
+        setEmployees([]);
+      }
+    };
+    fetchEmployees();
+  }, [editForm.departmentId]);
 
   const loadTicketDetails = async () => {
     try {
@@ -122,7 +173,7 @@ export default function TicketDetailPage() {
       const filteredLogs = Array.isArray(logsData)
         ? logsData
           .filter(
-            (log) => Number(log?.ticket?.ticketId) === currentTicketId
+            (log) => Number(log?.ticketId) === currentTicketId
           )
           .map(createTimelineEntry)
         : [];
@@ -188,6 +239,46 @@ export default function TicketDetailPage() {
     }
   };
 
+  const handleEditClick = () => {
+    setEditForm({
+      employeeId: ticket?.employeeId || ticket?.assigneeEmployeeId || ticket?.employee?.employeeId || '',
+      departmentId: ticket?.departmentId || ticket?.department?.departmentId || '',
+      ticketStatusId: ticket?.ticketStatusId || '',
+    });
+    setIsEditMode(true);
+  };
+
+  const handleSaveClick = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const selectedDept = departments.find(d => String(d.departmentId || d.id) === String(editForm.departmentId));
+      const selectedEmp = employees.find(e => String(e.employeeId || e.id) === String(editForm.employeeId));
+      const selectedStatus = statuses.find(s => String(s.statusId || s.id) === String(editForm.ticketStatusId));
+
+      const updatedTicket = {
+        ...ticket,
+        employeeId: editForm.employeeId || null,
+        departmentId: editForm.departmentId || null,
+        employeeName: selectedEmp ? (selectedEmp.employeeName || selectedEmp.name) : ticket?.employeeName,
+        departmentName: selectedDept ? (selectedDept.departmentName || selectedDept.name) : ticket?.departmentName,
+        ticketStatusId: editForm.ticketStatusId || null,
+        ticketStatusName: selectedStatus ? (selectedStatus.statusName || selectedStatus.name) : ticket?.ticketStatusName,
+      };
+
+      await api.put(`/tickets/${id}`, updatedTicket);
+      
+      setIsEditMode(false);
+      await loadTicketDetails();
+    } catch (err) {
+      console.error('Failed to update ticket', err);
+      setError(err.response?.data?.message || err.message || 'Unable to save ticket details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const lbl = {
     fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary,
     textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.5,
@@ -201,8 +292,12 @@ export default function TicketDetailPage() {
     return String(value);
   };
 
-  const status = valueOrNA(ticket?.ticketStatusName);
-  const statusChipColor = status === 'OPEN' ? 'error' : status === 'CLOSED' ? 'success' : 'default';
+  const statusDisplay = valueOrNA(ticket?.ticketStatusName || ticket?.status || 'Open');
+  let statusChipColor = 'default';
+  if (statusDisplay.toUpperCase() === 'CLOSED' || statusDisplay.toUpperCase() === 'RESOLVED') statusChipColor = 'success';
+  else if (statusDisplay.toUpperCase() === 'IN PROGRESS') statusChipColor = 'info';
+  else if (statusDisplay.toUpperCase() === 'OPEN') statusChipColor = 'warning';
+  else if (statusDisplay.toUpperCase() === 'CRITICAL') statusChipColor = 'error';
 
   const customerName = [ticket?.userFirstName, ticket?.userLastName]
     .filter(Boolean)
@@ -253,7 +348,7 @@ export default function TicketDetailPage() {
           sx={{ fontWeight: 600, borderRadius: '2px', bgcolor: `${theme.palette.primary.main}14`, color: theme.palette.primary.main, height: 22 }}
         />
         <Chip
-          label={status}
+          label={statusDisplay.toUpperCase()}
           size="small"
           color={statusChipColor}
           sx={{ fontWeight: 600, borderRadius: '2px', height: 22 }}
@@ -267,8 +362,16 @@ export default function TicketDetailPage() {
       )}
 
       <Box sx={{ display: 'flex', justifyContent:'flex-end', gap: 1.5, mb: 3 }}>
-        <Button variant="outlined" size="small" startIcon={<EditOutlinedIcon />} sx={{ fontSize: '12px' }}>Edit</Button>
-        <Button variant="outlined" size="small" startIcon={<SaveOutlinedIcon />} sx={{ fontSize: '12px' }}>Save</Button>
+        {!isEditMode ? (
+          <Button variant="outlined" size="small" startIcon={<EditOutlinedIcon />} sx={{ fontSize: '12px' }} onClick={handleEditClick}>Edit</Button>
+        ) : (
+          <>
+            <Button variant="text" size="small" sx={{ fontSize: '12px' }} onClick={() => setIsEditMode(false)} disabled={loading}>Cancel</Button>
+            <Button variant="contained" size="small" startIcon={<SaveOutlinedIcon />} sx={{ fontSize: '12px' }} onClick={handleSaveClick} disabled={loading}>
+              {loading ? 'Saving...' : 'Save'}
+            </Button>
+          </>
+        )}
       </Box>
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2.5}>
@@ -325,7 +428,7 @@ export default function TicketDetailPage() {
               <Divider />
               <Box sx={{ p: 2.5 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                  {[['Brand', brand], ['Model', model], ['Serial No.', serialNo], ['Warranty', warranty], ['Type', ticketType], ['Assigned To', assignedTo], ['Department', department]].map(([l, v]) => (
+                  {[['Brand', brand], ['Model', model], ['Serial No.', serialNo], ['Warranty', warranty], ['Type', ticketType]].map(([l, v]) => (
                     <Box key={l} sx={{ mb: 1.2, width: '33.33%' }}>
                       <Typography sx={lbl}>{l}</Typography>
                       <Typography sx={{ fontSize: '13px', fontFamily: l === 'Serial No.' ? '"JetBrains Mono", monospace' : 'inherit' }}>{v}</Typography>
@@ -445,34 +548,18 @@ export default function TicketDetailPage() {
             </Box>
             <Divider />
             <Box sx={{ p: 2.5 }}>
-              <TextField fullWidth multiline rows={3} placeholder="Add an internal note or status update…" value={internalNote}
+              <TextField 
+                fullWidth 
+                multiline 
+                rows={3} 
+                placeholder="Add an internal note or status update…" 
+                value={internalNote}
                 onChange={(e) => setInternalNote(e.target.value)}
-                sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />
-              <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'flex-end' }}>
-                <Button variant="contained" size="small" startIcon={<SendOutlinedIcon />}>Post Update</Button>
-              </Box>
+                disabled={!isEditMode}
+                sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} 
+              />
             </Box>
           </Paper>
-          
-          {/* Key Milestones
-          <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
-            <Box sx={{ px: 2.5, py: 1.8, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CalendarTodayOutlinedIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
-              <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Key Milestones</Typography>
-            </Box>
-            <Divider />
-            <Box sx={{ p: 2.5 }}>
-              {MILESTONES.map((m, i) => (
-                <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 0.8 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CheckCircleOutlinedIcon sx={{ fontSize: 16, color: m.done ? theme.palette.secondary.main : theme.palette.divider }} />
-                    <Typography sx={{ fontSize: '13px', fontWeight: m.done ? 600 : 400, color: m.done ? theme.palette.text.primary : theme.palette.text.secondary }}>{m.label}</Typography>
-                  </Box>
-                  <Typography sx={{ fontSize: '11px', color: theme.palette.text.secondary }}>{m.date}</Typography>
-                </Box>
-              ))}
-            </Box>
-          </Paper> */}
 
           {/* Operations */}
           <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
@@ -481,15 +568,66 @@ export default function TicketDetailPage() {
             </Box>
             <Divider />
             <Box sx={{ p: 2.5 }}>
-              <Stack spacing={1}>
-                <Button variant="contained" fullWidth size="small">Escalate to Manager</Button>
-                <Button variant="outlined" fullWidth size="small">Request Parts</Button>
-                <Button variant="outlined" fullWidth size="small" color="error">Mark as Critical</Button>
+              <Stack spacing={2} sx={{ mb: 2.5 }}>
+                <Box>
+                  <Typography sx={lbl}>Department</Typography>
+                  {isEditMode ? (
+                    <TextField 
+                      select 
+                      fullWidth 
+                      size="small" 
+                      value={editForm.departmentId} 
+                      onChange={(e) => setEditForm({...editForm, departmentId: e.target.value, employeeId: ''})} 
+                      sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+                    >
+                      <MenuItem value="">Unassigned</MenuItem>
+                      {departments.map(dep => <MenuItem key={dep.departmentId || dep.id} value={dep.departmentId || dep.id}>{dep.departmentName || dep.name}</MenuItem>)}
+                    </TextField>
+                  ) : (
+                    <Typography sx={{ fontSize: '13px' }}>{department}</Typography>
+                  )}
+                </Box>
+                <Box>
+                  <Typography sx={lbl}>Assigned To</Typography>
+                  {isEditMode ? (
+                    <TextField 
+                      select 
+                      fullWidth 
+                      size="small" 
+                      value={editForm.employeeId} 
+                      onChange={(e) => setEditForm({...editForm, employeeId: e.target.value})} 
+                      sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+                      disabled={!editForm.departmentId}
+                    >
+                      <MenuItem value="">Unassigned</MenuItem>
+                      {employees.map(emp => <MenuItem key={emp.employeeId || emp.id} value={emp.employeeId || emp.id}>{emp.employeeName || emp.name}</MenuItem>)}
+                    </TextField>
+                  ) : (
+                    <Typography sx={{ fontSize: '13px' }}>{assignedTo}</Typography>
+                  )}
+                </Box>
+                
+                <Box>
+                  <Typography sx={lbl}>Status</Typography>
+                  {isEditMode ? (
+                    <TextField 
+                      select 
+                      fullWidth 
+                      size="small" 
+                      value={editForm.ticketStatusId} 
+                      onChange={(e) => setEditForm({...editForm, ticketStatusId: e.target.value})} 
+                      sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+                    >
+                      {statuses.map(s => <MenuItem key={s.statusId || s.id} value={s.statusId || s.id}>{s.statusName || s.name}</MenuItem>)}
+                    </TextField>
+                  ) : (
+                    <Typography sx={{ fontSize: '13px' }}>{statusDisplay}</Typography>
+                  )}
+                </Box>
               </Stack>
             </Box>
           </Paper>
 
-          
            {/* Activity Timeline */}
           <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden' }}>
             <Box sx={{ px: 2.5, py: 1.8 }}>
