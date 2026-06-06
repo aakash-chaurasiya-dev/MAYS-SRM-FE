@@ -13,9 +13,17 @@ import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNone
 import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useTheme } from '@mui/material/styles';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function TopBar({ onMenuClick }) {
   const theme = useTheme();
+  const { user } = useAuth();
+
+  // Dynamically extract user details from the decoded JWT token
+  // Using fallbacks in case the JWT does not contain these specific properties
+  const userName = user?.name || 'NA';
+  const userRole = user?.role || 'N/A';
+  const userInitials = userName.substring(0, 2).toUpperCase();
 
   return (
     <Box
@@ -98,14 +106,14 @@ export default function TopBar({ onMenuClick }) {
             bgcolor: theme.palette.primary.main,
           }}
         >
-          AK
+          {userInitials}
         </Avatar>
         <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
           <Typography sx={{ fontSize: '13px', fontWeight: 600, lineHeight: 1.2 }}>
-            Admin
+            {userName}
           </Typography>
           <Typography sx={{ fontSize: '11px', color: theme.palette.text.secondary, lineHeight: 1.2 }}>
-            Manager
+            {userRole}
           </Typography>
         </Box>
       </Box>

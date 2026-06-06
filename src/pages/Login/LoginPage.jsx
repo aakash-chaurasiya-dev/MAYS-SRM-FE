@@ -8,23 +8,44 @@ import {
   Link,
   Divider,
   Chip,
+  Alert,
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
+import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import Logo from '../../components/Logo/Logo';
 import { useTheme } from '@mui/material/styles';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function LoginPage() {
   const theme = useTheme();
   const navigate = useNavigate();
-  const [employeeId, setEmployeeId] = useState('');
+  const location = useLocation();
+  const { login } = useAuth();
+  
+  const [mobileNo, setMobileNo] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e) => {
+  // Where to redirect after login (default to /dashboard)
+  const from = location.state?.from?.pathname || '/dashboard';
+
+  const handleLogin = async (e) => {
     e.preventDefault();
-    navigate('/dashboard');
+    setError('');
+    setIsLoading(true);
+
+    // Call the login function from AuthContext
+    const result = await login({ mobileNo, password });
+
+    if (result.success) {
+      navigate(from, { replace: true });
+    } else {
+      setError(result.error || 'Failed to login');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -156,8 +177,14 @@ export default function LoginPage() {
             Enter your credentials to access the repair terminal
           </Typography>
 
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
+            </Alert>
+          )}
+
           <form onSubmit={handleLogin}>
-            {/* Employee ID */}
+            {/* Mobile Number */}
             <Typography
               sx={{
                 fontSize: '12px',
@@ -168,19 +195,19 @@ export default function LoginPage() {
                 mb: 0.8,
               }}
             >
-              Employee ID
+              Mobile Number
             </Typography>
             <TextField
               fullWidth
               size="small"
-              placeholder="e.g. TECH-0042"
-              value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
+              placeholder="e.g. 9876543210"
+              value={mobileNo}
+              onChange={(e) => setMobileNo(e.target.value)}
               slotProps={{
                 input: {
                   startAdornment: (
                     <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}>
-                      <BadgeOutlinedIcon fontSize="small" />
+                      <PhoneOutlinedIcon fontSize="small" />
                     </Box>
                   ),
                 },
@@ -233,6 +260,7 @@ export default function LoginPage() {
               variant="contained"
               fullWidth
               size="large"
+              disabled={isLoading}
               sx={{
                 py: 1.2,
                 fontSize: '14px',
@@ -240,7 +268,7 @@ export default function LoginPage() {
                 mb: 2,
               }}
             >
-              Sign In to Terminal
+              {isLoading ? 'Signing In...' : 'Sign In to Terminal'}
             </Button>
           </form>
 

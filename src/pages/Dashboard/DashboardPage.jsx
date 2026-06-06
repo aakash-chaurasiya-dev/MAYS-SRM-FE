@@ -11,6 +11,7 @@ import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import List from '../../stereotype/AbstractList/List';
+import api from '../../services/api';
 
 const TICKET_COLUMNS = [
   { field: 'id', headerName: 'Ticket ID', width: 110, renderType: 'link' },
@@ -76,23 +77,27 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/tickets')
-      .then(res => res.json())
-      .then(data => {
+    api.get('/tickets')
+      .then((response) => {
+        const data = response.data;
+        console.log('Fetched tickets:', data);
         setTickets(data || []);
-        setLoading(false);
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('Failed to fetch tickets', err);
+      })
+      .finally(() => {
         setLoading(false);
       });
   }, []);
 
   // Compute dynamic stats
-  const adminCount = tickets.filter(t => t.employee?.department?.departmentName === 'Admin').length;
-  const engineerCount = tickets.filter(t => t.employee?.department?.departmentName === 'Engineer').length;
-  const managerCount = tickets.filter(t => t.employee?.department?.departmentName === 'Management').length;
-  const purchaseCount = tickets.filter(t => t.employee?.department?.departmentName === 'Purchase Team').length;
+  const getDepartmentName = (ticket) => ticket.departmentName;
+
+  const adminCount = tickets.filter(t => getDepartmentName(t) === 'Admin').length;
+  const engineerCount = tickets.filter(t => getDepartmentName(t) === 'Engineer').length;
+  const managerCount = tickets.filter(t => getDepartmentName(t) === 'MANAGER').length;
+  const purchaseCount = tickets.filter(t => getDepartmentName(t) === 'Purchase Team').length;
 
   const STATS = [
     {
@@ -125,8 +130,8 @@ export default function DashboardPage() {
   // Map raw API data to rows
   const mappedRows = tickets.map(t => {
     const brand = t.device?.model?.brand?.brandName || 'Unknown Brand';
-    const model = t.device?.model?.modelName || 'Unknown Model';
-    const customerName = `${t.userMaster?.firstName || ''} ${t.userMaster?.lastName || ''}`.trim() || 'Unknown Customer';
+    const model = t.device?.model?.modelName || t.deviceModelName || 'Unknown Model';
+    const customerName = `${t.userMaster?.firstName || t.userFirstName || ''} ${t.userMaster?.lastName || t.userLastName || ''}`.trim() || 'Unknown Customer';
 
     return {
       id: `TK-${t.ticketId}`,
@@ -134,13 +139,13 @@ export default function DashboardPage() {
       email: t.emailId || t.userMaster?.emailId || 'N/A',
       device: `${brand} ${model}`,
       description: t.ticketDescription || 'No description provided',
-      serialNo: t.device?.serialNo || 'N/A',
-      branch: t.ticketBranch?.branchName || 'Unknown Branch',
-      status: t.ticketStatus?.statusName || 'UNKNOWN',
+      serialNo: t.device?.serialNo || t.deviceSerialNo || 'N/A',
+      branch: t.ticketBranch?.branchName || t.branchName || 'Unknown Branch',
+      status: t.ticketStatus?.statusName || t.ticketStatusName || 'UNKNOWN',
       warranty: t.warrantyType || 'Unknown',
-      assigned: t.employee?.employeeName || 'Unassigned',
-      department: t.employee?.department?.departmentName || 'Unassigned',
-      type: t.ticketType?.ticketTypeName || 'Unknown',
+      assigned: t.employee?.employeeName || t.employeeName || 'Unassigned',
+      department: t.employee?.department?.departmentName || t.departmentName || 'Unassigned',
+      type: t.ticketType?.ticketTypeName || t.ticketTypeName || 'Unknown',
       rawId: t.ticketId,
     };
   });
