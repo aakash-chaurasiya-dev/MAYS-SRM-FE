@@ -9,7 +9,7 @@ import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
-import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
+import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
@@ -17,6 +17,8 @@ import { useTheme } from '@mui/material/styles';
 import { useNavigate, useParams } from 'react-router-dom';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
+import api from '../../services/api';
+
 
 const MILESTONES = [
   { label: 'Check-In', date: 'Oct 24, 2023', done: true },
@@ -97,58 +99,56 @@ export default function TicketDetailPage() {
   const [lightboxImg, setLightboxImg] = useState(null);
 
   const loadTicketDetails = async () => {
-    setLoading(true);
-    setError('');
+    try {
+      setLoading(true);
+      setError('');
 
-    const [ticketResponse, logsResponse, attachmentsResponse] = await Promise.allSettled([
-      fetch(`/api/tickets/${id}`),
-      fetch('/api/ticket-logs'),
-      fetch(`/api/tickets/${id}/attachments`),
-    ]);
+      const [
+        ticketResponse,
+        logsResponse,
+        attachmentsResponse,
+      ] = await Promise.all([
+        api.get(`/tickets/${id}`),
+        api.get(`/ticket-logs/${id}`),
+        api.get(`/tickets/${id}/attachments`),
+      ]);
 
-    if (ticketResponse.status === 'rejected' || !ticketResponse.value?.ok) {
-      throw new Error('Failed to fetch ticket details');
-    }
+      const ticketData = ticketResponse.data;
+      const logsData = logsResponse.data;
+      const attachmentsData = attachmentsResponse.data;
 
-    const [ticketData, logsData, attachmentsData] = await Promise.all([
-      ticketResponse.value.json(),
-      logsResponse.status === 'fulfilled' && logsResponse.value?.ok
-        ? logsResponse.value.json()
-        : Promise.resolve([]),
-      attachmentsResponse.status === 'fulfilled' && attachmentsResponse.value?.ok
-        ? attachmentsResponse.value.json()
-        : Promise.resolve([]),
-    ]);
+      const currentTicketId = Number(id);
 
-    const currentTicketId = Number(id);
-    const filteredLogs = Array.isArray(logsData)
-      ? logsData
-          .filter((log) => Number(log?.ticket?.ticketId) === currentTicketId)
+      const filteredLogs = Array.isArray(logsData)
+        ? logsData
+          .filter(
+            (log) => Number(log?.ticket?.ticketId) === currentTicketId
+          )
           .map(createTimelineEntry)
-      : [];
+        : [];
 
-    setTicket(ticketData);
-    setAttachments(Array.isArray(attachmentsData) ? attachmentsData : []);
-    setTimeline(filteredLogs);
-    setLoading(false);
+      setTicket(ticketData);
+      setAttachments(
+        Array.isArray(attachmentsData)
+          ? attachmentsData
+          : []
+      );
+      setTimeline(filteredLogs);
+    } catch (err) {
+      console.error('Failed to load ticket details', err);
+
+      setError(
+        err.response?.data?.message ||
+        err.message ||
+        'Unable to load ticket details'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    let isActive = true;
-
-    loadTicketDetails()
-      .catch((err) => {
-        if (!isActive) {
-          return;
-        }
-
-        setError(err.message || 'Unable to load ticket details');
-        setLoading(false);
-      });
-
-    return () => {
-      isActive = false;
-    };
+    loadTicketDetails();
   }, [id]);
 
   const handleAttachmentUpload = async (event) => {
@@ -166,14 +166,15 @@ export default function TicketDetailPage() {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      const response = await fetch(`/api/tickets/${id}/attachments`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to upload attachment');
-      }
+      const response = await api.post(
+        `/tickets/${id}/attachments`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
 
       setUploadMessage(`Uploaded ${selectedFile.name}`);
       await loadTicketDetails();
@@ -200,10 +201,10 @@ export default function TicketDetailPage() {
     return String(value);
   };
 
-  const status = valueOrNA(ticket?.ticketStatus?.statusName);
+  const status = valueOrNA(ticket?.ticketStatusName);
   const statusChipColor = status === 'OPEN' ? 'error' : status === 'CLOSED' ? 'success' : 'default';
 
-  const customerName = [ticket?.userMaster?.firstName, ticket?.userMaster?.lastName]
+  const customerName = [ticket?.userFirstName, ticket?.userLastName]
     .filter(Boolean)
     .join(' ');
 
@@ -214,22 +215,20 @@ export default function TicketDetailPage() {
     .slice(0, 2)
     .toUpperCase() || 'NA';
 
-  const brand = valueOrNA(ticket?.device?.model?.brand?.brandName);
-  const model = valueOrNA(ticket?.device?.model?.modelName);
-  const deviceName = [ticket?.device?.model?.brand?.brandName, ticket?.device?.model?.modelName]
-    .filter(Boolean)
-    .join(' ') || 'Not available';
+  const brand = valueOrNA(ticket?.deviceBrandName);
+  const model = valueOrNA(ticket?.deviceModelName);
+  const deviceName = ticket?.deviceModelName || 'Not available';
 
   const ticketCode = ticket?.ticketId ? `TK-${ticket.ticketId}` : 'Not available';
   const ticketTitle = deviceName !== 'Not available' ? `${deviceName}` : 'Ticket details';
   const issueDescription = valueOrNA(ticket?.ticketDescription);
-  const customerEmail = valueOrNA(ticket?.emailId || ticket?.userMaster?.emailId);
-  const customerPhone = valueOrNA(ticket?.userMaster?.mobileNo);
-  const assignedTo = valueOrNA(ticket?.employee?.employeeName);
-  const department = valueOrNA(ticket?.employee?.department?.departmentName);
-  const ticketType = valueOrNA(ticket?.ticketType?.ticketTypeName);
-  const branch = valueOrNA(ticket?.ticketBranch?.branchName);
-  const serialNo = valueOrNA(ticket?.device?.serialNo);
+  const customerEmail = valueOrNA(ticket?.emailId);
+  const customerPhone = valueOrNA(ticket?.userMobileNo);
+  const assignedTo = valueOrNA(ticket?.employeeName);
+  const department = valueOrNA(ticket?.departmentName);
+  const ticketType = valueOrNA(ticket?.ticketTypeName);
+  const branch = valueOrNA(ticket?.branchName);
+  const serialNo = valueOrNA(ticket?.deviceSerialNo);
   const warranty = valueOrNA(ticket?.warrantyType);
 
   return (
@@ -267,15 +266,14 @@ export default function TicketDetailPage() {
         </Typography>
       )}
 
-      <Box sx={{ display: 'flex', gap: 1.5, mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent:'flex-end', gap: 1.5, mb: 3 }}>
         <Button variant="outlined" size="small" startIcon={<EditOutlinedIcon />} sx={{ fontSize: '12px' }}>Edit</Button>
-        <Button variant="outlined" size="small" startIcon={<PrintOutlinedIcon />} sx={{ fontSize: '12px' }}>Print</Button>
-        <IconButton size="small" sx={{ color: theme.palette.text.secondary }}><MoreVertIcon fontSize="small" /></IconButton>
+        <Button variant="outlined" size="small" startIcon={<SaveOutlinedIcon />} sx={{ fontSize: '12px' }}>Save</Button>
       </Box>
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2.5}>
         {/* Left Column */}
-        <Box sx={{ flex: 1.2 }}>
+        <Box sx={{ flex: 0.7 }}>
           {/* Issue Description */}
           <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
             <Box sx={{ px: 2.5, py: 1.8 }}>
@@ -290,6 +288,53 @@ export default function TicketDetailPage() {
               </Box>
             </Box>
           </Paper>
+
+          <Stack direction="row" spacing={2.5} flexWrap="wrap" useFlexGap>
+            {/* Customer Information */}
+            <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5,  width: '50%' }}>
+              <Box sx={{ px: 2.5, py: 1.8, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <PersonOutlinedIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
+                <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Customer Information</Typography>
+              </Box>
+              <Divider />
+              <Box sx={{ p: 2.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                  <Avatar sx={{ width: 36, height: 36, bgcolor: theme.palette.primary.main, fontSize: '0.85rem', fontWeight: 700 }}>{customerInitials}</Avatar>
+                  <Box>
+                    <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>{valueOrNA(customerName)}</Typography>
+                    <Chip label="Professional Client" size="small" sx={{ fontSize: '10px', height: 18, borderRadius: '2px', bgcolor: `${theme.palette.secondary.main}14`, color: theme.palette.secondary.main }} />
+                  </Box>
+                </Box>
+                <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+                  {[['Email', customerEmail], ['Phone', customerPhone], ['Branch', branch]].map(([l, v]) => (
+                    <Box key={l} sx={{ mb: 1.2 }}>
+                      <Typography sx={lbl}>{l}</Typography>
+                      <Typography sx={{ fontSize: '13px' }}>{v}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            </Paper>
+
+            {/* Device Details */}
+            <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5, width: '50%' }}>
+              <Box sx={{ px: 2.5, py: 1.8, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <LaptopMacIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
+                <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Device Details</Typography>
+              </Box>
+              <Divider />
+              <Box sx={{ p: 2.5 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                  {[['Brand', brand], ['Model', model], ['Serial No.', serialNo], ['Warranty', warranty], ['Type', ticketType], ['Assigned To', assignedTo], ['Department', department]].map(([l, v]) => (
+                    <Box key={l} sx={{ mb: 1.2, width: '33.33%' }}>
+                      <Typography sx={lbl}>{l}</Typography>
+                      <Typography sx={{ fontSize: '13px', fontFamily: l === 'Serial No.' ? '"JetBrains Mono", monospace' : 'inherit' }}>{v}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            </Paper>
+          </Stack>
 
           {/* Attachments */}
           <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
@@ -388,6 +433,11 @@ export default function TicketDetailPage() {
             </Box>
           </Paper>
 
+        </Box>
+
+        {/* Right Column */}
+        <Box sx={{ flex: 0.3}}>
+
           {/* Post Internal Update */}
           <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
             <Box sx={{ px: 2.5, py: 1.8 }}>
@@ -403,8 +453,44 @@ export default function TicketDetailPage() {
               </Box>
             </Box>
           </Paper>
+          
+          {/* Key Milestones
+          <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
+            <Box sx={{ px: 2.5, py: 1.8, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CalendarTodayOutlinedIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
+              <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Key Milestones</Typography>
+            </Box>
+            <Divider />
+            <Box sx={{ p: 2.5 }}>
+              {MILESTONES.map((m, i) => (
+                <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 0.8 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CheckCircleOutlinedIcon sx={{ fontSize: 16, color: m.done ? theme.palette.secondary.main : theme.palette.divider }} />
+                    <Typography sx={{ fontSize: '13px', fontWeight: m.done ? 600 : 400, color: m.done ? theme.palette.text.primary : theme.palette.text.secondary }}>{m.label}</Typography>
+                  </Box>
+                  <Typography sx={{ fontSize: '11px', color: theme.palette.text.secondary }}>{m.date}</Typography>
+                </Box>
+              ))}
+            </Box>
+          </Paper> */}
 
-          {/* Activity Timeline */}
+          {/* Operations */}
+          <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
+            <Box sx={{ px: 2.5, py: 1.8 }}>
+              <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Operations</Typography>
+            </Box>
+            <Divider />
+            <Box sx={{ p: 2.5 }}>
+              <Stack spacing={1}>
+                <Button variant="contained" fullWidth size="small">Escalate to Manager</Button>
+                <Button variant="outlined" fullWidth size="small">Request Parts</Button>
+                <Button variant="outlined" fullWidth size="small" color="error">Mark as Critical</Button>
+              </Stack>
+            </Box>
+          </Paper>
+
+          
+           {/* Activity Timeline */}
           <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden' }}>
             <Box sx={{ px: 2.5, py: 1.8 }}>
               <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Activity Timeline</Typography>
@@ -431,85 +517,6 @@ export default function TicketDetailPage() {
                   </Box>
                 ))
               )}
-            </Box>
-          </Paper>
-        </Box>
-
-        {/* Right Column */}
-        <Box sx={{ flex: 0.8, minWidth: 280 }}>
-          {/* Customer Information */}
-          <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
-            <Box sx={{ px: 2.5, py: 1.8, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <PersonOutlinedIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
-              <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Customer Information</Typography>
-            </Box>
-            <Divider />
-            <Box sx={{ p: 2.5 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                <Avatar sx={{ width: 36, height: 36, bgcolor: theme.palette.primary.main, fontSize: '0.85rem', fontWeight: 700 }}>{customerInitials}</Avatar>
-                <Box>
-                  <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>{valueOrNA(customerName)}</Typography>
-                  <Chip label="Professional Client" size="small" sx={{ fontSize: '10px', height: 18, borderRadius: '2px', bgcolor: `${theme.palette.secondary.main}14`, color: theme.palette.secondary.main }} />
-                </Box>
-              </Box>
-              {[['Email', customerEmail], ['Phone', customerPhone], ['Branch', branch]].map(([l, v]) => (
-                <Box key={l} sx={{ mb: 1.2 }}>
-                  <Typography sx={lbl}>{l}</Typography>
-                  <Typography sx={{ fontSize: '13px' }}>{v}</Typography>
-                </Box>
-              ))}
-            </Box>
-          </Paper>
-
-          {/* Device Details */}
-          <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
-            <Box sx={{ px: 2.5, py: 1.8, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <LaptopMacIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
-              <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Device Details</Typography>
-            </Box>
-            <Divider />
-            <Box sx={{ p: 2.5 }}>
-              {[['Brand', brand], ['Model', model], ['Serial No.', serialNo], ['Warranty', warranty], ['Type', ticketType], ['Assigned To', assignedTo], ['Department', department]].map(([l, v]) => (
-                <Box key={l} sx={{ mb: 1.2 }}>
-                  <Typography sx={lbl}>{l}</Typography>
-                  <Typography sx={{ fontSize: '13px', fontFamily: l === 'Serial No.' ? '"JetBrains Mono", monospace' : 'inherit' }}>{v}</Typography>
-                </Box>
-              ))}
-            </Box>
-          </Paper>
-
-          {/* Key Milestones */}
-          <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
-            <Box sx={{ px: 2.5, py: 1.8, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CalendarTodayOutlinedIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
-              <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Key Milestones</Typography>
-            </Box>
-            <Divider />
-            <Box sx={{ p: 2.5 }}>
-              {MILESTONES.map((m, i) => (
-                <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 0.8 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CheckCircleOutlinedIcon sx={{ fontSize: 16, color: m.done ? theme.palette.secondary.main : theme.palette.divider }} />
-                    <Typography sx={{ fontSize: '13px', fontWeight: m.done ? 600 : 400, color: m.done ? theme.palette.text.primary : theme.palette.text.secondary }}>{m.label}</Typography>
-                  </Box>
-                  <Typography sx={{ fontSize: '11px', color: theme.palette.text.secondary }}>{m.date}</Typography>
-                </Box>
-              ))}
-            </Box>
-          </Paper>
-
-          {/* Operations */}
-          <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden' }}>
-            <Box sx={{ px: 2.5, py: 1.8 }}>
-              <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Operations</Typography>
-            </Box>
-            <Divider />
-            <Box sx={{ p: 2.5 }}>
-              <Stack spacing={1}>
-                <Button variant="contained" fullWidth size="small">Escalate to Manager</Button>
-                <Button variant="outlined" fullWidth size="small">Request Parts</Button>
-                <Button variant="outlined" fullWidth size="small" color="error">Mark as Critical</Button>
-              </Stack>
             </Box>
           </Paper>
         </Box>
