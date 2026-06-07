@@ -3,6 +3,7 @@ import { Box, useMediaQuery } from '@mui/material';
 import { Outlet } from 'react-router-dom';
 import AppSidebar from './AppSidebar';
 import TopBar from './TopBar';
+import TabBar from './TabBar';
 import { useTheme } from '@mui/material/styles';
 
 /**
@@ -34,6 +35,8 @@ export default function AppLayout() {
         onMobileClose={() => setMobileOpen(false)} 
       />
 
+      
+
       {/* ── Main area ── */}
       <Box
         component="main"
@@ -50,6 +53,8 @@ export default function AppLayout() {
           }),
         }}
       >
+        <TabBar />
+
         <TopBar onMenuClick={handleDrawerToggle} />
 
         {/* ── Page content ── */}
