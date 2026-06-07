@@ -10,6 +10,7 @@ import RegisterPage from './pages/Register/RegisterPage';
 import DashboardPage from './pages/Dashboard/DashboardPage';
 import DiagnosisPage from './pages/EngineerDiagnosis/DiagnosisPage';
 import InventoryPage from './pages/Inventory/InventoryPage';
+import OrderPartsPage from './pages/Inventory/OrderPartsPage';
 import KanbanPage from './pages/KanbanBoard/KanbanPage';
 import NewTicketPage from './pages/NewTicket/NewTicketPage';
 import TicketDetailPage from './pages/TicketDetail/TicketDetailPage';
@@ -33,6 +34,7 @@ function App() {
           <Route path="/diagnosis" element={<DiagnosisPage />} />
           <Route path="/kanban" element={<KanbanPage />} />
           <Route path="/inventory" element={<InventoryPage />} />
+          <Route path="/inventory/parts" element={<OrderPartsPage />} />
 
           {/* Ticket Routes */}
           <Route path="/tickets/new" element={<NewTicketPage />} />
