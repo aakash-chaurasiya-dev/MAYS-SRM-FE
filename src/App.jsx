@@ -28,13 +28,14 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
-          {/* Authenticated Routes with Sidebar & TopBar */}
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/diagnosis" element={<DiagnosisPage />} />
-            <Route path="/kanban" element={<KanbanPage />} />
-            <Route path="/inventory" element={<InventoryPage />} />
+        {/* Authenticated Routes with Sidebar & TopBar */}
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/diagnosis" element={<DiagnosisPage />} />
+          <Route path="/kanban" element={<KanbanPage />} />
+          <Route path="/inventory" element={<InventoryPage />} />
+          <Route path="/inventory/parts" element={<OrderPartsPage />} />
 
             {/* Ticket Routes */}
             <Route path="/tickets/new" element={<NewTicketPage />} />
