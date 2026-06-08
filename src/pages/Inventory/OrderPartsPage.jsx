@@ -1,42 +1,28 @@
 import { useState, useEffect } from 'react';
 import {
-  Box, Paper, Typography, Chip, Divider, Button, Avatar,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, LinearProgress,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControlLabel, Checkbox, CircularProgress,
-  MenuItem
+  Box, Paper, Typography, Chip, Divider, Button, CircularProgress,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Link,
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControlLabel, Checkbox, MenuItem
 } from '@mui/material';
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
-import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
-import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
-import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
-import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined';
+import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined';
 import { useTheme } from '@mui/material/styles';
+import { Link as RouterLink } from 'react-router-dom';
 import api from '../../services/api';
 
-const ENGINEER_REQUESTS = [
-  { id: 'PR-1042', part: '16GB DDR4 SODIMM', tech: 'Alex Rivera', ticket: 'TK-4522', status: 'Pending Approval', priority: 'High', date: 'Oct 24, 2023' },
-  { id: 'PR-1041', part: 'iPhone 13 OLED Display', tech: 'Jordan Smith', ticket: 'TK-4519', status: 'Ordered', priority: 'Critical', date: 'Oct 23, 2023' },
-  { id: 'PR-1040', part: 'Dell XPS 15 Battery', tech: 'Kevin Zhang', ticket: 'TK-4520', status: 'In Transit', priority: 'Normal', date: 'Oct 22, 2023' },
-];
-
-const INVENTORY_ITEMS = [
-  { sku: 'MEM-DDR4-16G', name: '16GB DDR4 Laptop RAM', stock: 12, minStock: 10, category: 'Memory' },
-  { sku: 'PWR-65W-USB', name: 'Generic 65W AC Adapter', stock: 5, minStock: 15, category: 'Power' },
-  { sku: 'STO-NVME-500G', name: '500GB NVMe SSD', stock: 8, minStock: 10, category: 'Storage' },
-  { sku: 'KBD-TP-T14', name: 'ThinkPad Replacement Keys', stock: 45, minStock: 20, category: 'Input' },
-];
-
-export default function InventoryPage() {
+export default function OrderPartsPage() {
   const theme = useTheme();
-
+  const [parts, setParts] = useState([]);
+  const [tickets, setTickets] = useState([]);
+  const [deviceTypes, setDeviceTypes] = useState([]);
+  const [statuses, setStatuses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
   // Modal & Form State
   const [openModal, setOpenModal] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [ticketLoading, setTicketLoading] = useState(false);
   const [isOutOfWarranty, setIsOutOfWarranty] = useState(false);
-  const [tickets, setTickets] = useState([]);
-  const [deviceTypes, setDeviceTypes] = useState([]);
-  const [statuses, setStatuses] = useState([]);
   const [formData, setFormData] = useState({
     ticketId: '',
     partName: '',
@@ -46,17 +32,22 @@ export default function InventoryPage() {
     returned: false,
   });
 
-  // Handlers for the form modal
-  const handleOpenModal = () => setOpenModal(true);
-  const handleCloseModal = () => {
-    setOpenModal(false);
-    // Reset form data on close
-    setFormData({ ticketId: '', partName: '', quantity: 1, deviceTypeId: '', statusId: '', returned: false });
-    setIsOutOfWarranty(false);
+  const fetchParts = async () => {
+    setLoading(true);
+    try {
+      // Replace '/parts' with the actual endpoint that returns your list of PartsResponseDTO
+      const response = await api.get('/parts'); 
+      setParts(response.data);
+    } catch (error) {
+      console.error('Failed to fetch parts:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Fetch available tickets for the dropdown
   useEffect(() => {
+    fetchParts();
+
     const fetchTickets = async () => {
       try {
         const response = await api.get('/tickets');
@@ -89,6 +80,15 @@ export default function InventoryPage() {
     };
     fetchStatuses();
   }, []);
+
+  // Handlers for the form modal
+  const handleOpenModal = () => setOpenModal(true);
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    // Reset form data on close
+    setFormData({ ticketId: '', partName: '', quantity: 1, deviceTypeId: '', statusId: '', returned: false });
+    setIsOutOfWarranty(false);
+  };
 
   // Fetch Ticket Details when Ticket ID changes
   useEffect(() => {
@@ -149,8 +149,10 @@ export default function InventoryPage() {
     e.preventDefault();
     setSubmitLoading(true);
     try {
+      // Submits the payload mapped to your PartsRequestDTO
       await api.post('/parts', formData);
       handleCloseModal();
+      fetchParts(); // Refresh the list after successful creation
     } catch (error) {
       console.error('Failed to create part order:', error);
     } finally {
@@ -158,32 +160,35 @@ export default function InventoryPage() {
     }
   };
 
+  // Function to determine chip color based on order status
   const getStatusColor = (status) => {
     switch(status) {
-      case 'Pending Approval': return '#B95000';
-      case 'Ordered': return '#0052cc';
-      case 'In Transit': return '#006c47';
+      case 'Pending Approval': return '#B95000'; // Orange
+      case 'Ordered': return '#0052cc';         // Blue
+      case 'In Transit': return '#006c47';      // Teal
+      case 'Delivered': return '#2e7d32';       // Green
       default: return theme.palette.text.secondary;
     }
   };
 
   return (
     <Box>
+      {/* ── Page Header ── */}
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 2, mb: 3 }}>
         <Box>
-          <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>Purchase & Inventory</Typography>
-          <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>Mays Computer Repair - Procurement Dashboard</Typography>
+          <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>Order Parts</Typography>
+          <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>Manage and track part orders from vendors</Typography>
         </Box>
-        <Button variant="contained" size="small" startIcon={<AddOutlinedIcon />} onClick={handleOpenModal}>Order Parts</Button>
+        <Button variant="contained" size="small" startIcon={<AddOutlinedIcon />} onClick={handleOpenModal}>New Order</Button>
       </Box>
 
-      {/* ── Stat Cards ── */}
+      {/* ── Top Stat Cards (Parts Status) ── */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2,1fr)', md: 'repeat(4,1fr)' }, gap: 2, mb: 3 }}>
         {[
-          { label: 'Pending Requests', value: '14', color: '#B95000', bg: '#B9500014' },
-          { label: 'Orders in Transit', value: '08', color: '#0052cc', bg: '#0052cc14' },
-          { label: 'Stock Alerts', value: '05', color: '#ba1a1a', bg: '#ba1a1a14' },
-          { label: 'Returned Inventory', value: '05', color: '#006c47', bg: '#006c4714' },
+          { label: 'Pending Approval', value: '3', color: '#B95000' },
+          { label: 'Ordered', value: '5', color: '#0052cc' },
+          { label: 'In Transit', value: '8', color: '#006c47' },
+          { label: 'Delivered (30d)', value: '24', color: '#2e7d32' },
         ].map((stat) => (
           <Paper key={stat.label} elevation={1} sx={{ p: 2.5, borderRadius: '3px', textAlign: 'center' }}>
             <Typography sx={{ fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary, textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.5 }}>
@@ -193,98 +198,69 @@ export default function InventoryPage() {
           </Paper>
         ))}
       </Box>
-        {/* Engineer Part Requests */}
-        <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden' }}>
-          <Box sx={{ px: 2.5, py: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <ReceiptLongOutlinedIcon sx={{ fontSize: 20, color: theme.palette.text.secondary }} />
-            <Typography sx={{ fontSize: '15px', fontWeight: 600 }}>Engineer Part Requests</Typography>
-          </Box>
-          <Divider />
-          <TableContainer>
-            <Table size="small">
-              <TableHead sx={{ bgcolor: theme.palette.background.default }}>
-                <TableRow>
-                  <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Request ID</TableCell>
-                  <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Part Requested</TableCell>
-                  <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Engineer / Ticket</TableCell>
-                  <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Status</TableCell>
-                  <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Action</TableCell>
-                </TableRow>
-              </TableHead>
+
+      {/* ── Order History Table ── */}
+      <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden' }}>
+        <Box sx={{ px: 2.5, py: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <LocalShippingOutlinedIcon sx={{ fontSize: 20, color: theme.palette.text.secondary }} />
+          <Typography sx={{ fontSize: '15px', fontWeight: 600 }}>Order History</Typography>
+        </Box>
+        <Divider />
+        <TableContainer>
+          <Table size="small">
+            <TableHead sx={{ bgcolor: theme.palette.background.default }}>
+              <TableRow>
+                <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Part ID</TableCell>
+                <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Ticket ID</TableCell>
+                <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Part Name</TableCell>
+                <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Device Type</TableCell>
+                <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Quantity</TableCell>
+                <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Returned</TableCell>
+                <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Status</TableCell>
+              </TableRow>
+            </TableHead>
+            {loading ? (
               <TableBody>
-                {ENGINEER_REQUESTS.map((req) => (
-                  <TableRow key={req.id} hover>
-                    <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: theme.palette.primary.main }}>{req.id}</TableCell>
-                    <TableCell sx={{ fontSize: '13px' }}>{req.part}</TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Avatar sx={{ width: 20, height: 20, fontSize: '0.6rem', bgcolor: theme.palette.primary.main }}>{req.tech[0]}</Avatar>
-                        <Box>
-                          <Typography sx={{ fontSize: '13px', lineHeight: 1.2 }}>{req.tech}</Typography>
-                          <Typography sx={{ fontSize: '11px', color: theme.palette.text.secondary }}>{req.ticket}</Typography>
-                        </Box>
-                      </Box>
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <CircularProgress size={28} />
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            ) : (
+              <TableBody>
+                {parts.map((part) => (
+                  <TableRow key={part.partId} hover>
+                    <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: theme.palette.primary.main }}>{part.partId}</TableCell>
+                    <TableCell sx={{ fontSize: '13px' }}>
+                      {part.ticketId ? (
+                        <Link component={RouterLink} to={`/tickets/${part.ticketId}`} underline="hover">
+                          {part.ticketId}
+                        </Link>
+                      ) : '-'}
                     </TableCell>
+                    <TableCell sx={{ fontSize: '13px', fontWeight: 500 }}>{part.partName}</TableCell>
+                    <TableCell sx={{ fontSize: '13px', color: theme.palette.text.secondary }}>{part.deviceTypeName}</TableCell>
+                    <TableCell sx={{ fontSize: '13px' }}>{part.quantity}</TableCell>
+                    <TableCell sx={{ fontSize: '13px' }}>{part.returned ? 'Yes' : 'No'}</TableCell>
                     <TableCell>
                       <Chip 
-                        label={req.status} 
+                        label={part.statusName || 'Unknown'} 
                         size="small" 
                         sx={{ 
                           fontSize: '11px', fontWeight: 600, borderRadius: '2px', height: 20,
-                          bgcolor: `${getStatusColor(req.status)}14`, 
-                          color: getStatusColor(req.status) 
+                          bgcolor: `${getStatusColor(part.statusName)}14`, 
+                          color: getStatusColor(part.statusName) 
                         }} 
                       />
-                    </TableCell>
-                    <TableCell>
-                      <Button size="small" variant="outlined" sx={{ py: 0.2, px: 1, fontSize: '11px' }}>Review</Button>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-
-        {/* Common Parts Inventory */}
-        <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden' }}>
-          <Box sx={{ px: 2.5, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <WarningAmberOutlinedIcon sx={{ fontSize: 20, color: theme.palette.text.secondary }} />
-              <Typography sx={{ fontSize: '15px', fontWeight: 600 }}>Common Parts Inventory</Typography>
-            </Box>
-            <Button size="small" sx={{ fontSize: '12px' }}>View Full Inventory</Button>
-          </Box>
-          <Divider />
-          <Box sx={{ p: 2.5, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 2 }}>
-            {INVENTORY_ITEMS.map((item) => {
-              const isLow = item.stock < item.minStock;
-              return (
-                <Paper key={item.sku} variant="outlined" sx={{ p: 2, borderRadius: '3px', borderColor: isLow ? '#ba1a1a40' : theme.palette.divider }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography sx={{ fontSize: '11px', color: theme.palette.text.secondary, fontWeight: 700, letterSpacing: '0.04em' }}>{item.category}</Typography>
-                    {isLow ? (
-                      <ErrorOutlineOutlinedIcon sx={{ fontSize: 16, color: '#ba1a1a' }} />
-                    ) : (
-                      <CheckCircleOutlineOutlinedIcon sx={{ fontSize: 16, color: '#006c47' }} />
-                    )}
-                  </Box>
-                  <Typography sx={{ fontSize: '14px', fontWeight: 600, mb: 1.5 }}>{item.name}</Typography>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', mb: 0.5 }}>
-                    <Typography sx={{ fontSize: '24px', fontWeight: 700, lineHeight: 1, color: isLow ? '#ba1a1a' : 'inherit' }}>{item.stock}</Typography>
-                    <Typography sx={{ fontSize: '12px', color: theme.palette.text.secondary }}>Min: {item.minStock}</Typography>
-                  </Box>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={Math.min(100, (item.stock / item.minStock) * 100)} 
-                    color={isLow ? "error" : "primary"}
-                    sx={{ height: 4, borderRadius: 2 }} 
-                  />
-                </Paper>
-              )
-            })}
-          </Box>
-        </Paper>
+            )}
+          </Table>
+        </TableContainer>
+      </Paper>
 
       {/* ── New Order Modal ── */}
       <Dialog open={openModal} onClose={handleCloseModal} maxWidth="sm" fullWidth>

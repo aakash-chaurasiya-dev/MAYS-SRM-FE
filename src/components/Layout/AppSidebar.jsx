@@ -24,7 +24,11 @@ import Logo from '../Logo/Logo';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: <DashboardOutlinedIcon />, path: '/dashboard' },
-  { label: 'Inventory', icon: <Inventory2OutlinedIcon />, path: '/inventory' },
+];
+
+const INVENTORY_SUBS = [
+  { label: 'Inventory List', path: '/inventory' },
+  { label: 'Order Parts', path: '/inventory/parts' },
 ];
 
 const MAINTENANCE_SUBS = [
@@ -59,6 +63,7 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose }) {
   const { mode, toggleTheme } = useAppThemeContext();
   const location = useLocation();
   const navigate = useNavigate();
+  const [inventoryOpen, setInventoryOpen] = useState(location.pathname.startsWith('/inventory'));
   const [maintOpen, setMaintOpen] = useState(location.pathname.startsWith('/maintenance'));
   const [billingOpen, setBillingOpen] = useState(location.pathname.startsWith('/billing'));
 
@@ -117,6 +122,38 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose }) {
             <ListItemText primary={item.label} sx={textSx} primaryTypographyProps={textProps(isActive(item.path))} />
           </ListItemButton>
         ))}
+
+        {/* ── Inventory (collapsible) ── */}
+        {(() => {
+          const isInventoryActive = location.pathname.startsWith('/inventory');
+          return (
+            <>
+              <ListItemButton
+                onClick={() => { setInventoryOpen(!inventoryOpen); if (!isInventoryActive) handleNav('/inventory'); }}
+                sx={navBtnSx(isInventoryActive)}
+              >
+                <ListItemIcon sx={iconSx(isInventoryActive)}><Inventory2OutlinedIcon /></ListItemIcon>
+                <ListItemText primary="Inventory" sx={textSx} primaryTypographyProps={textProps(isInventoryActive)} />
+                {desktopOpen && (inventoryOpen ? <ExpandLessIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} /> : <ExpandMoreIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />)}
+              </ListItemButton>
+              <Collapse in={inventoryOpen && desktopOpen} timeout="auto" unmountOnExit>
+                <MuiList disablePadding sx={{ pl: 2 }}>
+                  {INVENTORY_SUBS.map((sub) => (
+                    <ListItemButton key={sub.path} onClick={() => handleNav(sub.path)}
+                      sx={{ borderRadius: '6px', mb: 0.2, py: 0.4, px: 1.5,
+                        bgcolor: isActive(sub.path) ? `${theme.palette.secondary.main}14` : 'transparent',
+                        '&:hover': { bgcolor: `${theme.palette.primary.main}06` },
+                      }}>
+                      <ListItemText primary={sub.label}
+                        primaryTypographyProps={{ fontSize: '12px', fontWeight: isActive(sub.path) ? 600 : 400,
+                          color: isActive(sub.path) ? theme.palette.secondary.main : theme.palette.text.secondary }} />
+                    </ListItemButton>
+                  ))}
+                </MuiList>
+              </Collapse>
+            </>
+          );
+        })()}
 
         {/* ── Maintenance (collapsible) ── */}
         <ListItemButton
