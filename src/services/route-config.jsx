@@ -18,5 +18,6 @@ import ConfirmationNumberOutlinedIcon from '@mui/icons-material/ConfirmationNumb
 export const ROUTE_CONFIG = {
    '/dashboard': { title: 'Dashboard', icon: <DashboardOutlinedIcon fontSize="small" />, isClosable: false },
   '/inventory': { title: 'Inventory', icon: <Inventory2OutlinedIcon fontSize="small" />, isClosable: true },
+  '/inventory/parts': { title: 'Order Parts', icon: <Inventory2OutlinedIcon fontSize="small" />, isClosable: true },
   '/tickets/:id': { title: 'Tickets/:id', icon: <Inventory2OutlinedIcon fontSize="small" />, isClosable: true }
 };

@@ -17,13 +17,7 @@ const findRouteInfo = (pathname) => {
     const match = matchPath(routePath, pathname);
     if (match) {
       const routeInfo = ROUTE_CONFIG[routePath];
-      console.log('routeInfo',routeInfo);
-      console.log('match',match);
-      console.log('pathname',pathname);
-      
       const title = typeof routeInfo.title === 'function' ? routeInfo.title(match.params) : pathname;
-      console.log('title',title);
-
       return { ...routeInfo, title, params: match.params };
     }
   }
@@ -38,14 +32,12 @@ export function TabNavigationProvider({ children }) {
 
   // Load from localStorage on initial mount
   useEffect(() => {
-    console.log('chnage 2');
     try {
       const savedTabs = localStorage.getItem('openTabs');
       const savedActiveTab = localStorage.getItem('activeTabId');
       const initialTabs = savedTabs ? JSON.parse(savedTabs) : [];
       
       setTabs(initialTabs);
-      console.log('Tabs - ve',tabs);
       if (savedActiveTab) {
         setActiveTabId(JSON.parse(savedActiveTab));
       }
@@ -63,13 +55,10 @@ export function TabNavigationProvider({ children }) {
 
   // Sync with router to add/activate tabs on navigation
   useEffect(() => {
-   
     const { pathname } = location;
     const routeInfo = findRouteInfo(pathname);
-    console.log('route ',routeInfo);
     if (routeInfo) {
       const isTabOpen = tabs.some((tab) => tab.path === pathname);
-      console.log('it canme here',isTabOpen);
       if (!isTabOpen) {
         const newTab = {
           id: pathname,
