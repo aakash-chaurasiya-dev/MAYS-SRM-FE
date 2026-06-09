@@ -18,6 +18,7 @@ import MaintenancePage from './pages/Maintenance/MaintenancePage';
 import BrandManagementPage from './pages/Maintenance/BrandManagementPage';
 import InvoiceHistoryPage from './pages/InvoiceHistory/InvoiceHistoryPage';
 import CreateInvoicePage from './pages/CreateInvoice/CreateInvoicePage';
+import OrderPartsPage from './pages/Inventory/OrderPartsPage';
 
 function App() {
   return (
