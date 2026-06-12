@@ -1,49 +1,63 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
-  Box, Paper, Typography, Chip, Divider, Button, CircularProgress,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Link,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControlLabel, Checkbox, MenuItem
+  Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogContentText,
+  DialogActions, TextField, FormControlLabel, Checkbox, MenuItem, CircularProgress, Divider
 } from '@mui/material';
-import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
-import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined';
+import AddIcon from '@mui/icons-material/Add';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import { useTheme } from '@mui/material/styles';
-import { Link as RouterLink } from 'react-router-dom';
+import { List } from '../../stereotype/AbstractList';
 import api from '../../services/api';
 
 export default function OrderPartsPage() {
   const theme = useTheme();
+  
   const [parts, setParts] = useState([]);
   const [tickets, setTickets] = useState([]);
-  const [deviceTypes, setDeviceTypes] = useState([]);
+  const [inventory, setInventory] = useState([]); // Used for Products dropdown
   const [statuses, setStatuses] = useState([]);
-  const [loading, setLoading] = useState(true);
   
-  // Modal & Form State
+  // Selection
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [clearSelectionKey, setClearSelectionKey] = useState(0);
+  
+  // Form State
   const [openModal, setOpenModal] = useState(false);
+  const [modalMode, setModalMode] = useState('create');
   const [submitLoading, setSubmitLoading] = useState(false);
   const [ticketLoading, setTicketLoading] = useState(false);
   const [isOutOfWarranty, setIsOutOfWarranty] = useState(false);
-  const [formData, setFormData] = useState({
+  
+  // Delete Confirmation State
+  const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  
+  const initialFormData = {
+    partId: '',
     ticketId: '',
-    partName: '',
     quantity: 1,
-    deviceTypeId: '',
+    productId: '',
     statusId: '',
     returned: false,
-  });
+    receiveDate: '',
+    remarks: '',
+  };
+  const [formData, setFormData] = useState(initialFormData);
 
-  const fetchParts = async () => {
-    setLoading(true);
+  const fetchParts = useCallback(async () => {
     try {
-      // Replace '/parts' with the actual endpoint that returns your list of PartsResponseDTO
       const response = await api.get('/parts'); 
-      setParts(response.data);
+      const data = response.data?.data || response.data || [];
+      
+      setParts(data.map((p, i) => ({
+        ...p,
+        id: p.partId || `fallback-id-${i}`
+      })));
     } catch (error) {
       console.error('Failed to fetch parts:', error);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchParts();
@@ -51,50 +65,33 @@ export default function OrderPartsPage() {
     const fetchTickets = async () => {
       try {
         const response = await api.get('/tickets');
-        setTickets(response.data?.data || response.data);
-      } catch (error) {
-        console.error('Failed to fetch tickets:', error);
-      }
+        setTickets(response.data?.data || response.data || []);
+      } catch (error) {}
     };
     fetchTickets();
 
-    const fetchDeviceTypes = async () => {
+    const fetchInventory = async () => {
       try {
-        const response = await api.get('/devicetypes'); // Update endpoint if necessary
-        setDeviceTypes(response.data?.data || response.data);
-      } catch (error) {
-        console.error('Failed to fetch device types:', error);
-      }
+        const response = await api.get('/inventory');
+        setInventory(response.data?.data || response.data || []);
+      } catch (error) {}
     };
-    fetchDeviceTypes();
+    fetchInventory();
 
     const fetchStatuses = async () => {
       try {
-        const response = await api.get('/statuses'); // Update endpoint if necessary
-        const allStatuses = response.data?.data || response.data;
-        const partsStatuses = allStatuses.filter(s => s.statusType && s.statusType.toLowerCase() === 'parts');
+        const response = await api.get('/statuses/type/parts');
+        const partsStatuses = response.data?.data || response.data || [];
         setStatuses(partsStatuses);
-      } catch (error) {
-        console.error('Failed to fetch statuses:', error);
-      }
+      } catch (error) {}
     };
     fetchStatuses();
-  }, []);
-
-  // Handlers for the form modal
-  const handleOpenModal = () => setOpenModal(true);
-  const handleCloseModal = () => {
-    setOpenModal(false);
-    // Reset form data on close
-    setFormData({ ticketId: '', partName: '', quantity: 1, deviceTypeId: '', statusId: '', returned: false });
-    setIsOutOfWarranty(false);
-  };
+  }, [fetchParts]);
 
   // Fetch Ticket Details when Ticket ID changes
   useEffect(() => {
-    if (!formData.ticketId) {
-      setIsOutOfWarranty(false);
-      return;
+    if (!formData.ticketId || modalMode === 'update') {
+      return; 
     }
 
     const fetchTicketDetails = async () => {
@@ -104,38 +101,64 @@ export default function OrderPartsPage() {
         const ticket = response.data?.data || response.data;
         
         const isOut = ticket.warrantyType === 'OutOfWarranty' || ticket.warrantyType === 'Out of Warranty';
-        const deviceName = (ticket.deviceTypeName || '').toLowerCase();
-        
-        const matchedDevice = deviceName ? deviceTypes.find(d => {
-          const frontName = (d.deviceTypeName || '').toLowerCase();
-          const synonyms = {
-            'phone': ['mobile', 'cell', 'iphone', 'smartphone'],
-            'laptop': ['macbook', 'notebook'],
-            'desktop': ['pc', 'computer', 'imac', 'tower'],
-            'tablet': ['ipad'],
-            'monitor': ['display', 'screen']
-          };
-          return frontName === deviceName || deviceName.includes(frontName) || (synonyms[frontName] && synonyms[frontName].some(syn => deviceName.includes(syn)));
-        }) : undefined;
-        
         const orderedStatus = statuses.find(s => s.statusName?.toLowerCase() === 'ordered');
 
         setFormData(prev => ({
           ...prev,
-          deviceTypeId: matchedDevice ? matchedDevice.deviceTypeId : '',
           statusId: orderedStatus ? orderedStatus.statusId : prev.statusId,
-          returned: isOut ? false : prev.returned, // Uncheck if out of warranty
+          returned: isOut ? false : prev.returned, 
         }));
         setIsOutOfWarranty(isOut);
       } catch (error) {
-        console.error('Failed to fetch ticket details:', error);
       } finally {
         setTicketLoading(false);
       }
     };
 
     fetchTicketDetails();
-  }, [formData.ticketId, deviceTypes, statuses]);
+  }, [formData.ticketId, statuses, modalMode]);
+
+  const handleOpenCreateModal = () => {
+    setModalMode('create');
+    setFormData(initialFormData);
+    setIsOutOfWarranty(false);
+    setOpenModal(true);
+  };
+
+  const handleOpenUpdateModal = () => {
+    if (selectedIds.length !== 1) return;
+    const partToUpdate = parts.find(p => String(p.id) === String(selectedIds[0]));
+    if (partToUpdate) {
+      setModalMode('update');
+      
+      let matchedStatusId = partToUpdate.statusId || '';
+      if (!matchedStatusId && partToUpdate.statusName) {
+        const match = statuses.find(s => s.statusName === partToUpdate.statusName);
+        if (match) matchedStatusId = match.statusId;
+      }
+      
+      let matchedProductId = partToUpdate.productId || '';
+      if (!matchedProductId && partToUpdate.productName) {
+        const match = inventory.find(i => i.productName === partToUpdate.productName);
+        if (match) matchedProductId = match.productId;
+      }
+
+      setFormData({
+        partId: partToUpdate.partId || '',
+        ticketId: partToUpdate.ticketId || '',
+        quantity: partToUpdate.quantity || 1,
+        productId: matchedProductId,
+        statusId: matchedStatusId,
+        returned: partToUpdate.returned || false,
+        receiveDate: partToUpdate.receiveDate ? new Date(partToUpdate.receiveDate).toISOString().slice(0,16) : '',
+        remarks: partToUpdate.remarks || '',
+      });
+      setIsOutOfWarranty(false);
+      setOpenModal(true);
+    }
+  };
+  
+  const handleCloseModal = () => setOpenModal(false);
 
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -149,176 +172,259 @@ export default function OrderPartsPage() {
     e.preventDefault();
     setSubmitLoading(true);
     try {
-      // Submits the payload mapped to your PartsRequestDTO
-      await api.post('/parts', formData);
+      const payload = {
+        ticketId: formData.ticketId || null,
+        quantity: formData.quantity,
+        productId: formData.productId || null,
+        statusId: formData.statusId,
+        returned: formData.returned,
+        receiveDate: formData.receiveDate || null,
+        remarks: formData.remarks || null,
+      };
+
+      if (modalMode === 'create') {
+        await api.post('/parts', payload);
+      } else {
+        await api.put(`/parts/${formData.partId}`, payload);
+        setSelectedIds([]);
+        setClearSelectionKey(prev => prev + 1);
+      }
       handleCloseModal();
-      fetchParts(); // Refresh the list after successful creation
+      fetchParts();
     } catch (error) {
-      console.error('Failed to create part order:', error);
+      console.error(`Failed to ${modalMode} part order:`, error);
     } finally {
       setSubmitLoading(false);
     }
   };
 
-  // Function to determine chip color based on order status
+  const handleDeleteConfirm = async () => {
+    setDeleteLoading(true);
+    try {
+      const pId = selectedIds[0];
+      await api.delete(`/parts/${pId}`);
+      setOpenDeleteConfirm(false);
+      setSelectedIds([]);
+      setClearSelectionKey(prev => prev + 1);
+      fetchParts();
+    } catch (error) {
+      console.error('Failed to delete part:', error);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const getStatusColor = (status) => {
     switch(status) {
-      case 'Pending Approval': return '#B95000'; // Orange
-      case 'Ordered': return '#0052cc';         // Blue
-      case 'In Transit': return '#006c47';      // Teal
-      case 'Delivered': return '#2e7d32';       // Green
+      case 'Pending Approval': return '#B95000';
+      case 'Ordered': return '#0052cc';
+      case 'In Transit': return '#006c47';
+      case 'Delivered': return '#2e7d32';
+      case 'Returned': return '#ba1a1a';
       default: return theme.palette.text.secondary;
     }
   };
 
+  const config = useMemo(() => ({
+    title: 'Order Details',
+    subtitle: `${parts.length} part orders`,
+    rows: parts,
+    columns: [
+      { field: 'id', headerName: 'Part ID', width: 90 },
+      { field: 'ticketId', headerName: 'Ticket ID', width: 100 },
+      { 
+        field: 'productName', 
+        headerName: 'Product', 
+        flex: 1.5,
+        renderType: 'link',
+        renderCell: (params) => {
+          if (params.value) return params.value;
+          const prod = inventory.find(i => i.productId === params.row?.productId);
+          return prod ? prod.productName : '-';
+        }
+      },
+      { field: 'quantity', headerName: 'Qty', width: 80 },
+      { 
+        field: 'orderDate', 
+        headerName: 'Order Date', 
+        flex: 1,
+        renderCell: (params) => {
+          if (!params.value) return '-';
+          return new Date(params.value).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+        }
+      },
+      { 
+        field: 'receiveDate', 
+        headerName: 'Receive Date', 
+        flex: 1,
+        renderCell: (params) => {
+          if (!params.value) return '-';
+          return new Date(params.value).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+        }
+      },
+      { 
+        field: 'statusName', 
+        headerName: 'Status', 
+        width: 130,
+        renderCell: (params) => {
+          const status = params.value || 'Unknown';
+          const color = getStatusColor(status);
+          return (
+            <Box sx={{ display: 'inline-flex', px: 1, py: 0.2, borderRadius: '4px', fontSize: '11px', fontWeight: 600, bgcolor: `${color}1A`, color: color }}>
+              {status}
+            </Box>
+          );
+        }
+      },
+    ],
+    checkboxSelection: true,
+    searchable: true,
+    searchPlaceholder: 'Search orders...',
+    pagination: { pageSize: 10, pageSizeOptions: [5, 10, 25] },
+    height: 480,
+    gridKey: clearSelectionKey,
+    actions: [
+      { label: 'New Order', icon: <AddIcon />, variant: 'contained', color: 'primary', onClick: handleOpenCreateModal },
+    ],
+  }), [parts, inventory, clearSelectionKey, theme]);
+
+  const lbl = {
+    fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary,
+    textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.8, mt: 2,
+  };
+
   return (
-    <Box>
-      {/* ── Page Header ── */}
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 2, mb: 3 }}>
-        <Box>
-          <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>Order Parts</Typography>
-          <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>Manage and track part orders from vendors</Typography>
-        </Box>
-        <Button variant="contained" size="small" startIcon={<AddOutlinedIcon />} onClick={handleOpenModal}>New Order</Button>
+    <Box sx={{ p: 1, pt: 1 }}>
+
+      <List 
+        config={config} 
+        rowSelectionModel={selectedIds}
+        onRowSelectionModelChange={setSelectedIds}
+      />
+
+      {/* Action Buttons for Update and Delete */}
+      <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+        <Button
+          variant="outlined"
+          color="primary"
+          startIcon={<EditOutlinedIcon />}
+          disabled={selectedIds.length !== 1}
+          onClick={handleOpenUpdateModal}
+        >
+          Update
+        </Button>
+        <Button
+          variant="outlined"
+          color="error"
+          startIcon={<DeleteOutlinedIcon />}
+          disabled={selectedIds.length === 0}
+          onClick={() => setOpenDeleteConfirm(true)}
+        >
+          Delete
+        </Button>
       </Box>
 
-      {/* ── Top Stat Cards (Parts Status) ── */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2,1fr)', md: 'repeat(4,1fr)' }, gap: 2, mb: 3 }}>
-        {[
-          { label: 'Pending Approval', value: '3', color: '#B95000' },
-          { label: 'Ordered', value: '5', color: '#0052cc' },
-          { label: 'In Transit', value: '8', color: '#006c47' },
-          { label: 'Delivered (30d)', value: '24', color: '#2e7d32' },
-        ].map((stat) => (
-          <Paper key={stat.label} elevation={1} sx={{ p: 2.5, borderRadius: '3px', textAlign: 'center' }}>
-            <Typography sx={{ fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary, textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.5 }}>
-              {stat.label}
-            </Typography>
-            <Typography sx={{ fontSize: '28px', fontWeight: 700, color: stat.color }}>{stat.value}</Typography>
-          </Paper>
-        ))}
-      </Box>
-
-      {/* ── Order History Table ── */}
-      <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden' }}>
-        <Box sx={{ px: 2.5, py: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <LocalShippingOutlinedIcon sx={{ fontSize: 20, color: theme.palette.text.secondary }} />
-          <Typography sx={{ fontSize: '15px', fontWeight: 600 }}>Order History</Typography>
-        </Box>
-        <Divider />
-        <TableContainer>
-          <Table size="small">
-            <TableHead sx={{ bgcolor: theme.palette.background.default }}>
-              <TableRow>
-                <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Part ID</TableCell>
-                <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Ticket ID</TableCell>
-                <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Part Name</TableCell>
-                <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Device Type</TableCell>
-                <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Quantity</TableCell>
-                <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Returned</TableCell>
-                <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Status</TableCell>
-              </TableRow>
-            </TableHead>
-            {loading ? (
-              <TableBody>
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                    <CircularProgress size={28} />
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            ) : (
-              <TableBody>
-                {parts.map((part) => (
-                  <TableRow key={part.partId} hover>
-                    <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: theme.palette.primary.main }}>{part.partId}</TableCell>
-                    <TableCell sx={{ fontSize: '13px' }}>
-                      {part.ticketId ? (
-                        <Link component={RouterLink} to={`/tickets/${part.ticketId}`} underline="hover">
-                          {part.ticketId}
-                        </Link>
-                      ) : '-'}
-                    </TableCell>
-                    <TableCell sx={{ fontSize: '13px', fontWeight: 500 }}>{part.partName}</TableCell>
-                    <TableCell sx={{ fontSize: '13px', color: theme.palette.text.secondary }}>{part.deviceTypeName}</TableCell>
-                    <TableCell sx={{ fontSize: '13px' }}>{part.quantity}</TableCell>
-                    <TableCell sx={{ fontSize: '13px' }}>{part.returned ? 'Yes' : 'No'}</TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={part.statusName || 'Unknown'} 
-                        size="small" 
-                        sx={{ 
-                          fontSize: '11px', fontWeight: 600, borderRadius: '2px', height: 20,
-                          bgcolor: `${getStatusColor(part.statusName)}14`, 
-                          color: getStatusColor(part.statusName) 
-                        }} 
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            )}
-          </Table>
-        </TableContainer>
-      </Paper>
-
-      {/* ── New Order Modal ── */}
+      {/* ── Modal (Create/Update) ── */}
       <Dialog open={openModal} onClose={handleCloseModal} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontSize: '16px', fontWeight: 600 }}>Create New Part Order</DialogTitle>
+        <DialogTitle sx={{ fontSize: '18px', fontWeight: 600, py: 2, px: 3 }}>
+          {modalMode === 'create' ? 'Create New Part Order' : 'Update Part Order'}
+        </DialogTitle>
         <Divider />
-        <DialogContent>
-          <Box component="form" id="new-part-form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <TextField 
-              select
-              label="Ticket ID" name="ticketId" 
-              value={formData.ticketId} onChange={handleFormChange} 
-              fullWidth size="small" 
-              helperText={ticketLoading ? "Fetching ticket details..." : (isOutOfWarranty ? "Device is out of warranty. Returns disabled." : "Optional: Link this part to a specific ticket")}
-            >
-              <MenuItem value=""><em>None</em></MenuItem>
-              {tickets.map((ticket) => (
-                <MenuItem key={ticket.ticketId || ticket.id} value={ticket.ticketId || ticket.id}>
-                  {ticket.ticketId || ticket.id}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField 
-              label="Part Name" name="partName" required 
-              value={formData.partName} onChange={handleFormChange} 
-              fullWidth size="small" 
-            />
-            <TextField 
-              label="Quantity" name="quantity" type="number" required 
-              value={formData.quantity} onChange={handleFormChange} 
-              fullWidth size="small" inputProps={{ min: 1 }}
-            />
-            <TextField 
-              select
-              label="Device Type" name="deviceTypeId" required 
-              value={formData.deviceTypeId} onChange={handleFormChange} 
-              fullWidth size="small" 
-              disabled={!!formData.ticketId || ticketLoading}
-            >
-              <MenuItem value=""><em>None</em></MenuItem>
-              {deviceTypes.map((device) => (
-                <MenuItem key={device.deviceTypeId} value={device.deviceTypeId}>
-                  {device.deviceTypeName}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField 
-              select
-              label="Status" name="statusId" required 
-              value={formData.statusId} onChange={handleFormChange} 
-              fullWidth size="small" 
-            >
-              <MenuItem value=""><em>None</em></MenuItem>
-              {statuses.map((status) => (
-                <MenuItem key={status.statusId} value={status.statusId}>
-                  {status.statusName}
-                </MenuItem>
-              ))}
-            </TextField>
+        <DialogContent sx={{ px: 3, py: 2.5 }}>
+          <Box component="form" id="part-form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <Box>
+                <Typography sx={{ ...lbl, mt: 0 }}>Ticket ID</Typography>
+                <TextField 
+                  select
+                  name="ticketId" 
+                  value={formData.ticketId} onChange={handleFormChange} 
+                  fullWidth size="small" 
+                  helperText={ticketLoading ? "Fetching..." : ""}
+                >
+                  <MenuItem value=""><em>None</em></MenuItem>
+                  {tickets.map((ticket) => (
+                    <MenuItem key={ticket.ticketId || ticket.id} value={ticket.ticketId || ticket.id}>
+                      {ticket.ticketId || ticket.id}
+                    </MenuItem>
+                  ))}
+                  {tickets.length === 0 && formData.ticketId && (
+                    <MenuItem value={formData.ticketId}>{formData.ticketId}</MenuItem>
+                  )}
+                </TextField>
+              </Box>
+              <Box>
+                <Typography sx={{ ...lbl, mt: 0 }}>Product (Inventory)</Typography>
+                <TextField 
+                  select
+                  name="productId" 
+                  value={formData.productId} onChange={handleFormChange} 
+                  fullWidth size="small" 
+                >
+                  <MenuItem value=""><em>None</em></MenuItem>
+                  {inventory.map((inv) => (
+                    <MenuItem key={inv.productId || inv.id} value={inv.productId || inv.id}>
+                      {inv.productName}
+                    </MenuItem>
+                  ))}
+                  {inventory.length === 0 && formData.productId && (
+                    <MenuItem value={formData.productId}>{formData.productId}</MenuItem>
+                  )}
+                </TextField>
+              </Box>
+            </Box>
+
+            <Box>
+              <Typography sx={{ ...lbl, mt: 0 }}>Quantity</Typography>
+              <TextField 
+                name="quantity" type="number" required 
+                value={formData.quantity} onChange={handleFormChange} 
+                fullWidth size="small" inputProps={{ min: 1 }}
+              />
+            </Box>
+
+            <Box sx={{ display: 'grid', gridTemplateColumns: modalMode === 'update' ? '1fr 1fr' : '1fr', gap: 2 }}>
+              <Box>
+                <Typography sx={{ ...lbl, mt: 0 }}>Status</Typography>
+                <TextField 
+                  select
+                  name="statusId" required 
+                  value={formData.statusId} onChange={handleFormChange} 
+                  fullWidth size="small" 
+                >
+                  <MenuItem value=""><em>None</em></MenuItem>
+                  {statuses.map((status) => (
+                    <MenuItem key={status.statusId} value={status.statusId}>
+                      {status.statusName}
+                    </MenuItem>
+                  ))}
+                  {statuses.length === 0 && formData.statusId && (
+                    <MenuItem value={formData.statusId}>{formData.statusId}</MenuItem>
+                  )}
+                </TextField>
+              </Box>
+              {modalMode === 'update' && (
+                <Box>
+                  <Typography sx={{ ...lbl, mt: 0 }}>Receive Date</Typography>
+                  <TextField 
+                    name="receiveDate" type="datetime-local" 
+                    value={formData.receiveDate} onChange={handleFormChange} 
+                    fullWidth size="small" InputLabelProps={{ shrink: true }}
+                  />
+                </Box>
+              )}
+            </Box>
+
+            <Box>
+              <Typography sx={{ ...lbl, mt: 0 }}>Remarks</Typography>
+              <TextField 
+                name="remarks" 
+                value={formData.remarks} onChange={handleFormChange} 
+                fullWidth size="small" multiline rows={2}
+              />
+            </Box>
+
             <FormControlLabel
               control={
                 <Checkbox 
@@ -329,7 +435,7 @@ export default function OrderPartsPage() {
                   disabled={isOutOfWarranty}
                 />
               }
-              label="Returned to Vendor/Inventory"
+              label={<Typography sx={{ fontSize: '13px' }}>Returned to Vendor/Inventory</Typography>}
             />
           </Box>
         </DialogContent>
@@ -339,12 +445,30 @@ export default function OrderPartsPage() {
             Cancel
           </Button>
           <Button 
-            type="submit" form="new-part-form" 
+            type="submit" form="part-form" 
             variant="contained" 
             disabled={submitLoading}
             sx={{ textTransform: 'none', minWidth: 100 }}
           >
-            {submitLoading ? <CircularProgress size={24} color="inherit" /> : 'Create Order'}
+            {submitLoading ? <CircularProgress size={24} color="inherit" /> : (modalMode === 'create' ? 'Create Order' : 'Update Order')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Delete Confirmation Dialog ── */}
+      <Dialog open={openDeleteConfirm} onClose={() => setOpenDeleteConfirm(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 600, color: 'error.main' }}>Confirm Deletion</DialogTitle>
+        <Divider />
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete {selectedIds.length === 1 ? 'this part order' : `these ${selectedIds.length} part orders`}? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <Divider />
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteLoading}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteLoading} sx={{ minWidth: 90 }}>
+             {deleteLoading ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -193,16 +193,27 @@ function resolveColumns(columns) {
   });
 }
 
+/* ───────── constants to prevent re-renders ───────── */
+const EMPTY_OBJECT = {};
+const EMPTY_ARRAY = [];
+const DEFAULT_PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
+const DEFAULT_SLOT_PROPS = {
+  loadingOverlay: {
+    variant: 'linear-progress',
+    noRowsVariant: 'linear-progress',
+  },
+};
+
 /* ───────── Component ───────── */
-export default function List({ config }) {
+export default function List({ config, rowSelectionModel: directRowSelectionModel, onRowSelectionModelChange: directOnRowSelectionModelChange }) {
   const theme = useTheme();
   const {
     title = 'Records',
     subtitle,
-    rows = [],
-    columns = [],
-    actions = [],
-    pagination = {},
+    rows = EMPTY_ARRAY,
+    columns = EMPTY_ARRAY,
+    actions = EMPTY_ARRAY,
+    pagination = EMPTY_OBJECT,
     checkboxSelection = false,
     density = 'standard',
     searchable = true,
@@ -210,11 +221,16 @@ export default function List({ config }) {
     loading = false,
     getRowId,
     onRowClick,
+    rowSelectionModel: configRowSelectionModel,
+    onRowSelectionModelChange: configOnRowSelectionModelChange,
     height = 520,
-    sx: sxOverrides = {},
+    sx: sxOverrides = EMPTY_OBJECT,
     headerSlot,
     emptyMessage = 'No records to display',
   } = config;
+
+  const actualRowSelectionModel = directRowSelectionModel !== undefined ? directRowSelectionModel : configRowSelectionModel;
+  const actualOnRowSelectionModelChange = directOnRowSelectionModelChange || configOnRowSelectionModelChange;
 
   const [search, setSearch] = useState('');
   const [columnMenuAnchorEl, setColumnMenuAnchorEl] = useState(null);
@@ -227,6 +243,18 @@ export default function List({ config }) {
     pageSize: pagination.pageSize || 10,
     page: 0,
   });
+
+  // MUI v9 uses an object { type: 'include', ids: Set() } instead of an array.
+  // We wrap it here so the rest of the application can safely just use arrays.
+  const formattedSelectionModel = useMemo(() => {
+    if (actualRowSelectionModel === undefined) return undefined;
+    if (Array.isArray(actualRowSelectionModel)) {
+      return { type: 'include', ids: new Set(actualRowSelectionModel) };
+    }
+    return actualRowSelectionModel;
+  }, [actualRowSelectionModel]);
+
+
 
   useEffect(() => {
     setVisibleColumnFields(columns.map((col) => col.field));
@@ -282,6 +310,22 @@ export default function List({ config }) {
       );
     });
   }, [rows, search, activeFilters]);
+
+  const handleRowSelectionModelChange = useCallback((newSelectionModel) => {
+    if (!actualOnRowSelectionModelChange) return;
+    
+    let arr = [];
+    if (newSelectionModel && newSelectionModel.type === 'exclude') {
+      const excludeIds = newSelectionModel.ids instanceof Set ? newSelectionModel.ids : new Set();
+      arr = filteredRows.map(r => getRowId ? getRowId(r) : r.id).filter(id => !excludeIds.has(id));
+    } else if (newSelectionModel && newSelectionModel.ids instanceof Set) {
+      arr = Array.from(newSelectionModel.ids);
+    } else if (Array.isArray(newSelectionModel)) {
+      arr = newSelectionModel;
+    }
+    
+    actualOnRowSelectionModelChange(arr);
+  }, [actualOnRowSelectionModelChange, filteredRows, getRowId]);
 
   const handleSearchChange = useCallback((e) => {
     setSearch(e.target.value);
@@ -396,10 +440,14 @@ export default function List({ config }) {
           color: theme.palette.primary.main,
         },
       },
-      ...sxOverrides,
+      ...(sxOverrides || EMPTY_OBJECT),
     }),
     [theme, sxOverrides]
   );
+
+  const localeText = useMemo(() => ({
+    noRowsLabel: emptyMessage,
+  }), [emptyMessage]);
 
   return (
     <Paper
@@ -606,6 +654,7 @@ export default function List({ config }) {
       {/* ── DataGrid ── */}
       <Box sx={{ height, width: '100%' }}>
         <DataGrid
+          key={config.gridKey || 'default-grid'}
           rows={filteredRows}
           columns={visibleColumns}
           loading={loading}
@@ -614,19 +663,14 @@ export default function List({ config }) {
           disableRowSelectionOnClick
           paginationModel={paginationModel}
           onPaginationModelChange={setPaginationModel}
-          pageSizeOptions={pagination.pageSizeOptions || [5, 10, 25, 50]}
+          pageSizeOptions={pagination.pageSizeOptions || DEFAULT_PAGE_SIZE_OPTIONS}
           getRowId={getRowId}
           onRowClick={onRowClick}
+          {...(actualOnRowSelectionModelChange ? { onRowSelectionModelChange: handleRowSelectionModelChange } : {})}
+          {...(formattedSelectionModel !== undefined ? { rowSelectionModel: formattedSelectionModel } : {})}
           sx={dataGridSx}
-          localeText={{
-            noRowsLabel: emptyMessage,
-          }}
-          slotProps={{
-            loadingOverlay: {
-              variant: 'linear-progress',
-              noRowsVariant: 'linear-progress',
-            },
-          }}
+          localeText={localeText}
+          slotProps={DEFAULT_SLOT_PROPS}
         />
       </Box>
     </Paper>

@@ -16,8 +16,16 @@ import ConfirmationNumberOutlinedIcon from '@mui/icons-material/ConfirmationNumb
  * - `isClosable`: Determines if the tab shows a close button.
  */
 export const ROUTE_CONFIG = {
-   '/dashboard': { title: 'Dashboard', icon: <DashboardOutlinedIcon fontSize="small" />, isClosable: false },
+  '/dashboard': { title: 'Dashboard', icon: <DashboardOutlinedIcon fontSize="small" />, isClosable: false },
+  '/diagnosis': { title: 'Diagnosis', icon: <BuildOutlinedIcon fontSize="small" />, isClosable: true },
   '/inventory': { title: 'Inventory', icon: <Inventory2OutlinedIcon fontSize="small" />, isClosable: true },
   '/inventory/parts': { title: 'Order Parts', icon: <Inventory2OutlinedIcon fontSize="small" />, isClosable: true },
-  '/tickets/:id': { title: 'Tickets/:id', icon: <Inventory2OutlinedIcon fontSize="small" />, isClosable: true }
+  '/tickets/new': { title: 'New Ticket', icon: <AddIcon fontSize="small" />, isClosable: true },
+  '/tickets/:id': { title: (params) => `Ticket #${params.id}`, icon: <ConfirmationNumberOutlinedIcon fontSize="small" />, isClosable: true },
+  '/maintenance/:section': { title: (params) => `Maintenance: ${params.section}`, icon: <BuildOutlinedIcon fontSize="small" />, isClosable: true },
+  '/reports': { title: 'Reports', icon: <AnalyticsOutlinedIcon fontSize="small" />, isClosable: true },
+  '/employees': { title: 'Employees', icon: <BadgeOutlinedIcon fontSize="small" />, isClosable: true },
+  '/customers': { title: 'Customers', icon: <SupportAgentOutlinedIcon fontSize="small" />, isClosable: true },
+  '/settings': { title: 'Settings', icon: <SettingsOutlinedIcon fontSize="small" />, isClosable: true },
+  '/support': { title: 'Support Desk', icon: <SupportAgentOutlinedIcon fontSize="small" />, isClosable: true },
 };

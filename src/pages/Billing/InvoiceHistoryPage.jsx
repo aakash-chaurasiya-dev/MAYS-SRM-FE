@@ -15,28 +15,31 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import List from '../../stereotype/AbstractList/List';
+import api from '../../services/api';
 
 const INVOICE_COLUMNS = [
-  { field: 'invoiceNo', headerName: 'Invoice No', width: 130, renderType: 'link' },
+  { field: 'invoiceNo', headerName: 'Billing ID', width: 130, renderType: 'link' },
   { field: 'ticketId', headerName: 'Ticket ID', width: 110 },
-  { field: 'customerName', headerName: 'Customer Name', width: 200 },
-  { field: 'date', headerName: 'Date', width: 130 },
+  { field: 'chargeTypeName', headerName: 'Charge Type', width: 150 },
+  { field: 'productName', headerName: 'Product Name', width: 150 },
+  { field: 'serviceChargeDescription', headerName: 'Service Description', width: 200 },
+  { field: 'paymentModeName', headerName: 'Payment Mode', width: 130 },
   { field: 'amount', headerName: 'Amount', width: 130 },
-  { field: 'gstAmount', headerName: 'GST Amount', width: 130 },
+  { field: 'date', headerName: 'Date', width: 130 },
   {
-    field: 'paymentStatus', headerName: 'Payment Status', width: 150, renderType: 'chip',
-    chipColorMap: { 'Paid': 'success', 'Pending': 'warning', 'Overdue': 'error' },
+    field: 'paymentStatus', headerName: 'Status', width: 150, renderType: 'chip',
+    chipColorMap: { 'Paid': 'success', 'Pending': 'warning', 'Overdue': 'error', 'Failed': 'error' },
   },
 ];
 
 /* ── Analytics Card: Total Outstanding ── */
-function OutstandingCard({ value, trend }) {
+function OutstandingCard({ value }) {
   const theme = useTheme();
   return (
     <Paper elevation={1} sx={{ p: 2.5, borderRadius: '12px', border: `1px solid ${theme.palette.divider}` }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
         <Typography sx={{ fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-          Total Outstanding
+          Total Amount
         </Typography>
         <AccountBalanceWalletOutlinedIcon sx={{ color: theme.palette.primary.main, fontSize: 20 }} />
       </Box>
@@ -166,43 +169,46 @@ export default function InvoiceHistoryPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/invoices')
-      .then(res => res.json())
-      .then(data => {
-        setInvoices(data || []);
+    const fetchInvoices = async () => {
+      try {
+        const response = await api.get('/billing');
+        const data = response.data?.data || response.data;
+        setInvoices(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('Failed to fetch invoices:', error);
+        setInvoices([]);
+      } finally {
         setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
-      });
+      }
+    };
+    fetchInvoices();
   }, []);
 
   const mappedRows = invoices.map(inv => ({
-    id: inv.invoiceId,
-    invoiceNo: `#INV-${inv.invoiceId}`,
+    id: inv.billingId,
+    invoiceNo: `#INV-${inv.billingId}`,
     ticketId: inv.ticketId ? `#TK-${inv.ticketId}` : 'N/A',
-    customerName: inv.customerName || inv.userMaster
-      ? `${inv.userMaster?.firstName || ''} ${inv.userMaster?.lastName || ''}`.trim()
-      : 'Unknown',
-    date: inv.invoiceDate
-      ? new Date(inv.invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+    chargeTypeName: inv.chargeTypeName || '-',
+    productName: inv.productName || '-',
+    serviceChargeDescription: inv.serviceChargeDescription || '-',
+    paymentModeName: inv.paymentModeName || '-',
+    date: inv.billingDate
+      ? new Date(inv.billingDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
       : 'N/A',
-    amount: inv.totalAmount != null ? `₹${Number(inv.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : 'N/A',
-    gstAmount: inv.gstAmount != null ? `₹${Number(inv.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : 'N/A',
-    paymentStatus: inv.paymentStatus || 'Pending',
+    amount: inv.amount != null ? `₹${Number(inv.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : 'N/A',
+    paymentStatus: inv.statusName || 'Pending',
   }));
 
   // Analytics
   const totalOutstanding = invoices
-    .filter(i => i.paymentStatus !== 'Paid')
-    .reduce((sum, i) => sum + (Number(i.totalAmount) || 0), 0);
+    .reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
   const settledThisWeek = (() => {
     const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
     return invoices
-      .filter(i => i.paymentStatus === 'Paid' && new Date(i.invoiceDate) >= weekAgo)
-      .reduce((sum, i) => sum + (Number(i.totalAmount) || 0), 0);
+      .filter(i => i.statusName === 'Paid' && new Date(i.billingDate) >= weekAgo)
+      .reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
   })();
-  const lateCount = invoices.filter(i => i.paymentStatus === 'Overdue').length;
+  const lateCount = invoices.filter(i => i.statusName === 'Overdue').length;
 
   const fmtCurrency = (n) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 

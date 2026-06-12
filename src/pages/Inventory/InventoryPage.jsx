@@ -1,147 +1,127 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
-  Box, Paper, Typography, Chip, Divider, Button, Avatar,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, LinearProgress,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControlLabel, Checkbox, CircularProgress,
-  MenuItem
+  Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogContentText,
+  DialogActions, TextField, MenuItem, CircularProgress, Divider
 } from '@mui/material';
-import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
-import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
-import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
-import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
-import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined';
+import AddIcon from '@mui/icons-material/Add';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import { useTheme } from '@mui/material/styles';
+import { List } from '../../stereotype/AbstractList';
 import api from '../../services/api';
-
-const ENGINEER_REQUESTS = [
-  { id: 'PR-1042', part: '16GB DDR4 SODIMM', tech: 'Alex Rivera', ticket: 'TK-4522', status: 'Pending Approval', priority: 'High', date: 'Oct 24, 2023' },
-  { id: 'PR-1041', part: 'iPhone 13 OLED Display', tech: 'Jordan Smith', ticket: 'TK-4519', status: 'Ordered', priority: 'Critical', date: 'Oct 23, 2023' },
-  { id: 'PR-1040', part: 'Dell XPS 15 Battery', tech: 'Kevin Zhang', ticket: 'TK-4520', status: 'In Transit', priority: 'Normal', date: 'Oct 22, 2023' },
-];
-
-const INVENTORY_ITEMS = [
-  { sku: 'MEM-DDR4-16G', name: '16GB DDR4 Laptop RAM', stock: 12, minStock: 10, category: 'Memory' },
-  { sku: 'PWR-65W-USB', name: 'Generic 65W AC Adapter', stock: 5, minStock: 15, category: 'Power' },
-  { sku: 'STO-NVME-500G', name: '500GB NVMe SSD', stock: 8, minStock: 10, category: 'Storage' },
-  { sku: 'KBD-TP-T14', name: 'ThinkPad Replacement Keys', stock: 45, minStock: 20, category: 'Input' },
-];
 
 export default function InventoryPage() {
   const theme = useTheme();
 
-  // Modal & Form State
+  const [inventory, setInventory] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [branches, setBranches] = useState([]);
+
+  // Selection
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [clearSelectionKey, setClearSelectionKey] = useState(0);
+
+  // Form State
   const [openModal, setOpenModal] = useState(false);
+  const [modalMode, setModalMode] = useState('create');
   const [submitLoading, setSubmitLoading] = useState(false);
-  const [ticketLoading, setTicketLoading] = useState(false);
-  const [isOutOfWarranty, setIsOutOfWarranty] = useState(false);
-  const [tickets, setTickets] = useState([]);
-  const [deviceTypes, setDeviceTypes] = useState([]);
-  const [statuses, setStatuses] = useState([]);
-  const [formData, setFormData] = useState({
-    ticketId: '',
-    partName: '',
-    quantity: 1,
-    deviceTypeId: '',
-    statusId: '',
-    returned: false,
-  });
 
-  // Handlers for the form modal
-  const handleOpenModal = () => setOpenModal(true);
-  const handleCloseModal = () => {
-    setOpenModal(false);
-    // Reset form data on close
-    setFormData({ ticketId: '', partName: '', quantity: 1, deviceTypeId: '', statusId: '', returned: false });
-    setIsOutOfWarranty(false);
+  // Delete Confirmation State
+  const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const initialFormData = {
+    productId: '',
+    productName: '',
+    brandId: '',
+    specification: '',
+    descr: '',
+    sellingPrice: '',
+    buyingPrice: '',
+    stock: 0,
+    branchId: '',
   };
+  const [formData, setFormData] = useState(initialFormData);
 
-  // Fetch available tickets for the dropdown
-  useEffect(() => {
-    const fetchTickets = async () => {
-      try {
-        const response = await api.get('/tickets');
-        setTickets(response.data?.data || response.data);
-      } catch (error) {
-        console.error('Failed to fetch tickets:', error);
-      }
-    };
-    fetchTickets();
-
-    const fetchDeviceTypes = async () => {
-      try {
-        const response = await api.get('/devicetypes'); // Update endpoint if necessary
-        setDeviceTypes(response.data?.data || response.data);
-      } catch (error) {
-        console.error('Failed to fetch device types:', error);
-      }
-    };
-    fetchDeviceTypes();
-
-    const fetchStatuses = async () => {
-      try {
-        const response = await api.get('/statuses'); // Update endpoint if necessary
-        const allStatuses = response.data?.data || response.data;
-        const partsStatuses = allStatuses.filter(s => s.statusType && s.statusType.toLowerCase() === 'parts');
-        setStatuses(partsStatuses);
-      } catch (error) {
-        console.error('Failed to fetch statuses:', error);
-      }
-    };
-    fetchStatuses();
+  const fetchInventory = useCallback(async () => {
+    try {
+      const response = await api.get('/inventory');
+      const data = response.data?.data || response.data || [];
+      setInventory(data.map((inv, i) => ({
+        ...inv,
+        id: inv.productId || `fallback-id-${i}`,
+      })));
+    } catch (error) {
+      console.error('Failed to fetch inventory:', error);
+    }
   }, []);
 
-  // Fetch Ticket Details when Ticket ID changes
   useEffect(() => {
-    if (!formData.ticketId) {
-      setIsOutOfWarranty(false);
-      return;
-    }
+    fetchInventory();
 
-    const fetchTicketDetails = async () => {
-      setTicketLoading(true);
+    const fetchBrands = async () => {
       try {
-        const response = await api.get(`/tickets/${formData.ticketId}`);
-        const ticket = response.data?.data || response.data;
-        
-        const isOut = ticket.warrantyType === 'OutOfWarranty' || ticket.warrantyType === 'Out of Warranty';
-        const deviceName = (ticket.deviceTypeName || '').toLowerCase();
-        
-        const matchedDevice = deviceName ? deviceTypes.find(d => {
-          const frontName = (d.deviceTypeName || '').toLowerCase();
-          const synonyms = {
-            'phone': ['mobile', 'cell', 'iphone', 'smartphone'],
-            'laptop': ['macbook', 'notebook'],
-            'desktop': ['pc', 'computer', 'imac', 'tower'],
-            'tablet': ['ipad'],
-            'monitor': ['display', 'screen']
-          };
-          return frontName === deviceName || deviceName.includes(frontName) || (synonyms[frontName] && synonyms[frontName].some(syn => deviceName.includes(syn)));
-        }) : undefined;
-        
-        const orderedStatus = statuses.find(s => s.statusName?.toLowerCase() === 'ordered');
-
-        setFormData(prev => ({
-          ...prev,
-          deviceTypeId: matchedDevice ? matchedDevice.deviceTypeId : '',
-          statusId: orderedStatus ? orderedStatus.statusId : prev.statusId,
-          returned: isOut ? false : prev.returned, // Uncheck if out of warranty
-        }));
-        setIsOutOfWarranty(isOut);
-      } catch (error) {
-        console.error('Failed to fetch ticket details:', error);
-      } finally {
-        setTicketLoading(false);
-      }
+        const response = await api.get('/brands');
+        setBrands(response.data?.data || response.data || []);
+      } catch (error) {}
     };
+    fetchBrands();
 
-    fetchTicketDetails();
-  }, [formData.ticketId, deviceTypes, statuses]);
+    const fetchBranches = async () => {
+      try {
+        const response = await api.get('/branches');
+        setBranches(response.data?.data || response.data || []);
+      } catch (error) {}
+    };
+    fetchBranches();
+  }, [fetchInventory]);
+
+  const handleOpenCreateModal = () => {
+    setModalMode('create');
+    setFormData(initialFormData);
+    setOpenModal(true);
+  };
+
+  const handleOpenUpdateModal = () => {
+    if (selectedIds.length !== 1) return;
+    const invToUpdate = inventory.find(i => String(i.id) === String(selectedIds[0]));
+    if (invToUpdate) {
+      setModalMode('update');
+      
+      let matchedBrandId = invToUpdate.brandId || '';
+      if (!matchedBrandId && invToUpdate.brandName) {
+        const match = brands.find(b => b.brandName === invToUpdate.brandName);
+        if (match) matchedBrandId = match.brandId || match.id;
+      }
+      
+      let matchedBranchId = invToUpdate.branchId || '';
+      if (!matchedBranchId && invToUpdate.branchName) {
+        const match = branches.find(b => b.branchName === invToUpdate.branchName);
+        if (match) matchedBranchId = match.branchId || match.id;
+      }
+
+      setFormData({
+        productId: invToUpdate.productId || '',
+        productName: invToUpdate.productName || '',
+        brandId: matchedBrandId,
+        specification: invToUpdate.specification || '',
+        descr: invToUpdate.descr || '',
+        sellingPrice: invToUpdate.sellingPrice || '',
+        buyingPrice: invToUpdate.buyingPrice || '',
+        stock: invToUpdate.stock || 0,
+        branchId: matchedBranchId,
+      });
+      setOpenModal(true);
+    }
+  };
+  
+  const handleCloseModal = () => setOpenModal(false);
 
   const handleFormChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: value,
     }));
   };
 
@@ -149,212 +129,260 @@ export default function InventoryPage() {
     e.preventDefault();
     setSubmitLoading(true);
     try {
-      await api.post('/parts', formData);
+      const payload = {
+        productName: formData.productName,
+        brandId: formData.brandId,
+        specification: formData.specification,
+        descr: formData.descr,
+        sellingPrice: formData.sellingPrice,
+        buyingPrice: formData.buyingPrice,
+        stock: formData.stock,
+        branchId: formData.branchId,
+      };
+
+      if (modalMode === 'create') {
+        await api.post('/inventory', payload);
+      } else {
+        await api.put(`/inventory/${formData.productId}`, payload);
+        setSelectedIds([]);
+        setClearSelectionKey(prev => prev + 1);
+      }
       handleCloseModal();
+      fetchInventory();
     } catch (error) {
-      console.error('Failed to create part order:', error);
+      console.error(`Failed to ${modalMode} inventory item:`, error);
     } finally {
       setSubmitLoading(false);
     }
   };
 
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'Pending Approval': return '#B95000';
-      case 'Ordered': return '#0052cc';
-      case 'In Transit': return '#006c47';
-      default: return theme.palette.text.secondary;
+  const handleDeleteConfirm = async () => {
+    setDeleteLoading(true);
+    try {
+      const pId = selectedIds[0];
+      await api.delete(`/inventory/${pId}`);
+      setOpenDeleteConfirm(false);
+      setSelectedIds([]);
+      setClearSelectionKey(prev => prev + 1);
+      fetchInventory();
+    } catch (error) {
+      console.error('Failed to delete inventory item:', error);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
+  const config = useMemo(() => ({
+    title: 'Inventory Items',
+    subtitle: `${inventory.length} products in stock`,
+    rows: inventory,
+    columns: [
+      { field: 'id', headerName: 'ID', width: 70 },
+      { field: 'productName', headerName: 'Product Name', width: 140, renderType: 'link' },
+      { field: 'brandName', headerName: 'Brand', width: 100 },
+      { field: 'deviceTypeName', headerName: 'Device Type', width: 120 },
+      { field: 'specification', headerName: 'Spec', width: 100 },
+      { field: 'descr', headerName: 'Desc', width: 120 },
+      { 
+        field: 'stock', 
+        headerName: 'Stock', 
+        width: 80,
+        renderCell: (params) => {
+          const isLow = params.value < 10;
+          return (
+            <Box sx={{ color: isLow ? '#ba1a1a' : 'inherit', fontWeight: isLow ? 700 : 400 }}>
+              {params.value}
+            </Box>
+          );
+        }
+      },
+      { 
+        field: 'buyingPrice', 
+        headerName: 'Buy Price', 
+        width: 100,
+        renderCell: (params) => {
+          if (params.value == null) return '-';
+          return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(params.value);
+        }
+      },
+      { 
+        field: 'sellingPrice', 
+        headerName: 'Sell Price', 
+        width: 100,
+        renderCell: (params) => {
+          if (params.value == null) return '-';
+          return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(params.value);
+        }
+      },
+      { field: 'branchName', headerName: 'Branch', width: 100 },
+      { 
+        field: 'lastUpdationDate', 
+        headerName: 'Last Updated', 
+        width: 140,
+        renderCell: (params) => {
+          if (!params.value) return '-';
+          return new Date(params.value).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+        }
+      },
+    ],
+    checkboxSelection: true,
+    searchable: true,
+    searchPlaceholder: 'Search inventory...',
+    pagination: { pageSize: 10, pageSizeOptions: [5, 10, 25] },
+    height: 480,
+    gridKey: clearSelectionKey,
+    actions: [
+      { label: 'Add Item', icon: <AddIcon />, variant: 'contained', color: 'primary', onClick: handleOpenCreateModal },
+    ],
+  }), [inventory, clearSelectionKey]);
+
+  const lbl = {
+    fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary,
+    textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.8, mt: 2,
+  };
+
   return (
-    <Box>
+    <Box sx={{ p: 2, pt: 3 }}>
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 2, mb: 3 }}>
         <Box>
-          <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>Purchase & Inventory</Typography>
-          <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>Mays Computer Repair - Procurement Dashboard</Typography>
+          <Typography sx={{ fontSize: '24px', fontWeight: 600, letterSpacing: '-0.01em', color: theme.palette.text.primary }}>Purchase & Inventory</Typography>
+          <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>Manage workshop inventory levels</Typography>
         </Box>
-        <Button variant="contained" size="small" startIcon={<AddOutlinedIcon />} onClick={handleOpenModal}>Order Parts</Button>
       </Box>
 
-      {/* ── Stat Cards ── */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2,1fr)', md: 'repeat(4,1fr)' }, gap: 2, mb: 3 }}>
-        {[
-          { label: 'Pending Requests', value: '14', color: '#B95000', bg: '#B9500014' },
-          { label: 'Orders in Transit', value: '08', color: '#0052cc', bg: '#0052cc14' },
-          { label: 'Stock Alerts', value: '05', color: '#ba1a1a', bg: '#ba1a1a14' },
-          { label: 'Returned Inventory', value: '05', color: '#006c47', bg: '#006c4714' },
-        ].map((stat) => (
-          <Paper key={stat.label} elevation={1} sx={{ p: 2.5, borderRadius: '3px', textAlign: 'center' }}>
-            <Typography sx={{ fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary, textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.5 }}>
-              {stat.label}
-            </Typography>
-            <Typography sx={{ fontSize: '28px', fontWeight: 700, color: stat.color }}>{stat.value}</Typography>
-          </Paper>
-        ))}
+      <List 
+        config={config} 
+        rowSelectionModel={selectedIds}
+        onRowSelectionModelChange={setSelectedIds}
+      />
+
+      {/* Action Buttons for Update and Delete */}
+      <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+        <Button
+          variant="outlined"
+          color="primary"
+          startIcon={<EditOutlinedIcon />}
+          disabled={selectedIds.length !== 1}
+          onClick={handleOpenUpdateModal}
+        >
+          Update
+        </Button>
+        <Button
+          variant="outlined"
+          color="error"
+          startIcon={<DeleteOutlinedIcon />}
+          disabled={selectedIds.length === 0}
+          onClick={() => setOpenDeleteConfirm(true)}
+        >
+          Delete
+        </Button>
       </Box>
-        {/* Engineer Part Requests */}
-        <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden' }}>
-          <Box sx={{ px: 2.5, py: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <ReceiptLongOutlinedIcon sx={{ fontSize: 20, color: theme.palette.text.secondary }} />
-            <Typography sx={{ fontSize: '15px', fontWeight: 600 }}>Engineer Part Requests</Typography>
-          </Box>
-          <Divider />
-          <TableContainer>
-            <Table size="small">
-              <TableHead sx={{ bgcolor: theme.palette.background.default }}>
-                <TableRow>
-                  <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Request ID</TableCell>
-                  <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Part Requested</TableCell>
-                  <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Engineer / Ticket</TableCell>
-                  <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Status</TableCell>
-                  <TableCell sx={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: theme.palette.text.secondary }}>Action</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {ENGINEER_REQUESTS.map((req) => (
-                  <TableRow key={req.id} hover>
-                    <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: theme.palette.primary.main }}>{req.id}</TableCell>
-                    <TableCell sx={{ fontSize: '13px' }}>{req.part}</TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Avatar sx={{ width: 20, height: 20, fontSize: '0.6rem', bgcolor: theme.palette.primary.main }}>{req.tech[0]}</Avatar>
-                        <Box>
-                          <Typography sx={{ fontSize: '13px', lineHeight: 1.2 }}>{req.tech}</Typography>
-                          <Typography sx={{ fontSize: '11px', color: theme.palette.text.secondary }}>{req.ticket}</Typography>
-                        </Box>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={req.status} 
-                        size="small" 
-                        sx={{ 
-                          fontSize: '11px', fontWeight: 600, borderRadius: '2px', height: 20,
-                          bgcolor: `${getStatusColor(req.status)}14`, 
-                          color: getStatusColor(req.status) 
-                        }} 
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Button size="small" variant="outlined" sx={{ py: 0.2, px: 1, fontSize: '11px' }}>Review</Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
 
-        {/* Common Parts Inventory */}
-        <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden' }}>
-          <Box sx={{ px: 2.5, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <WarningAmberOutlinedIcon sx={{ fontSize: 20, color: theme.palette.text.secondary }} />
-              <Typography sx={{ fontSize: '15px', fontWeight: 600 }}>Common Parts Inventory</Typography>
-            </Box>
-            <Button size="small" sx={{ fontSize: '12px' }}>View Full Inventory</Button>
-          </Box>
-          <Divider />
-          <Box sx={{ p: 2.5, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 2 }}>
-            {INVENTORY_ITEMS.map((item) => {
-              const isLow = item.stock < item.minStock;
-              return (
-                <Paper key={item.sku} variant="outlined" sx={{ p: 2, borderRadius: '3px', borderColor: isLow ? '#ba1a1a40' : theme.palette.divider }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography sx={{ fontSize: '11px', color: theme.palette.text.secondary, fontWeight: 700, letterSpacing: '0.04em' }}>{item.category}</Typography>
-                    {isLow ? (
-                      <ErrorOutlineOutlinedIcon sx={{ fontSize: 16, color: '#ba1a1a' }} />
-                    ) : (
-                      <CheckCircleOutlineOutlinedIcon sx={{ fontSize: 16, color: '#006c47' }} />
-                    )}
-                  </Box>
-                  <Typography sx={{ fontSize: '14px', fontWeight: 600, mb: 1.5 }}>{item.name}</Typography>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', mb: 0.5 }}>
-                    <Typography sx={{ fontSize: '24px', fontWeight: 700, lineHeight: 1, color: isLow ? '#ba1a1a' : 'inherit' }}>{item.stock}</Typography>
-                    <Typography sx={{ fontSize: '12px', color: theme.palette.text.secondary }}>Min: {item.minStock}</Typography>
-                  </Box>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={Math.min(100, (item.stock / item.minStock) * 100)} 
-                    color={isLow ? "error" : "primary"}
-                    sx={{ height: 4, borderRadius: 2 }} 
-                  />
-                </Paper>
-              )
-            })}
-          </Box>
-        </Paper>
-
-      {/* ── New Order Modal ── */}
+      {/* ── Modal (Create/Update) ── */}
       <Dialog open={openModal} onClose={handleCloseModal} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontSize: '16px', fontWeight: 600 }}>Create New Part Order</DialogTitle>
+        <DialogTitle sx={{ fontSize: '18px', fontWeight: 600, py: 2, px: 3 }}>
+          {modalMode === 'create' ? 'Add Inventory Item' : 'Update Inventory Item'}
+        </DialogTitle>
         <Divider />
-        <DialogContent>
-          <Box component="form" id="new-part-form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <TextField 
-              select
-              label="Ticket ID" name="ticketId" 
-              value={formData.ticketId} onChange={handleFormChange} 
-              fullWidth size="small" 
-              helperText={ticketLoading ? "Fetching ticket details..." : (isOutOfWarranty ? "Device is out of warranty. Returns disabled." : "Optional: Link this part to a specific ticket")}
-            >
-              <MenuItem value=""><em>None</em></MenuItem>
-              {tickets.map((ticket) => (
-                <MenuItem key={ticket.ticketId || ticket.id} value={ticket.ticketId || ticket.id}>
-                  {ticket.ticketId || ticket.id}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField 
-              label="Part Name" name="partName" required 
-              value={formData.partName} onChange={handleFormChange} 
-              fullWidth size="small" 
-            />
-            <TextField 
-              label="Quantity" name="quantity" type="number" required 
-              value={formData.quantity} onChange={handleFormChange} 
-              fullWidth size="small" inputProps={{ min: 1 }}
-            />
-            <TextField 
-              select
-              label="Device Type" name="deviceTypeId" required 
-              value={formData.deviceTypeId} onChange={handleFormChange} 
-              fullWidth size="small" 
-              disabled={!!formData.ticketId || ticketLoading}
-            >
-              <MenuItem value=""><em>None</em></MenuItem>
-              {deviceTypes.map((device) => (
-                <MenuItem key={device.deviceTypeId} value={device.deviceTypeId}>
-                  {device.deviceTypeName}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField 
-              select
-              label="Status" name="statusId" required 
-              value={formData.statusId} onChange={handleFormChange} 
-              fullWidth size="small" 
-            >
-              <MenuItem value=""><em>None</em></MenuItem>
-              {statuses.map((status) => (
-                <MenuItem key={status.statusId} value={status.statusId}>
-                  {status.statusName}
-                </MenuItem>
-              ))}
-            </TextField>
-            <FormControlLabel
-              control={
-                <Checkbox 
-                  name="returned" 
-                  checked={formData.returned} 
-                  onChange={handleFormChange} 
-                  color="primary"
-                  disabled={isOutOfWarranty}
+        <DialogContent sx={{ px: 3, py: 2.5 }}>
+          <Box component="form" id="inventory-form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            
+            <Box>
+              <Typography sx={{ ...lbl, mt: 0 }}>Product Name</Typography>
+              <TextField 
+                name="productName" required 
+                value={formData.productName} onChange={handleFormChange} 
+                fullWidth size="small" 
+              />
+            </Box>
+
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <Box>
+                <Typography sx={{ ...lbl, mt: 0 }}>Brand</Typography>
+                <TextField 
+                  select
+                  name="brandId" required 
+                  value={formData.brandId} onChange={handleFormChange} 
+                  fullWidth size="small" 
+                >
+                  <MenuItem value=""><em>None</em></MenuItem>
+                  {brands.map((b) => (
+                    <MenuItem key={b.brandId || b.id} value={b.brandId || b.id}>
+                      {b.brandName || b.name}
+                    </MenuItem>
+                  ))}
+                  {brands.length === 0 && formData.brandId && (
+                    <MenuItem value={formData.brandId}>{formData.brandId}</MenuItem>
+                  )}
+                </TextField>
+              </Box>
+
+              <Box>
+                <Typography sx={{ ...lbl, mt: 0 }}>Branch</Typography>
+                <TextField 
+                  select
+                  name="branchId" required 
+                  value={formData.branchId} onChange={handleFormChange} 
+                  fullWidth size="small" 
+                >
+                  <MenuItem value=""><em>None</em></MenuItem>
+                  {branches.map((b) => (
+                    <MenuItem key={b.branchId || b.id} value={b.branchId || b.id}>
+                      {b.branchName || b.name}
+                    </MenuItem>
+                  ))}
+                  {branches.length === 0 && formData.branchId && (
+                    <MenuItem value={formData.branchId}>{formData.branchId}</MenuItem>
+                  )}
+                </TextField>
+              </Box>
+            </Box>
+
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2 }}>
+              <Box>
+                <Typography sx={{ ...lbl, mt: 0 }}>Buying Price</Typography>
+                <TextField 
+                  name="buyingPrice" type="number" required 
+                  value={formData.buyingPrice} onChange={handleFormChange} 
+                  fullWidth size="small" inputProps={{ min: 0, step: '0.01' }}
                 />
-              }
-              label="Returned to Vendor/Inventory"
-            />
+              </Box>
+              <Box>
+                <Typography sx={{ ...lbl, mt: 0 }}>Selling Price</Typography>
+                <TextField 
+                  name="sellingPrice" type="number" required 
+                  value={formData.sellingPrice} onChange={handleFormChange} 
+                  fullWidth size="small" inputProps={{ min: 0, step: '0.01' }}
+                />
+              </Box>
+              <Box>
+                <Typography sx={{ ...lbl, mt: 0 }}>Stock</Typography>
+                <TextField 
+                  name="stock" type="number" required 
+                  value={formData.stock} onChange={handleFormChange} 
+                  fullWidth size="small" inputProps={{ min: 0 }}
+                />
+              </Box>
+            </Box>
+
+            <Box>
+              <Typography sx={{ ...lbl, mt: 0 }}>Specification</Typography>
+              <TextField 
+                name="specification" 
+                value={formData.specification} onChange={handleFormChange} 
+                fullWidth size="small" 
+              />
+            </Box>
+
+            <Box>
+              <Typography sx={{ ...lbl, mt: 0 }}>Description</Typography>
+              <TextField 
+                name="descr" 
+                value={formData.descr} onChange={handleFormChange} 
+                fullWidth size="small" multiline rows={2}
+              />
+            </Box>
+
           </Box>
         </DialogContent>
         <Divider />
@@ -363,12 +391,30 @@ export default function InventoryPage() {
             Cancel
           </Button>
           <Button 
-            type="submit" form="new-part-form" 
+            type="submit" form="inventory-form" 
             variant="contained" 
             disabled={submitLoading}
             sx={{ textTransform: 'none', minWidth: 100 }}
           >
-            {submitLoading ? <CircularProgress size={24} color="inherit" /> : 'Create Order'}
+            {submitLoading ? <CircularProgress size={24} color="inherit" /> : (modalMode === 'create' ? 'Save Item' : 'Update Item')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Delete Confirmation Dialog ── */}
+      <Dialog open={openDeleteConfirm} onClose={() => setOpenDeleteConfirm(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 600, color: 'error.main' }}>Confirm Deletion</DialogTitle>
+        <Divider />
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete {selectedIds.length === 1 ? 'this inventory item' : `these ${selectedIds.length} inventory items`}? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <Divider />
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteLoading}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteLoading} sx={{ minWidth: 90 }}>
+             {deleteLoading ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>
