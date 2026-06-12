@@ -25,32 +25,45 @@ const findRouteInfo = (pathname) => {
 };
 
 export function TabNavigationProvider({ children }) {
-  const [tabs, setTabs] = useState([]);
-  const [activeTabId, setActiveTabId] = useState(null);
+  const [tabs, setTabs] = useState(() => {
+    try {
+      const savedTabs = localStorage.getItem('openTabs');
+      if (savedTabs) {
+        const parsedTabs = JSON.parse(savedTabs);
+        // Re-attach icons dynamically since they cannot be serialized
+        return parsedTabs.map((tab) => {
+          const routeInfo = findRouteInfo(tab.path);
+          return {
+            ...tab,
+            icon: routeInfo ? routeInfo.icon : null,
+          };
+        });
+      }
+      return [];
+    } catch (error) {
+      console.error('Failed to parse tabs from localStorage', error);
+      return [];
+    }
+  });
+
+  const [activeTabId, setActiveTabId] = useState(() => {
+    try {
+      const savedActiveTab = localStorage.getItem('activeTabId');
+      return savedActiveTab ? JSON.parse(savedActiveTab) : null;
+    } catch (error) {
+      return null;
+    }
+  });
+
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Load from localStorage on initial mount
-  useEffect(() => {
-    try {
-      const savedTabs = localStorage.getItem('openTabs');
-      const savedActiveTab = localStorage.getItem('activeTabId');
-      const initialTabs = savedTabs ? JSON.parse(savedTabs) : [];
-      
-      setTabs(initialTabs);
-      if (savedActiveTab) {
-        setActiveTabId(JSON.parse(savedActiveTab));
-      }
-    } catch (error) {
-      console.error("Failed to parse tabs from localStorage", error);
-      setTabs([]); // Reset to safe state
-    }
-  }, []);
-
   // Save to localStorage whenever tabs or active tab changes
   useEffect(() => {
-      localStorage.setItem('openTabs', JSON.stringify(tabs));
-      localStorage.setItem('activeTabId', JSON.stringify(activeTabId));   
+    // Strip icons before saving to prevent stringifying React elements
+    const tabsToSave = tabs.map(({ icon, ...rest }) => rest);
+    localStorage.setItem('openTabs', JSON.stringify(tabsToSave));
+    localStorage.setItem('activeTabId', JSON.stringify(activeTabId));
   }, [tabs, activeTabId]);
 
   // Sync with router to add/activate tabs on navigation
@@ -58,20 +71,23 @@ export function TabNavigationProvider({ children }) {
     const { pathname } = location;
     const routeInfo = findRouteInfo(pathname);
     if (routeInfo) {
-      const isTabOpen = tabs.some((tab) => tab.path === pathname);
-      if (!isTabOpen) {
-        const newTab = {
-          id: pathname,
-          path: pathname,
-          title: routeInfo.title,
-          icon: routeInfo.icon,
-          isClosable: routeInfo.isClosable !== false,
-        };
-        setTabs((prevTabs) => [...prevTabs, newTab]);
-      }
+      setTabs((prevTabs) => {
+        const isTabOpen = prevTabs.some((tab) => tab.path === pathname);
+        if (!isTabOpen) {
+          const newTab = {
+            id: pathname,
+            path: pathname,
+            title: routeInfo.title,
+            icon: routeInfo.icon,
+            isClosable: routeInfo.isClosable !== false,
+          };
+          return [...prevTabs, newTab];
+        }
+        return prevTabs;
+      });
       setActiveTabId(pathname);
     }
-  }, [location.pathname, tabs]);
+  }, [location.pathname]);
 
   const removeTab = useCallback((tabIdToRemove) => {
     const tabIndex = tabs.findIndex((tab) => tab.id === tabIdToRemove);

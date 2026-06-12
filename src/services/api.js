@@ -28,15 +28,41 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response && error.response.status === 401) {
-      // Clear token and redirect to login if token is invalid/expired
-      localStorage.removeItem('token');
-      // Using window.location to force redirect and clear state, 
-      // but inside React components, use the AuthContext logout method instead.
-      if (window.location.pathname !== '/login') {
-         window.location.href = '/login';
+    let message = 'An unexpected error occurred.';
+    let severity = 'error';
+    let status = null;
+
+    if (error.response) {
+      status = error.response.status;
+      if (status === 401) {
+        message = 'Session expired. Please log in again.';
+        localStorage.removeItem('token');
+        if (window.location.pathname !== '/login') {
+           window.location.href = '/login';
+        }
+      } else if (status === 403) {
+        message = 'You are not allowed to access this page.';
+      } else if (status === 400) {
+        message = error.response.data?.message || 'Bad Request. Please check your input.';
+        severity = 'warning';
+      } else if (status === 404) {
+        message = 'The requested resource was not found.';
+        severity = 'warning';
+      }else if (status === 409) {
+        message = 'The requested resource already exists.';
+        severity = 'warning';
+      } else if (status >= 500) {
+        message = 'Server error. Please try again later.';
       }
+    } else if (error.request) {
+      message = 'Network error. Please check your connection.';
     }
+
+    // Dispatch custom dynamic error event
+    window.dispatchEvent(new CustomEvent('api-error', { 
+      detail: { message, severity, status } 
+    }));
+
     return Promise.reject(error);
   }
 );

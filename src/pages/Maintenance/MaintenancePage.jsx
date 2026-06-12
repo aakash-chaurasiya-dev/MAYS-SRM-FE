@@ -15,10 +15,12 @@ import { useNavigate } from 'react-router-dom';
 const CONFIG_ITEMS = [
   { key: 'branch', label: 'Branch', desc: 'Manage workshop locations and centers.', icon: <StorefrontOutlinedIcon />, path: '/maintenance/branch' },
   { key: 'brand', label: 'Brand', desc: 'Configure manufacturer list (Apple, Dell, etc.)', icon: <CategoryOutlinedIcon />, path: '/maintenance/brands' },
+  { key: 'charge-type', label: 'Charge Type', desc: 'Define billing and service charge types.', icon: <PaidOutlinedIcon />, path: '/maintenance/charge-type' },
   { key: 'department', label: 'Department', desc: 'Hardware, Software, and Logistics units.', icon: <ApartmentOutlinedIcon />, path: '/maintenance/department' },
   { key: 'device', label: 'Device', desc: 'Specific hardware registry and assets.', icon: <DevicesOutlinedIcon />, path: '/maintenance/device' },
   { key: 'device-models', label: 'Device Models', desc: 'Detailed model numbers and specifications.', icon: <PhonelinkOutlinedIcon />, path: '/maintenance/device-models' },
   { key: 'device-type', label: 'Device Type', desc: 'Categorize by Laptop, Phone, Server, etc.', icon: <DevicesOtherOutlinedIcon />, path: '/maintenance/device-type' },
+  { key: 'payment-mode', label: 'Payment Mode', desc: 'Manage payment methods and terms.', icon: <PaidOutlinedIcon />, path: '/maintenance/payment-mode' },
   { key: 'service-charges', label: 'Service Charges', desc: 'Standard labor rates and repair pricing.', icon: <PaidOutlinedIcon />, path: '/maintenance/service-charges' },
   { key: 'status', label: 'Status', desc: 'Define ticket lifecycle and repair states.', icon: <ToggleOnOutlinedIcon />, path: '/maintenance/status' },
   { key: 'ticket-type', label: 'Ticket Type', desc: 'Warranty, RMA, Out-of-warranty repairs.', icon: <ConfirmationNumberOutlinedIcon />, path: '/maintenance/ticket-type' },

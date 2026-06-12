@@ -20,6 +20,8 @@ import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { useTheme } from '@mui/material/styles';
 import { useAppThemeContext } from '../../theme/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
+import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import Logo from '../Logo/Logo';
 
 const NAV_ITEMS = [
@@ -32,12 +34,15 @@ const INVENTORY_SUBS = [
 ];
 
 const MAINTENANCE_SUBS = [
+  { label: 'Overview', path: '/maintenance' },
   { label: 'Branch', path: '/maintenance/branch' },
   { label: 'Brand', path: '/maintenance/brands' },
+  { label: 'Charge Type', path: '/maintenance/charge-type' },
   { label: 'Department', path: '/maintenance/department' },
   { label: 'Device', path: '/maintenance/device' },
   { label: 'Device Models', path: '/maintenance/device-models' },
   { label: 'Device Type', path: '/maintenance/device-type' },
+  { label: 'Payment Mode', path: '/maintenance/payment-mode' },
   { label: 'Service Charges', path: '/maintenance/service-charges' },
   { label: 'Status', path: '/maintenance/status' },
   { label: 'Ticket Type', path: '/maintenance/ticket-type' },
@@ -46,6 +51,7 @@ const MAINTENANCE_SUBS = [
 const SECTION2 = [
   { label: 'Reports', icon: <AnalyticsOutlinedIcon />, path: '/reports' },
   { label: 'Employee Management', icon: <BadgeOutlinedIcon />, path: '/employees' },
+  { label: 'User Details', icon: <BadgeOutlinedIcon />, path: '/users' },
 ];
 
 const BOTTOM_ITEMS = [
@@ -61,6 +67,7 @@ const BILLING_SUBS = [
 export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose }) {
   const theme = useTheme();
   const { mode, toggleTheme } = useAppThemeContext();
+  const { logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [inventoryOpen, setInventoryOpen] = useState(location.pathname.startsWith('/inventory'));
@@ -157,7 +164,14 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose }) {
 
         {/* ── Maintenance (collapsible) ── */}
         <ListItemButton
-          onClick={() => { setMaintOpen(!maintOpen); if (!isMaintActive) handleNav('/maintenance'); }}
+          onClick={() => { 
+            if (location.pathname !== '/maintenance') {
+              handleNav('/maintenance');
+              setMaintOpen(true);
+            } else {
+              setMaintOpen(!maintOpen);
+            }
+          }}
           sx={navBtnSx(isMaintActive)}
         >
           <ListItemIcon sx={iconSx(isMaintActive)}><BuildOutlinedIcon /></ListItemIcon>
@@ -249,6 +263,12 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose }) {
             {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
           </ListItemIcon>
           <ListItemText primary={mode === 'dark' ? 'Light Mode' : 'Dark Mode'} sx={textSx} primaryTypographyProps={{ fontSize: '13px', fontWeight: 500, color: theme.palette.text.secondary }} />
+        </ListItemButton>
+        <ListItemButton onClick={() => { logout(); navigate('/login'); }} sx={navBtnSx(false)}>
+          <ListItemIcon sx={iconSx(false)}>
+            <LogoutOutlinedIcon />
+          </ListItemIcon>
+          <ListItemText primary="Logout" sx={textSx} primaryTypographyProps={{ fontSize: '13px', fontWeight: 500, color: theme.palette.text.secondary }} />
         </ListItemButton>
       </MuiList>
     </Box>

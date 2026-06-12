@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Box, Paper, Typography, TextField, Button, Divider, Chip,
-  Stack, Avatar, IconButton, MenuItem
+  Stack, Avatar, IconButton, MenuItem, Autocomplete
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import LaptopMacIcon from '@mui/icons-material/LaptopMac';
@@ -20,15 +20,6 @@ import DialogContent from '@mui/material/DialogContent';
 import api from '../../services/api';
 
 const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
-
-// const MILESTONES = [
-//   { label: 'Check-In', date: 'Oct 24, 2023', done: true },
-//   { label: 'Triage', date: 'Oct 24, 2023', done: true },
-//   { label: 'Diagnosis', date: 'Oct 25, 2023', done: true },
-//   { label: 'Repair', date: 'Pending', done: false },
-//   { label: 'QA Check', date: '—', done: false },
-//   { label: 'Ready for Pickup', date: '—', done: false },
-// ];
 
 const formatTimestamp = (value) => {
   if (!value) {
@@ -106,6 +97,14 @@ export default function TicketDetailPage() {
     departmentId: '',
     ticketStatusId: '',
   });
+
+  // Dynamic entity edit states
+  const [isCustomerEditMode, setIsCustomerEditMode] = useState(false);
+  const [isDeviceEditMode, setIsDeviceEditMode] = useState(false);
+  const [customerOptions, setCustomerOptions] = useState([]);
+  const [deviceOptions, setDeviceOptions] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedDevice, setSelectedDevice] = useState(null);
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -279,6 +278,94 @@ export default function TicketDetailPage() {
     }
   };
 
+  const handleEditCustomerClick = async () => {
+    setIsCustomerEditMode(true);
+    try {
+      const res = await api.get('/users');
+      setCustomerOptions(Array.isArray(res.data) ? res.data : (res.data?.data || []));
+      const current = (Array.isArray(res.data) ? res.data : (res.data?.data || [])).find(u => u.userId === ticket?.userRefNo || String(u.userId) === String(ticket?.userRefNo));
+      setSelectedCustomer(current || null);
+    } catch (err) {
+      console.error('Failed to fetch customers', err);
+    }
+  };
+
+  const handleSaveCustomer = async () => {
+    try {
+      setLoading(true);
+      const updatedTicket = {
+        ...ticket,
+        userRefNo: selectedCustomer ? String(selectedCustomer.userId) : ticket?.userRefNo,
+      };
+      await api.put(`/tickets/${id}`, updatedTicket);
+      setIsCustomerEditMode(false);
+      await loadTicketDetails();
+      window.dispatchEvent(new CustomEvent('app-notification', {
+        detail: { message: 'Customer linked successfully!', severity: 'success' }
+      }));
+    } catch (err) {
+      console.error('Failed to update customer', err);
+      setError(err.response?.data?.message || 'Unable to update customer');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditDeviceClick = async () => {
+    setIsDeviceEditMode(true);
+    try {
+      const res = await api.get('/devices');
+      // 1. Extract the array of devices from the API response
+      let devicesList = [];
+      if (Array.isArray(res.data)) {
+        devicesList = res.data;
+      } else if (res.data && Array.isArray(res.data.data)) {
+        devicesList = res.data.data;
+      }
+      setDeviceOptions(devicesList);
+
+      // 2. Find the device that matches the ticket's current serial number
+      let currentDevice = null;
+      for (const device of devicesList) {
+        console.log("device", device.serialNo)
+        const deviceSerial = String(device.serialNo);
+        const ticketSerial = String(ticket?.deviceSerialNo);
+
+        if (deviceSerial === ticketSerial) {
+          currentDevice = device;
+          break; // Stop searching once we found it
+        }
+      }
+      setSelectedDevice(currentDevice);
+      console.log("current", currentDevice);
+      console.log("deviceOptions", devicesList);
+    } catch (err) {
+      console.error('Failed to fetch devices', err);
+    }
+  };
+
+  const handleSaveDevice = async () => {
+    try {
+      setLoading(true);
+      const updatedTicket = {
+        ...ticket,
+        deviceSerialNo: selectedDevice ? (selectedDevice.serialNo || selectedDevice.deviceSerialNo) : ticket?.deviceSerialNo,
+        deviceModelId: selectedDevice ? (selectedDevice.ModelId || selectedDevice.deviceModelId) : ticket?.deviceModelId,
+      };
+      await api.put(`/tickets/${id}`, updatedTicket);
+      setIsDeviceEditMode(false);
+      await loadTicketDetails();
+      window.dispatchEvent(new CustomEvent('app-notification', {
+        detail: { message: 'Device linked successfully!', severity: 'success' }
+      }));
+    } catch (err) {
+      console.error('Failed to update device', err);
+      setError(err.response?.data?.message || 'Unable to update device');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const lbl = {
     fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary,
     textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.5,
@@ -395,21 +482,46 @@ export default function TicketDetailPage() {
           <Stack direction="row" spacing={2.5} flexWrap="wrap" useFlexGap>
             {/* Customer Information */}
             <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5,  width: '50%' }}>
-              <Box sx={{ px: 2.5, py: 1.8, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <PersonOutlinedIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
-                <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Customer Information</Typography>
+              <Box sx={{ px: 2.5, py: 1.8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <PersonOutlinedIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
+                  <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Customer Information</Typography>
+                </Box>
+                {!isCustomerEditMode ? (
+                  <Button size="small" variant="text" sx={{ fontSize: '11px', minWidth: 0, p: '2px 6px' }} onClick={handleEditCustomerClick}>Edit</Button>
+                ) : (
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button size="small" variant="text" sx={{ fontSize: '11px', minWidth: 0, p: '2px 6px' }} onClick={() => setIsCustomerEditMode(false)}>Cancel</Button>
+                    <Button size="small" variant="contained" sx={{ fontSize: '11px', minWidth: 0, p: '2px 6px' }} onClick={handleSaveCustomer}>Save</Button>
+                  </Box>
+                )}
               </Box>
               <Divider />
               <Box sx={{ p: 2.5 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                  <Avatar sx={{ width: 36, height: 36, bgcolor: theme.palette.primary.main, fontSize: '0.85rem', fontWeight: 700 }}>{customerInitials}</Avatar>
-                  <Box>
-                    <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>{valueOrNA(customerName)}</Typography>
-                    <Chip label="Professional Client" size="small" sx={{ fontSize: '10px', height: 18, borderRadius: '2px', bgcolor: `${theme.palette.secondary.main}14`, color: theme.palette.secondary.main }} />
+                {isCustomerEditMode ? (
+                  <Box sx={{ mb: 2 }}>
+                    <Autocomplete
+                      options={customerOptions}
+                      getOptionLabel={(option) => `${option.firstName || ''} ${option.lastName || ''} - ${option.mobileNo || option.emailId || ''}`}
+                      value={selectedCustomer}
+                      onChange={(e, newValue) => setSelectedCustomer(newValue)}
+                      renderInput={(params) => <TextField {...params} label="Search Customer" size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />}
+                    />
                   </Box>
-                </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                    <Avatar sx={{ width: 36, height: 36, bgcolor: theme.palette.primary.main, fontSize: '0.85rem', fontWeight: 700 }}>{customerInitials}</Avatar>
+                    <Box>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>{valueOrNA(customerName)}</Typography>
+                      <Chip label="Professional Client" size="small" sx={{ fontSize: '10px', height: 18, borderRadius: '2px', bgcolor: `${theme.palette.secondary.main}14`, color: theme.palette.secondary.main }} />
+                    </Box>
+                  </Box>
+                )}
+                
                 <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'nowrap' }}>
-                  {[['Email', customerEmail], ['Phone', customerPhone], ['Branch', branch]].map(([l, v]) => (
+                  {[['Email', isCustomerEditMode ? (selectedCustomer?.emailId || 'Not available') : customerEmail], 
+                    ['Phone', isCustomerEditMode ? (selectedCustomer?.mobileNo || 'Not available') : customerPhone], 
+                    ['Branch', branch]].map(([l, v]) => (
                     <Box key={l} sx={{ mb: 1.2 }}>
                       <Typography sx={lbl}>{l}</Typography>
                       <Typography sx={{ fontSize: '13px' }}>{v}</Typography>
@@ -421,14 +533,39 @@ export default function TicketDetailPage() {
 
             {/* Device Details */}
             <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5, width: '50%' }}>
-              <Box sx={{ px: 2.5, py: 1.8, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <LaptopMacIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
-                <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Device Details</Typography>
+              <Box sx={{ px: 2.5, py: 1.8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <LaptopMacIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
+                  <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Device Details</Typography>
+                </Box>
+                {!isDeviceEditMode ? (
+                  <Button size="small" variant="text" sx={{ fontSize: '11px', minWidth: 0, p: '2px 6px' }} onClick={handleEditDeviceClick}>Edit</Button>
+                ) : (
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button size="small" variant="text" sx={{ fontSize: '11px', minWidth: 0, p: '2px 6px' }} onClick={() => setIsDeviceEditMode(false)}>Cancel</Button>
+                    <Button size="small" variant="contained" sx={{ fontSize: '11px', minWidth: 0, p: '2px 6px' }} onClick={handleSaveDevice}>Save</Button>
+                  </Box>
+                )}
               </Box>
               <Divider />
               <Box sx={{ p: 2.5 }}>
+                {isDeviceEditMode && (
+                  <Box sx={{ mb: 2 }}>
+                    <Autocomplete
+                      options={deviceOptions}
+                      getOptionLabel={(option) => `${option.serialNo || ''} - ${option.ModelName || ''}`}
+                      value={selectedDevice}
+                      onChange={(e, newValue) => setSelectedDevice(newValue)}
+                      renderInput={(params) => <TextField {...params} label="Search Device by S/N" size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />}
+                    />
+                  </Box>
+                )}
                 <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                  {[['Brand', brand], ['Model', model], ['Serial No.', serialNo], ['Warranty', warranty], ['Type', ticketType]].map(([l, v]) => (
+                  {[['Brand', isDeviceEditMode ? (selectedDevice?.BrandName || selectedDevice?.deviceBrandName || 'Not available') : brand], 
+                    ['Model', isDeviceEditMode ? (selectedDevice?.ModelName || selectedDevice?.deviceModelName || 'Not available') : model], 
+                    ['Serial No.', isDeviceEditMode ? (selectedDevice?.serialNo || selectedDevice?.deviceSerialNo || 'Not available') : serialNo], 
+                    ['Warranty', warranty], 
+                    ['Type', isDeviceEditMode ? (selectedDevice?.TypeName || selectedDevice?.deviceTypeName || 'Not available') : ticketType]].map(([l, v]) => (
                     <Box key={l} sx={{ mb: 1.2, width: '33.33%' }}>
                       <Typography sx={lbl}>{l}</Typography>
                       <Typography sx={{ fontSize: '13px', fontFamily: l === 'Serial No.' ? '"JetBrains Mono", monospace' : 'inherit' }}>{v}</Typography>
