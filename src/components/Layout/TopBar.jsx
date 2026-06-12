@@ -13,17 +13,25 @@ import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNone
 import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useTheme } from '@mui/material/styles';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function TopBar({ onMenuClick }) {
   const theme = useTheme();
+  const navigate = useNavigate();
   const { user } = useAuth();
 
   // Dynamically extract user details from the decoded JWT token
   // Using fallbacks in case the JWT does not contain these specific properties
-  const userName = user?.name || 'NA';
-  const userRole = user?.role || 'N/A';
-  const userInitials = userName.substring(0, 2).toUpperCase();
+  const userName = user?.name || 'Unknown User';
+  const rawRole = user?.roles?.[0]?.authority || user?.role || 'User';
+  const userRole = rawRole.replace('ROLE_', '');
+  const userInitials = userName
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase();
 
   return (
     <Box
@@ -96,7 +104,21 @@ export default function TopBar({ onMenuClick }) {
       </Tooltip>
 
       {/* ── User avatar ── */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: { xs: 0, sm: 1 } }}>
+      <Box 
+        onClick={() => navigate('/profile')}
+        sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1, 
+          ml: { xs: 0, sm: 1 },
+          cursor: 'pointer',
+          padding: '4px 8px',
+          borderRadius: 1,
+          '&:hover': {
+            backgroundColor: theme.palette.action.hover
+          }
+        }}
+      >
         <Avatar
           sx={{
             width: 32,

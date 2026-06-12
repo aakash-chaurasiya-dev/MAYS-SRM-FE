@@ -18,18 +18,14 @@ export const AuthProvider = ({ children }) => {
           const decoded = jwtDecode(token);
           // Check if token is expired
           if (decoded.exp * 1000 < Date.now()) {
-            localStorage.removeItem('token');
-            setUser(null);
-            setIsAuthenticated(false);
+            logout();
           } else {
             setUser(decoded);
             setIsAuthenticated(true);
           }
         } catch (error) {
           console.error('Invalid token format', error);
-          localStorage.removeItem('token');
-          setUser(null);
-          setIsAuthenticated(false);
+          logout();
         }
       }
       setLoading(false);
