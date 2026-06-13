@@ -31,6 +31,7 @@ import CreateInvoicePage from './pages/Billing/CreateInvoicePage';
 import OrderPartsPage from './pages/Inventory/OrderPartsPage';
 import EmployeeDetailsPage from './pages/EmployeeDetails/EmployeeDetails';
 import UserDetailsPage from './pages/UserDetails/UserDetailsPage';
+import ProfilePage from './pages/Profile/ProfilePage';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -51,6 +52,7 @@ function App() {
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/diagnosis" element={<DiagnosisPage />} />
                 <Route path="/inventory" element={<InventoryPage />} />
                 <Route path="/inventory/parts" element={<OrderPartsPage />} />
