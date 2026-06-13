@@ -25,7 +25,7 @@ import PaymentModeManagementPage from './pages/Maintenance/PaymentMode/PaymentMo
 import ServiceChargesManagementPage from './pages/Maintenance/ServiceCharges/ServiceChargesManagementPage';
 import StatusManagementPage from './pages/Maintenance/Status/StatusManagementPage';
 import TicketTypeManagementPage from './pages/Maintenance/TicketType/TicketTypeManagementPage';
-import InvoiceHistoryPage from './pages/Billing/InvoiceHistoryPage';
+import BillingDetailsPage from './pages/Billing/BillingDetailsPage';
 import CreateInvoicePage from './pages/Billing/CreateInvoicePage';
 import OrderPartsPage from './pages/Inventory/OrderPartsPage';
 import EmployeeDetailsPage from './pages/EmployeeDetails/EmployeeDetails';
@@ -75,8 +75,8 @@ function App() {
                 <Route path="/maintenance/ticket-type" element={<TicketTypeManagementPage />} />
 
                 {/* Billing Routes */}
-                <Route path="/billing" element={<InvoiceHistoryPage />} />
-                <Route path="/billing/invoice-history" element={<InvoiceHistoryPage />} />
+                <Route path="/billing" element={<Navigate to="/billing/billing-details" replace />} />
+                <Route path="/billing/billing-details" element={<BillingDetailsPage />} />
                 <Route path="/billing/create" element={<CreateInvoicePage />} />
 
                 {/* Placeholder routes for navigation items */}

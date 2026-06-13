@@ -449,6 +449,7 @@ export default function TicketDetailPage() {
       )}
 
       <Box sx={{ display: 'flex', justifyContent:'flex-end', gap: 1.5, mb: 3 }}>
+        <Button variant="outlined" color="primary" size="small" sx={{ fontSize: '12px' }} onClick={() => navigate(`/billing/create?ticketId=${id}`)}>Billing Details</Button>
         {!isEditMode ? (
           <Button variant="outlined" size="small" startIcon={<EditOutlinedIcon />} sx={{ fontSize: '12px' }} onClick={handleEditClick}>Edit</Button>
         ) : (

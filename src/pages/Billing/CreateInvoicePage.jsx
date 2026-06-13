@@ -1,4 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import api from '../../services/api';
 import {
   Box, Paper, Typography, TextField, Button, Select, MenuItem,
   FormControl, InputLabel, Table, TableHead, TableBody, TableRow, TableCell,
@@ -19,13 +21,12 @@ const FIELD_SX = { bgcolor: 'background.paper' };
 const READONLY_SX = { bgcolor: 'action.hover', '& fieldset': { borderColor: 'divider' } };
 
 const defaultLineItem = () => ({
-  id: Date.now() + Math.random(),
-  description: '',
-  hsn: '',
-  gstPct: 18,
-  qty: 1,
-  rate: 0,
-  disc: 0,
+  id: crypto.randomUUID(),
+  chargeTypeId: '',
+  productId: '',
+  serviceChargeId: '',
+  statusId: '',
+  amount: 0,
 });
 
 /* ── Section Card wrapper ── */
@@ -282,27 +283,64 @@ function InvoicePreview({ open, onClose, form, items, totals }) {
   );
 }
 
+/* ── Number to Words Helper ── */
+const numberToWords = (num) => {
+  const a = ['','One ','Two ','Three ','Four ', 'Five ','Six ','Seven ','Eight ','Nine ','Ten ','Eleven ','Twelve ','Thirteen ','Fourteen ','Fifteen ','Sixteen ','Seventeen ','Eighteen ','Nineteen '];
+  const b = ['', '', 'Twenty','Thirty','Forty','Fifty', 'Sixty','Seventy','Eighty','Ninety'];
+  if ((num = num.toString()).length > 9) return 'Overflow';
+  const n = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+  if (!n) return '';
+  let str = '';
+  str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + 'Crore ' : '';
+  str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + 'Lakh ' : '';
+  str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + 'Thousand ' : '';
+  str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + 'Hundred ' : '';
+  str += (n[5] != 0) ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) : '';
+  return str.trim() ? str.trim() + ' Only' : 'Zero';
+};
+
 /* ── Main Page ── */
 export default function CreateInvoicePage() {
   const theme = useTheme();
 
-  const [form, setForm] = useState({
-    ticketId: '', serviceType: 'Hardware Repair', deviceName: '',
-    customerName: '', contactNumber: '',
-    billingAddress: '', gstin: '', stateCode: '27 (Maharashtra)',
-    invoiceNo: `WP-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`,
-    invoiceDate: new Date().toISOString().split('T')[0],
-    deliveryNote: '', supplierRef: '', paymentTerms: 'Immediate',
-    terms: '1. Goods once sold will not be taken back.\n2. Warranty as per manufacturer policy.\n3. Please carry original invoice for warranty claims.\n4. Subject to Mumbai Jurisdiction.',
-    amountInWords: '',
-  });
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const ticketId = searchParams.get('ticketId');
 
-  const [items, setItems] = useState([
-    { ...defaultLineItem(), description: 'System Maintenance & Deep Cleaning', hsn: '9987', gstPct: 18, qty: 1, rate: 1500, disc: 0 },
-    { ...defaultLineItem(), description: '512GB NVMe M.2 SSD Upgrade', hsn: '8471', gstPct: 18, qty: 1, rate: 4200, disc: 5 },
-  ]);
+  const [chargeTypes, setChargeTypes] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [services, setServices] = useState([]);
+  const [statuses, setStatuses] = useState([]);
+  const [items, setItems] = useState([]);
+  useEffect(() => {
+    api.get('/charge-types').then(res => setChargeTypes(res.data?.data || res.data || []));
+    api.get('/inventory').then(res => setProducts(res.data?.data || res.data || []));
+    api.get('/service-charges').then(res => setServices(res.data?.data || res.data || []));
+    api.get('/statuses/type/Billing').then(res => {
+      const allStatus = res.data?.data || res.data || [];
+      setStatuses(allStatus);
+    });
+
+    if (ticketId) {
+      api.get(`/tickets/${ticketId}`).then(res => {
+         const t = res.data?.data || res.data;
+         if (t) {
+           setForm(f => ({ ...f, ticketId: t.ticketId, customerName: (t.userFirstName || '') + ' ' + (t.userLastName || ''), contactNumber: t.userMobileNo || '', deviceName: t.deviceModelName || '' }));
+         }
+      }).catch(console.error);
+      
+      api.get(`/billing/ticket/${ticketId}`).then(res => {
+         const charges = res.data?.data || res.data || [];
+         setItems(charges.map(i => ({ ...i, id: i.billingId || crypto.randomUUID() })));
+         console.log("charges",res);
+      }).catch(console.error);
+    }
+  }, [ticketId]);
+
+
 
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [form, setForm] = useState({});
 
   const setField = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
 
@@ -310,23 +348,77 @@ export default function CreateInvoicePage() {
     setItems(prev => prev.map(item => item.id === id ? { ...item, [key]: value } : item));
   }, []);
 
-  const addItem = () => setItems(prev => [...prev, defaultLineItem()]);
+  const addItem = () => {
+    const pendingStatus = statuses.find(s => s.statusName?.toLowerCase() === 'pending');
+    setItems(prev => [...prev, { ...defaultLineItem(), statusId: pendingStatus ? pendingStatus.statusId : '' }]);
+  };
   const removeItem = (id) => setItems(prev => prev.filter(i => i.id !== id));
 
+  const handleProductChange = (id, productId) => {
+    const product = products.find(p => p.productId === productId);
+    setItems(prev => prev.map(item => item.id === id ? { ...item, productId, amount: product ? product.sellingPrice : item.amount } : item));
+  };
+
+  const handleServiceChange = (id, serviceChargeId) => {
+    const service = services.find(s => s.chargeId === serviceChargeId);
+    setItems(prev => prev.map(item => item.id === id ? { ...item, serviceChargeId, amount: service ? service.amount : item.amount } : item));
+  };
+ 
+  const getChargeTypeInfo = (chargeTypeId) => {
+    const ct = chargeTypes.find(c => c.chargeTypeId === chargeTypeId);
+    if (!ct) return { isProduct: false, isService: false };
+    const name = (ct.chargeName || '').toLowerCase();
+    const isProduct = name.includes('product') ;
+    const isService = name.includes('service') ;
+    return { isProduct, isService };
+  };
+
+  const updateChargeType = (id, newTypeId) => {
+    setItems(prev => prev.map(item => {
+      if (item.id === id) {
+        return { ...item, chargeTypeId: newTypeId, productId: '', serviceChargeId: '' };
+      }
+      return item;
+    }));
+  };
+
+  const handleUpdate = async () => {
+    if (!ticketId) return alert('No Ticket ID found!');
+    try {
+      const payload = items.map(i => ({
+        billingId: i.billingId,
+        chargeTypeId: i.chargeTypeId || null,
+        productId: i.productId || null,
+        serviceChargeId: i.serviceChargeId || null,
+        statusId: i.statusId || null,
+        amount: i.amount || 0,
+      }));
+      await api.put(`/billing/ticket/${ticketId}/charges`, payload);
+      alert('Charges updated successfully!');
+    } catch (e) {
+      console.error(e);
+      alert('Failed to update charges');
+    }
+  };
+
   // Compute totals
-  const subTotal = items.reduce((sum, i) => sum + (Number(i.qty) * Number(i.rate) * (1 - Number(i.disc) / 100)), 0);
-  const cgst = subTotal * 0.09;
-  const sgst = subTotal * 0.09;
+  const subTotal = items.reduce((sum, i) => sum + Number(i.amount || 0), 0);
+  const cgst = 0;
+  const sgst = 0;
   const grandRaw = subTotal + cgst + sgst;
   const grandTotal = Math.round(grandRaw);
   const roundOff = Number((grandRaw - grandTotal).toFixed(2));
   const totals = { subTotal, cgst, sgst, grandTotal, roundOff };
   const fmtINR = (n) => `₹ ${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 
+  useEffect(() => {
+    setForm(f => ({ ...f, amountInWords: numberToWords(grandTotal) }));
+  }, [grandTotal]);
+
   const inputProps = (key, readOnly = false) => ({
     size: 'small',
     fullWidth: true,
-    value: form[key],
+    value: form[key] || '',
     onChange: readOnly ? undefined : setField(key),
     InputProps: { readOnly, sx: readOnly ? READONLY_SX : FIELD_SX },
   });
@@ -344,7 +436,7 @@ export default function CreateInvoicePage() {
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 1.5 }}>
-          <Button variant="outlined" color="inherit" size="small">Save Draft</Button>
+          <Button variant="outlined" color="primary" size="small" onClick={handleUpdate}>Update</Button>
           <Button variant="contained" color="inherit"
             sx={{ bgcolor: '#003d9b', color: '#91afff', '&:hover': { bgcolor: '#002d8a' } }}
             size="small" startIcon={<VisibilityOutlinedIcon />}
@@ -362,7 +454,7 @@ export default function CreateInvoicePage() {
             <TextField label="Ticket ID" placeholder="Search Ticket ID…" {...inputProps('ticketId')} />
             <FormControl size="small" fullWidth>
               <InputLabel>Service Type</InputLabel>
-              <Select label="Service Type" value={form.serviceType} onChange={setField('serviceType')} sx={FIELD_SX}>
+              <Select label="Service Type" value={form.serviceType || ''} onChange={setField('serviceType')} sx={FIELD_SX}>
                 <MenuItem value="Hardware Repair">Hardware Repair</MenuItem>
                 <MenuItem value="Annual Maintenance">Annual Maintenance</MenuItem>
                 <MenuItem value="Software Installation">Software Installation</MenuItem>
@@ -392,7 +484,7 @@ export default function CreateInvoicePage() {
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
                 <TextField label="Invoice Number" {...inputProps('invoiceNo')}
                   inputProps={{ style: { fontFamily: 'monospace' } }} />
-                <TextField label="Invoice Date" type="date" {...inputProps('invoiceDate')}
+                <TextField type="date" {...inputProps('invoiceDate')}
                   InputLabelProps={{ shrink: true }} />
               </Box>
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
@@ -401,7 +493,7 @@ export default function CreateInvoicePage() {
               </Box>
               <FormControl size="small" fullWidth>
                 <InputLabel>Payment Terms</InputLabel>
-                <Select label="Payment Terms" value={form.paymentTerms} onChange={setField('paymentTerms')} sx={FIELD_SX}>
+                <Select label="Payment Terms" value={form.paymentTerms || ''} onChange={setField('paymentTerms')} sx={FIELD_SX}>
                   <MenuItem value="Immediate">Immediate</MenuItem>
                   <MenuItem value="Net 15 Days">Net 15 Days</MenuItem>
                   <MenuItem value="Net 30 Days">Net 30 Days</MenuItem>
@@ -412,11 +504,11 @@ export default function CreateInvoicePage() {
           </SectionCard>
         </Box>
 
-        {/* ── Service & Part Details ── */}
+        {/* ── Charge Details ── */}
         <Paper elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: '12px', overflow: 'hidden' }}>
           <Box sx={{ px: 3, py: 2, bgcolor: theme.palette.action.hover, borderBottom: `1px solid ${theme.palette.divider}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'primary.main' }}>
-              Service &amp; Part Details
+              Charge Details
             </Typography>
             <Button size="small" startIcon={<AddOutlinedIcon />} onClick={addItem}>Add Row</Button>
           </Box>
@@ -424,8 +516,8 @@ export default function CreateInvoicePage() {
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ bgcolor: theme.palette.background.default }}>
-                  {['SR', 'Description', 'HSN', 'GST %', 'Qty', 'Rate (₹)', 'Disc %', 'Amount'].map((h, i) => (
-                    <TableCell key={h} align={i === 7 ? 'right' : 'left'}
+                  {['SR', 'Charge Type', 'Product', 'Service', 'Status', 'Amount (₹)'].map((h, i) => (
+                    <TableCell key={h} align={i === 5 ? 'right' : 'left'}
                       sx={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', py: 1.5, whiteSpace: 'nowrap' }}>
                       {h}
                     </TableCell>
@@ -435,42 +527,42 @@ export default function CreateInvoicePage() {
               </TableHead>
               <TableBody>
                 {items.map((item, idx) => {
-                  const lineAmt = Number(item.qty) * Number(item.rate) * (1 - Number(item.disc) / 100);
                   return (
                     <TableRow key={item.id} hover>
                       <TableCell sx={{ fontFamily: 'monospace', width: 40, color: 'text.secondary' }}>{String(idx + 1).padStart(2, '0')}</TableCell>
-                      <TableCell sx={{ minWidth: 260 }}>
-                        <TextField variant="standard" fullWidth value={item.description} size="small"
-                          onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                          InputProps={{ disableUnderline: false }} />
+                      <TableCell sx={{ minWidth: 150 }}>
+                        <Select variant="standard" fullWidth value={item.chargeTypeId || ''} size="small" disableUnderline
+                          onChange={(e) => updateChargeType(item.id, e.target.value)}>
+                          {chargeTypes.map(ct => <MenuItem key={ct.chargeTypeId} value={ct.chargeTypeId}>{ct.chargeName}</MenuItem>)}
+                        </Select>
                       </TableCell>
-                      <TableCell sx={{ width: 80 }}>
-                        <TextField variant="standard" value={item.hsn} size="small"
-                          onChange={(e) => updateItem(item.id, 'hsn', e.target.value)}
-                          InputProps={{ disableUnderline: false }} sx={{ width: 70 }} />
+                      <TableCell sx={{ minWidth: 150 }}>
+                        <Select variant="standard" fullWidth value={item.productId || ''} size="small" disableUnderline
+                          disabled={!getChargeTypeInfo(item.chargeTypeId).isProduct}
+                          onChange={(e) => handleProductChange(item.id, e.target.value)}>
+                          <MenuItem value=""><em>None</em></MenuItem>
+                          {products.map(p => <MenuItem key={p.productId} value={p.productId}>{p.productName}</MenuItem>)}
+                        </Select>
                       </TableCell>
-                      <TableCell sx={{ width: 70 }}>
-                        <TextField variant="standard" type="number" value={item.gstPct} size="small"
-                          onChange={(e) => updateItem(item.id, 'gstPct', e.target.value)}
-                          InputProps={{ disableUnderline: false }} sx={{ width: 60 }} />
+                      <TableCell sx={{ minWidth: 150 }}>
+                        <Select variant="standard" fullWidth value={item.serviceChargeId || ''} size="small" disableUnderline
+                          disabled={!getChargeTypeInfo(item.chargeTypeId).isService}
+                          onChange={(e) => handleServiceChange(item.id, e.target.value)}>
+                          <MenuItem value=""><em>None</em></MenuItem>
+                          {services.map(s => <MenuItem key={s.chargeId} value={s.chargeId}>{s.descr}</MenuItem>)}
+                        </Select>
                       </TableCell>
-                      <TableCell sx={{ width: 70 }}>
-                        <TextField variant="standard" type="number" value={item.qty} size="small"
-                          onChange={(e) => updateItem(item.id, 'qty', e.target.value)}
-                          InputProps={{ disableUnderline: false }} sx={{ width: 60 }} />
+                      <TableCell sx={{ minWidth: 120 }}>
+                        <Select variant="standard" fullWidth value={item.statusId || ''} size="small" disableUnderline
+                          onChange={(e) => updateItem(item.id, 'statusId', e.target.value)}>
+                          <MenuItem value=""><em>None</em></MenuItem>
+                          {statuses.map(s => <MenuItem key={s.statusId} value={s.statusId}>{s.statusName}</MenuItem>)}
+                        </Select>
                       </TableCell>
-                      <TableCell sx={{ width: 110 }}>
-                        <TextField variant="standard" type="number" value={item.rate} size="small"
-                          onChange={(e) => updateItem(item.id, 'rate', e.target.value)}
-                          InputProps={{ disableUnderline: false }} sx={{ width: 100 }} />
-                      </TableCell>
-                      <TableCell sx={{ width: 70 }}>
-                        <TextField variant="standard" type="number" value={item.disc} size="small"
-                          onChange={(e) => updateItem(item.id, 'disc', e.target.value)}
-                          InputProps={{ disableUnderline: false }} sx={{ width: 60 }} />
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontFamily: 'monospace', fontWeight: 600, width: 110 }}>
-                        {lineAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      <TableCell align="right" sx={{ width: 110 }}>
+                        <TextField variant="standard" type="number" value={item.amount} size="small"
+                          onChange={(e) => updateItem(item.id, 'amount', e.target.value)}
+                          InputProps={{ disableUnderline: true, inputProps: { style: { textAlign: 'right' } } }} sx={{ width: 100 }} />
                       </TableCell>
                       <TableCell sx={{ width: 40 }}>
                         <IconButton size="small" onClick={() => removeItem(item.id)}
