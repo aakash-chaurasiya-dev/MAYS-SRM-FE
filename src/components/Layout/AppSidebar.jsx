@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box, Drawer, List as MuiList, ListItemButton, ListItemIcon, ListItemText,
-  Typography, Divider, Button, Collapse,
+  Divider, Button, Collapse,
 } from '@mui/material';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
@@ -11,7 +11,6 @@ import AnalyticsOutlinedIcon from '@mui/icons-material/AnalyticsOutlined';
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined';
-import BuildCircleOutlinedIcon from '@mui/icons-material/BuildCircleOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import AddIcon from '@mui/icons-material/Add';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -116,8 +115,8 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose }) {
       }),
     }}>
       {/* ── Logo / Brand ── */}
-      <Box sx={{ px: desktopOpen ? 2 : 1.5, py: 2, display: 'flex', alignItems: 'center', justifyContent: desktopOpen ? 'flex-start' : 'center', minHeight: 68 }}>
-        <Logo variant={desktopOpen ? 'full' : 'icon'} />
+      <Box sx={{ px: 2, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 68 }}>
+        <Logo width={desktopOpen ? 128 : 40} height={desktopOpen ? 64 : 40} />
       </Box>
       <Divider />
 

@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Box, CssBaseline } from '@mui/material';
+import { Box } from '@mui/material';
 import { TabNavigationProvider } from './contexts/TabNavigationContext';
 
 // Layout
