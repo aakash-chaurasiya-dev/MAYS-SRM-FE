@@ -58,7 +58,10 @@ export default function ProfilePage() {
   
   const name = isEmployee ? profileData.employeeName : `${profileData.firstName || ''} ${profileData.lastName || ''}`.trim();
   const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'U';
-  const role = (profileData.role || '').replace('ROLE_', '');
+  
+  // Sourced from Auth context. Non-employees are always 'USER'
+  const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
+  const role = isEmployee ? rawRole.replace('ROLE_', '') : 'USER';
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, maxWidth: 800, margin: '0 auto' }}>
@@ -115,10 +118,10 @@ export default function ProfilePage() {
               </Grid>
             )}
 
-            {isEmployee && profileData.department && (
+            {isEmployee && profileData.departmentName && (
               <Grid item xs={12} sm={6}>
                 <Typography variant="body2" color="text.secondary">Department</Typography>
-                <Typography variant="body1" fontWeight={500}>{profileData.department.departmentName || 'N/A'}</Typography>
+                <Typography variant="body1" fontWeight={500}>{profileData.departmentName}</Typography>
               </Grid>
             )}
 
@@ -129,10 +132,10 @@ export default function ProfilePage() {
               </Grid>
             )}
 
-            {!isEmployee && profileData.branch && (
+            {!isEmployee && profileData.branchName && (
               <Grid item xs={12} sm={6}>
                 <Typography variant="body2" color="text.secondary">Branch</Typography>
-                <Typography variant="body1" fontWeight={500}>{profileData.branch.branchName || 'N/A'}</Typography>
+                <Typography variant="body1" fontWeight={500}>{profileData.branchName}</Typography>
               </Grid>
             )}
           </Grid>

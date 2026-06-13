@@ -28,4 +28,8 @@ export const ROUTE_CONFIG = {
   '/customers': { title: 'Customers', icon: <SupportAgentOutlinedIcon fontSize="small" />, isClosable: true },
   '/settings': { title: 'Settings', icon: <SettingsOutlinedIcon fontSize="small" />, isClosable: true },
   '/support': { title: 'Support Desk', icon: <SupportAgentOutlinedIcon fontSize="small" />, isClosable: true },
+  '/billing/create': { title: 'Create Invoice', icon: <ReceiptLongOutlinedIcon fontSize="small" />, isClosable: true },
+  '/billing/:id': { title: (params) => `Billing #${params.id}`, icon: <ReceiptLongOutlinedIcon fontSize="small" />, isClosable: true },
+  '/billing/invoice-history': { title: 'Invoice History', icon: <ReceiptLongOutlinedIcon fontSize="small" />, isClosable: true },
+  '/users': { title: 'Users', icon: <BadgeOutlinedIcon fontSize="small" />, isClosable: true },
 };
