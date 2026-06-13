@@ -34,7 +34,7 @@ export default function TicketTypeManagementPage() {
 
   const fetchTicketTypes = useCallback(async () => {
     try {
-      const response = await api.get('/tickettypes');
+      const response = await api.get('/ticket-types');
       const data = response.data?.data || response.data || [];
       setTicketTypes(data.map((tt, index) => ({
         ...tt,
@@ -92,9 +92,9 @@ export default function TicketTypeManagementPage() {
       };
 
       if (modalMode === 'create') {
-        await api.post('/tickettypes', payload);
+        await api.post('/ticket-types', payload);
       } else {
-        await api.put(`/tickettypes/${formData.ticketTypeId}`, payload);
+        await api.put(`/ticket-types/${formData.ticketTypeId}`, payload);
         setSelectedIds([]); 
         setClearSelectionKey(prev => prev + 1);
       }
@@ -111,7 +111,7 @@ export default function TicketTypeManagementPage() {
     setDeleteLoading(true);
     try {
       const ttId = selectedIds[0];
-      await api.delete(`/tickettypes/${ttId}`);
+      await api.delete(`/ticket-types/${ttId}`);
       setOpenDeleteConfirm(false);
       setSelectedIds([]);
       setClearSelectionKey(prev => prev + 1);
