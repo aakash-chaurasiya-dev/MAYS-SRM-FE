@@ -58,10 +58,7 @@ const BOTTOM_ITEMS = [
   { label: 'Support', icon: <SupportAgentOutlinedIcon />, path: '/support' },
 ];
 
-const BILLING_SUBS = [
-  { label: 'Create Invoice', path: '/billing/create' },
-  { label: 'Invoice History', path: '/billing/invoice-history' },
-];
+
 
 export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose }) {
   const theme = useTheme();
@@ -194,35 +191,17 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose }) {
           </MuiList>
         </Collapse>
 
-        {/* ── Billing (collapsible) ── */}
+        {/* ── Billing ── */}
         {(() => {
           const isBillingActive = location.pathname.startsWith('/billing');
           return (
-            <>
-              <ListItemButton
-                onClick={() => { setBillingOpen(!billingOpen); if (!isBillingActive) handleNav('/billing/invoice-history'); }}
-                sx={navBtnSx(isBillingActive)}
-              >
-                <ListItemIcon sx={iconSx(isBillingActive)}><ReceiptLongOutlinedIcon /></ListItemIcon>
-                <ListItemText primary="Billing" sx={textSx} primaryTypographyProps={textProps(isBillingActive)} />
-                {desktopOpen && (billingOpen ? <ExpandLessIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} /> : <ExpandMoreIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />)}
-              </ListItemButton>
-              <Collapse in={billingOpen && desktopOpen} timeout="auto" unmountOnExit>
-                <MuiList disablePadding sx={{ pl: 2 }}>
-                  {BILLING_SUBS.map((sub) => (
-                    <ListItemButton key={sub.path} onClick={() => handleNav(sub.path)}
-                      sx={{ borderRadius: '6px', mb: 0.2, py: 0.4, px: 1.5,
-                        bgcolor: isActive(sub.path) ? `${theme.palette.secondary.main}14` : 'transparent',
-                        '&:hover': { bgcolor: `${theme.palette.primary.main}06` },
-                      }}>
-                      <ListItemText primary={sub.label}
-                        primaryTypographyProps={{ fontSize: '12px', fontWeight: isActive(sub.path) ? 600 : 400,
-                          color: isActive(sub.path) ? theme.palette.secondary.main : theme.palette.text.secondary }} />
-                    </ListItemButton>
-                  ))}
-                </MuiList>
-              </Collapse>
-            </>
+            <ListItemButton
+              onClick={() => handleNav('/billing/billing-details')}
+              sx={navBtnSx(isBillingActive)}
+            >
+              <ListItemIcon sx={iconSx(isBillingActive)}><ReceiptLongOutlinedIcon /></ListItemIcon>
+              <ListItemText primary="Billing" sx={textSx} primaryTypographyProps={textProps(isBillingActive)} />
+            </ListItemButton>
           );
         })()}
 
