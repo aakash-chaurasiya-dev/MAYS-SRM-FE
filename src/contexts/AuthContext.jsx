@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }) => {
       
       // TODO: Adjust 'response.data.token' based on your API's response structure
       const { token } = response.data; 
-      
+      localStorage.clear();
       localStorage.setItem('token', token);
       
       const decoded = jwtDecode(token);

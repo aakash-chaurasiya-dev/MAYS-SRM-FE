@@ -270,6 +270,21 @@ export default function LoginPage() {
             >
               {isLoading ? 'Signing In...' : 'Sign In to Terminal'}
             </Button>
+
+            <Button
+              variant="outlined"
+              fullWidth
+              size="large"
+              onClick={() => navigate('/register')}
+              sx={{
+                py: 1.2,
+                fontSize: '14px',
+                fontWeight: 600,
+                mb: 2,
+              }}
+            >
+              Register New Account
+            </Button>
           </form>
 
           <Typography
@@ -279,7 +294,7 @@ export default function LoginPage() {
               color: theme.palette.text.secondary,
             }}
           >
-            New technician?{' '}
+            New user?{' '}
             <Link
               href="/register"
               underline="hover"
@@ -289,7 +304,7 @@ export default function LoginPage() {
                 navigate('/register');
               }}
             >
-              Request Access
+              Register here
             </Link>
           </Typography>
         </Paper>

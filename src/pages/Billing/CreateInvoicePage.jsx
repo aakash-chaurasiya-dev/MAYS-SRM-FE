@@ -638,7 +638,43 @@ export default function CreateInvoicePage() {
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
         form={form}
-        items={items}
+        items={items.map(item => {
+          // 1. Resolve description
+          let description = '—';
+          if (item.productName) {
+            description = item.productName;
+          } else if (item.productId) {
+            const p = products.find(prod => prod.productId === item.productId);
+            if (p) description = p.productName;
+          } else if (item.serviceChargeDescription) {
+            description = item.serviceChargeDescription;
+          } else if (item.serviceChargeId) {
+            const s = services.find(serv => serv.chargeId === item.serviceChargeId);
+            if (s) description = s.descr;
+          } else if (item.chargeTypeName) {
+            description = item.chargeTypeName;
+          } else if (item.chargeTypeId) {
+            const ct = chargeTypes.find(c => c.chargeTypeId === item.chargeTypeId);
+            if (ct) description = ct.chargeName;
+          }
+
+          // 2. Resolve HSN code based on charge type
+          let hsn = '—';
+          if (item.productId || (item.chargeTypeName && item.chargeTypeName.toLowerCase().includes('product'))) {
+            hsn = '8471'; // standard computer hardware HSN
+          } else if (item.serviceChargeId || (item.chargeTypeName && item.chargeTypeName.toLowerCase().includes('service'))) {
+            hsn = '9987'; // standard technical service HSN
+          }
+
+          return {
+            id: item.id || item.billingId,
+            description: description,
+            hsn: hsn,
+            qty: 1,
+            rate: Number(item.amount) || 0,
+            disc: 0
+          };
+        })}
         totals={totals}
       />
     </Box>
