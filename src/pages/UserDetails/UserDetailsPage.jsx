@@ -26,7 +26,7 @@ export default function UserDetailsPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const initialFormState = {
-    userId: '', mobileNo: '', firstName: '', lastName: '', emailId: '', password: '', address: '', branchId: '',
+    userId: '', mobileNo: '', firstName: '', lastName: '', emailId: '', password: '', address: '', branchId: '', isActive: true,
   };
   const [formData, setFormData] = useState(initialFormState);
 
@@ -90,6 +90,7 @@ export default function UserDetailsPage() {
         password: '', // Usually we do not pre-fill passwords
         address: uToUpdate.address || '',
         branchId: uToUpdate.branchId || matchedBranchId,
+        isActive: uToUpdate.isActive === true || uToUpdate.isActive === 'true' || uToUpdate.isActive === 1,
       });
       setOpenModal(true);
     }
@@ -119,6 +120,7 @@ export default function UserDetailsPage() {
         emailId: formData.emailId,
         address: formData.address,
         branchId: formData.branchId,
+        isActive: formData.isActive,
       };
 
       // Only include password if it's provided (useful for updates where blank means no change)
@@ -333,7 +335,21 @@ export default function UserDetailsPage() {
               fullWidth size="small" placeholder="Enter full address"
               name="address" value={formData.address} onChange={handleFormChange}
               multiline rows={2}
+              sx={{ mb: 2 }}
             />
+
+            {modalMode === 'update' && (
+              <>
+                <Typography sx={{ ...lbl, mt: 0 }}>Account Status</Typography>
+                <TextField
+                  fullWidth size="small" select
+                  name="isActive" value={String(formData.isActive)} onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.value === 'true' }))}
+                >
+                  <MenuItem value="true">Active</MenuItem>
+                  <MenuItem value="false">Inactive</MenuItem>
+                </TextField>
+              </>
+            )}
 
           </Box>
         </DialogContent>

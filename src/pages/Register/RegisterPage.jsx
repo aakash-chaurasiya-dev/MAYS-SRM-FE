@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -14,42 +14,113 @@ import {
 import { useTheme } from '@mui/material/styles';
 import Logo from '../../components/Logo/Logo';
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
-import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
+import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
+import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import { useNavigate } from 'react-router-dom';
-
-const DEPARTMENTS = [
-  'Hardware Repair',
-  'Software Support',
-  'Data Recovery',
-  'Logistics',
-  'Quality Assurance',
-  'Customer Relations',
-];
+import api from '../../services/api';
 
 export default function RegisterPage() {
   const theme = useTheme();
   const navigate = useNavigate();
+
   const [form, setForm] = useState({
-    fullName: '',
-    employeeId: '',
-    email: '',
-    department: '',
+    firstName: '',
+    lastName: '',
+    mobileNo: '',
+    emailId: '',
     password: '',
     confirmPassword: '',
+    address: '',
+    branchId: '',
   });
+
+  const [branches, setBranches] = useState([]);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const response = await api.get('/auth/branches');
+        setBranches(response.data || []);
+      } catch (err) {
+        console.error('Failed to fetch branches', err);
+        setErrorMsg('Failed to load branches list. Please refresh the page.');
+      }
+    };
+    fetchBranches();
+  }, []);
 
   const handleChange = (field) => (e) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Placeholder — navigate to login after registration
-    navigate('/login');
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    // Validations
+    if (!form.firstName.trim()) {
+      setErrorMsg('First Name is required');
+      return;
+    }
+    if (!form.lastName.trim()) {
+      setErrorMsg('Last Name is required');
+      return;
+    }
+    if (!form.mobileNo.trim()) {
+      setErrorMsg('Mobile Number is required');
+      return;
+    }
+    if (!form.emailId.trim()) {
+      setErrorMsg('Email Address is required');
+      return;
+    }
+    if (!form.branchId) {
+      setErrorMsg('Please select a Branch');
+      return;
+    }
+    if (!form.password) {
+      setErrorMsg('Password is required');
+      return;
+    }
+    if (form.password !== form.confirmPassword) {
+      setErrorMsg('Passwords do not match');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const payload = {
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        mobileNo: form.mobileNo.trim(),
+        emailId: form.emailId.trim(),
+        password: form.password,
+        address: form.address.trim(),
+        branchId: Number(form.branchId),
+      };
+
+      await api.post('/auth/register', payload);
+      setSuccessMsg('Account request submitted successfully! Redirecting to login...');
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+    } catch (err) {
+      console.error('Registration error', err);
+      // Retrieve the message from the API error
+      const message = err.response?.data?.message || 'Registration failed. Please try again.';
+      setErrorMsg(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const labelSx = {
@@ -134,7 +205,7 @@ export default function RegisterPage() {
             lineHeight: 1.6,
           }}
         >
-          New Account Request
+          New Account Registration
         </Typography>
 
         <Divider
@@ -177,7 +248,7 @@ export default function RegisterPage() {
           elevation={2}
           sx={{
             width: '100%',
-            maxWidth: 480,
+            maxWidth: 520,
             p: 5,
             borderRadius: '4px',
           }}
@@ -190,67 +261,46 @@ export default function RegisterPage() {
               mb: 0.5,
             }}
           >
-            Request Access
+            Create an Account
           </Typography>
           <Typography
             sx={{
               fontSize: '14px',
               color: theme.palette.text.secondary,
-              mb: 1.5,
+              mb: 2.5,
             }}
           >
-            Submission will be reviewed by Terminal A-12 administrators within 24 hours.
+            Please fill in your details to request access to the system.
           </Typography>
 
-          <Alert
-            severity="info"
-            icon={<InfoOutlinedIcon sx={{ fontSize: 18 }} />}
-            sx={{
-              mb: 3,
-              fontSize: '12px',
-              borderRadius: '3px',
-              '& .MuiAlert-message': { fontSize: '12px' },
-            }}
-          >
-            Access to the TechFlow Repair terminal is restricted to authorized employees. Your request will be logged and audited.
-          </Alert>
+          {errorMsg && (
+            <Alert severity="error" sx={{ mb: 3, fontSize: '13px', borderRadius: '3px' }}>
+              {errorMsg}
+            </Alert>
+          )}
+
+          {successMsg && (
+            <Alert severity="success" sx={{ mb: 3, fontSize: '13px', borderRadius: '3px' }}>
+              {successMsg}
+            </Alert>
+          )}
 
           <form onSubmit={handleSubmit}>
-            {/* Full Name */}
-            <Typography sx={labelSx}>Full Name</Typography>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="e.g. John Doe"
-              value={form.fullName}
-              onChange={handleChange('fullName')}
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}>
-                      <PersonOutlinedIcon fontSize="small" />
-                    </Box>
-                  ),
-                },
-              }}
-              sx={{ mb: 2 }}
-            />
-
-            {/* Employee ID & Email — side by side */}
+            {/* First Name & Last Name */}
             <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
               <Box sx={{ flex: 1 }}>
-                <Typography sx={labelSx}>Employee ID</Typography>
+                <Typography sx={labelSx}>First Name</Typography>
                 <TextField
                   fullWidth
                   size="small"
-                  placeholder="e.g. TECH-0042"
-                  value={form.employeeId}
-                  onChange={handleChange('employeeId')}
+                  placeholder="e.g. John"
+                  value={form.firstName}
+                  onChange={handleChange('firstName')}
                   slotProps={{
                     input: {
                       startAdornment: (
                         <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}>
-                          <BadgeOutlinedIcon fontSize="small" />
+                          <PersonOutlinedIcon fontSize="small" />
                         </Box>
                       ),
                     },
@@ -258,13 +308,55 @@ export default function RegisterPage() {
                 />
               </Box>
               <Box sx={{ flex: 1 }}>
-                <Typography sx={labelSx}>Email</Typography>
+                <Typography sx={labelSx}>Last Name</Typography>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="e.g. Doe"
+                  value={form.lastName}
+                  onChange={handleChange('lastName')}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}>
+                          <PersonOutlinedIcon fontSize="small" />
+                        </Box>
+                      ),
+                    },
+                  }}
+                />
+              </Box>
+            </Box>
+
+            {/* Mobile Number & Email Address */}
+            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography sx={labelSx}>Mobile Number</Typography>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="e.g. 9876543210"
+                  value={form.mobileNo}
+                  onChange={handleChange('mobileNo')}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}>
+                          <PhoneOutlinedIcon fontSize="small" />
+                        </Box>
+                      ),
+                    },
+                  }}
+                />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <Typography sx={labelSx}>Email Address</Typography>
                 <TextField
                   fullWidth
                   size="small"
                   placeholder="john@mays.com"
-                  value={form.email}
-                  onChange={handleChange('email')}
+                  value={form.emailId}
+                  onChange={handleChange('emailId')}
                   slotProps={{
                     input: {
                       startAdornment: (
@@ -278,28 +370,62 @@ export default function RegisterPage() {
               </Box>
             </Box>
 
-            {/* Department */}
-            <Typography sx={labelSx}>Department</Typography>
+            {/* Branch */}
+            <Typography sx={labelSx}>Branch</Typography>
             <TextField
               fullWidth
               size="small"
               select
-              value={form.department}
-              onChange={handleChange('department')}
+              value={form.branchId}
+              onChange={handleChange('branchId')}
+              slotProps={{
+                select: {
+                  displayEmpty: true,
+                },
+                input: {
+                  startAdornment: (
+                    <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}>
+                      <BusinessOutlinedIcon fontSize="small" />
+                    </Box>
+                  ),
+                },
+              }}
               sx={{ mb: 2 }}
             >
               <MenuItem value="" disabled>
-                Select department…
+                Select your branch…
               </MenuItem>
-              {DEPARTMENTS.map((dept) => (
-                <MenuItem key={dept} value={dept}>
-                  {dept}
+              {branches.map((branch) => (
+                <MenuItem key={branch.branchId} value={branch.branchId}>
+                  {branch.branchName}
                 </MenuItem>
               ))}
             </TextField>
 
+            {/* Address */}
+            <Typography sx={labelSx}>Address</Typography>
+            <TextField
+              fullWidth
+              size="small"
+              multiline
+              rows={2}
+              placeholder="Enter your home/office address"
+              value={form.address}
+              onChange={handleChange('address')}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <Box sx={{ mr: 1, mt: 0.5, display: 'flex', alignSelf: 'flex-start', color: theme.palette.text.secondary }}>
+                      <HomeOutlinedIcon fontSize="small" />
+                    </Box>
+                  ),
+                },
+              }}
+              sx={{ mb: 2 }}
+            />
+
             {/* Password & Confirm */}
-            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+            <Box sx={{ display: 'flex', gap: 2, mb: 3.5 }}>
               <Box sx={{ flex: 1 }}>
                 <Typography sx={labelSx}>Password</Typography>
                 <TextField
@@ -347,6 +473,7 @@ export default function RegisterPage() {
               variant="contained"
               fullWidth
               size="large"
+              disabled={isLoading}
               sx={{
                 py: 1.2,
                 fontSize: '14px',
@@ -354,7 +481,7 @@ export default function RegisterPage() {
                 mb: 2,
               }}
             >
-              Submit Request
+              {isLoading ? 'Registering...' : 'Register Account'}
             </Button>
           </form>
 
@@ -427,9 +554,6 @@ export default function RegisterPage() {
             </Link>
             <Link href="#" underline="hover" sx={{ fontSize: '12px', color: theme.palette.text.secondary }}>
               Compliance
-            </Link>
-            <Link href="#" underline="hover" sx={{ fontSize: '12px', color: theme.palette.text.secondary }}>
-              Internal Portal
             </Link>
           </Box>
         </Box>

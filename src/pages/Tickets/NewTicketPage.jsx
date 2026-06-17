@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import {
   Box, Paper, Typography, TextField, Button, Divider,
-  MenuItem, Stack,
+  MenuItem, Stack, Autocomplete
 } from '@mui/material';
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
@@ -12,6 +12,7 @@ import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
  
 const PRIORITIES = ['Low', 'Normal', 'High', 'Critical'];
 const WARRANTY_TYPES = ['Warranty', 'RMA', 'Out-of-Warranty', 'Internal'];
@@ -19,6 +20,10 @@ const WARRANTY_TYPES = ['Warranty', 'RMA', 'Out-of-Warranty', 'Internal'];
 export default function NewTicketPage() {
   const theme = useTheme();
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
+  const isNormalUser = rawRole === 'ROLE_USER';
 
   // API Data State
   const [customers, setCustomers] = useState([]);
@@ -26,6 +31,7 @@ export default function NewTicketPage() {
   const [brands, setBrands] = useState([]);
   const [models, setModels] = useState([]);
   const [ticketTypes, setTicketTypes] = useState([]);
+  const [meData, setMeData] = useState(null);
 
   // Form State
   const [form, setForm] = useState({
@@ -35,6 +41,7 @@ export default function NewTicketPage() {
     customerType: 'Walk-in',
     brandId: '',
     modelId: '',
+    customModelName: '',
     serialNumber: '',
     deviceTypeId: '',
     priority: 'Normal',
@@ -48,24 +55,55 @@ export default function NewTicketPage() {
   const handleChange = (field) => (e) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
+  // Fetch logged in profile details if normal user
+  useEffect(() => {
+    const fetchMeData = async () => {
+      if (isNormalUser) {
+        try {
+          const res = await api.get('/auth/me');
+          setMeData(res.data);
+          setForm((prev) => ({
+            ...prev,
+            customerId: res.data.userId,
+            phone: res.data.mobileNo || '',
+            email: res.data.emailId || '',
+          }));
+        } catch (error) {
+          console.error("Failed to fetch user profile", error);
+        }
+      }
+    };
+    fetchMeData();
+  }, [isNormalUser]);
+
   // Fetch initial data on component mount
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [customersRes, deviceTypesRes, ticketTypesRes] = await Promise.all([
-          api.get('/users'),
-          api.get('/devicetypes'),
-          api.get('/ticket-types'),
-        ]);
-        setCustomers(customersRes.data);
-        setDeviceTypes(deviceTypesRes.data);
-        setTicketTypes(ticketTypesRes.data);
+        if (isNormalUser) {
+          // Customers (ROLE_USER) don't call manager-restricted `/users` endpoint
+          const [deviceTypesRes, ticketTypesRes] = await Promise.all([
+            api.get('/devicetypes'),
+            api.get('/ticket-types'),
+          ]);
+          setDeviceTypes(deviceTypesRes.data);
+          setTicketTypes(ticketTypesRes.data);
+        } else {
+          const [customersRes, deviceTypesRes, ticketTypesRes] = await Promise.all([
+            api.get('/users'),
+            api.get('/devicetypes'),
+            api.get('/ticket-types'),
+          ]);
+          setCustomers(customersRes.data);
+          setDeviceTypes(deviceTypesRes.data);
+          setTicketTypes(ticketTypesRes.data);
+        }
       } catch (error) {
         console.error("Failed to fetch initial data", error);
       }
     };
     fetchInitialData();
-  }, []);
+  }, [isNormalUser]);
 
   // Effect for cascading device type -> brands
   useEffect(() => {
@@ -115,27 +153,27 @@ export default function NewTicketPage() {
     }
   }, [form.brandId, brands]);
 
-  // Effect to auto-populate customer info
+  // Effect to auto-populate customer info (Only for staff choosing a customer)
   useEffect(() => {
-    if (form.customerId) {
+    if (form.customerId && !isNormalUser) {
       const customer = customers.find((c) => c.userId === form.customerId);
       if (customer) {
         setForm((prev) => ({ ...prev, phone: customer.mobileNo || '', email: customer.emailId || '' }));
       }
-    } else {
+    } else if (!isNormalUser) {
       setForm((prev) => ({ ...prev, phone: '', email: '' }));
     }
-  }, [form.customerId, customers]);
+  }, [form.customerId, customers, isNormalUser]);
 
   // Specific handlers for cascading dropdowns to reset children
   const handleDeviceTypeChange = (e) => {
     const { value } = e.target;
-    setForm((prev) => ({ ...prev, deviceTypeId: value, brandId: '', modelId: '' }));
+    setForm((prev) => ({ ...prev, deviceTypeId: value, brandId: '', modelId: '', customModelName: '' }));
   };
 
   const handleBrandChange = (e) => {
     const { value } = e.target;
-    setForm((prev) => ({ ...prev, brandId: value, modelId: '' }));
+    setForm((prev) => ({ ...prev, brandId: value, modelId: '', customModelName: '' }));
   };
 
   const handleCreateTicket = async () => {
@@ -148,7 +186,9 @@ export default function NewTicketPage() {
       warrantyType: form.warrantyType,
       priority: form.priority,
       remarks: `New ticket created for device S/N: ${form.serialNumber}`,
-      deviceModelId: form.modelId,
+      deviceModelId: form.modelId || null,
+      customModelName: form.customModelName || null,
+      brandId: form.brandId || null,
       ticketStatusId: 1, // Defaulting to 1 for initial status
     };
 
@@ -161,7 +201,6 @@ export default function NewTicketPage() {
       navigate('/dashboard');
     } catch (error) {
       console.error('Failed to create ticket:', error);
-      // Let the GlobalNotificationPopup handle the API error via api-error event
     }
   };
 
@@ -176,10 +215,10 @@ export default function NewTicketPage() {
     <Box>
       <Box sx={{ mb: 3 }}>
         <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>
-          Intake New Repair Ticket
+          {isNormalUser ? 'Submit New Support Request' : 'Intake New Repair Ticket'}
         </Typography>
         <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
-          Fill in the details below to initialize a service request for a new device.
+          {isNormalUser ? 'Provide details about your device and description of the issue.' : 'Fill in the details below to initialize a service request for a new device.'}
         </Typography>
       </Box>
 
@@ -187,20 +226,30 @@ export default function NewTicketPage() {
         <Box sx={{ flex: 1 }}>
           {/* Customer Details */}
           <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
-            <Box sx={secHdr}><Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Customer Details</Typography></Box>
+            <Box sx={secHdr}><Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Your Information</Typography></Box>
             <Divider />
             <Box sx={{ p: 2.5 }}>
-              <Typography sx={lbl}>Customer Name</Typography>
-              <TextField fullWidth size="small" select value={form.customerId} onChange={handleChange('customerId')} sx={{ mb: 2 }} displayEmpty>
-                <MenuItem value="" disabled>
-                  <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                    <PersonOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
-                    Select a customer
-                  </Box>
-                </MenuItem>
-                {customers.map((c) => <MenuItem key={c.userId} value={c.userId}>{`${c.firstName} ${c.lastName}`}</MenuItem>)}
-              </TextField>
-              <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+              <Typography sx={lbl}>Name</Typography>
+              {isNormalUser ? (
+                <TextField
+                  fullWidth
+                  size="small"
+                  value={meData ? `${meData.firstName} ${meData.lastName}` : 'Loading...'}
+                  InputProps={{ readOnly: true }}
+                  sx={{ mb: 2 }}
+                />
+              ) : (
+                <TextField fullWidth size="small" select value={form.customerId} onChange={handleChange('customerId')} sx={{ mb: 2 }} displayEmpty>
+                  <MenuItem value="" disabled>
+                    <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                      <PersonOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
+                      Select a customer
+                    </Box>
+                  </MenuItem>
+                  {customers.map((c) => <MenuItem key={c.userId} value={c.userId}>{`${c.firstName} ${c.lastName}`}</MenuItem>)}
+                </TextField>
+              )}
+              <Box sx={{ display: 'flex', gap: 2, mb: isNormalUser ? 0 : 2 }}>
                 <Box sx={{ flex: 1 }}>
                   <Typography sx={lbl}>Phone</Typography>
                   <TextField fullWidth size="small" placeholder="+1 (555) 000-0000" value={form.phone} InputProps={{ readOnly: true }}
@@ -212,10 +261,14 @@ export default function NewTicketPage() {
                     slotProps={{ input: { startAdornment: <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}><EmailOutlinedIcon fontSize="small" /></Box> } }} />
                 </Box>
               </Box>
-              <Typography sx={lbl}>Customer Type</Typography>
-              <TextField fullWidth size="small" select value={form.customerType} onChange={handleChange('customerType')}>
-                {['Walk-in', 'Professional Client', 'Corporate Account', 'Government'].map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
-              </TextField>
+              {!isNormalUser && (
+                <>
+                  <Typography sx={lbl}>Customer Type</Typography>
+                  <TextField fullWidth size="small" select value={form.customerType} onChange={handleChange('customerType')}>
+                    {['Walk-in', 'Professional Client', 'Corporate Account', 'Government'].map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+                  </TextField>
+                </>
+              )}
             </Box>
           </Paper>
 
@@ -225,26 +278,86 @@ export default function NewTicketPage() {
             <Divider />
             <Box sx={{ p: 2.5 }}>
               <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                <Box sx={{ flex: 1 }}><Typography sx={lbl}>Brand</Typography>
-                  <TextField fullWidth size="small" select value={form.brandId} onChange={handleBrandChange} disabled={!form.deviceTypeId || brands.length === 0} displayEmpty>
-                    <MenuItem value="" disabled>Select brand…</MenuItem>
-                    {brands.map((b) => <MenuItem key={b.brandId} value={b.brandId}>{b.brandName}</MenuItem>)}
-                  </TextField></Box>
-                <Box sx={{ flex: 1 }}><Typography sx={lbl}>Model</Typography>
-                  <TextField fullWidth size="small" select value={form.modelId} onChange={handleChange('modelId')} disabled={!form.brandId || models.length === 0} displayEmpty>
-                    <MenuItem value="" disabled>Select model…</MenuItem>
-                    {models.map((m) => <MenuItem key={m.modelId} value={m.modelId}>{m.modelName}</MenuItem>)}
-                  </TextField></Box>
-              </Box>
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Box sx={{ flex: 1 }}><Typography sx={lbl}>Serial Number</Typography>
-                  <TextField fullWidth size="small" placeholder="S/N" value={form.serialNumber} onChange={handleChange('serialNumber')}
-                    sx={{ '& .MuiOutlinedInput-root': { fontFamily: '"JetBrains Mono", monospace', fontSize: '13px' } }} /></Box>
                 <Box sx={{ flex: 1 }}><Typography sx={lbl}>Device Type</Typography>
                   <TextField fullWidth size="small" select value={form.deviceTypeId} onChange={handleDeviceTypeChange} displayEmpty>
                     <MenuItem value="" disabled>Select type…</MenuItem>
                     {deviceTypes.map((t) => <MenuItem key={t.deviceTypeId} value={t.deviceTypeId}>{t.deviceTypeName}</MenuItem>)}
                   </TextField></Box>
+                <Box sx={{ flex: 1 }}><Typography sx={lbl}>Brand</Typography>
+                  <TextField fullWidth size="small" select value={form.brandId} onChange={handleBrandChange} disabled={!form.deviceTypeId || brands.length === 0} displayEmpty>
+                    <MenuItem value="" disabled>Select brand…</MenuItem>
+                    {brands.map((b) => <MenuItem key={b.brandId} value={b.brandId}>{b.brandName}</MenuItem>)}
+                  </TextField></Box>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Box sx={{ flex: 1 }}><Typography sx={lbl}>Model</Typography>
+                  <Autocomplete
+                    freeSolo
+                    options={models}
+                    getOptionLabel={(option) => {
+                      if (typeof option === 'string') {
+                        return option;
+                      }
+                      return option.modelName || '';
+                    }}
+                    value={
+                      models.find(m => String(m.modelId) === String(form.modelId)) || 
+                      form.customModelName || 
+                      ''
+                    }
+                    onChange={(e, newValue) => {
+                      if (typeof newValue === 'string') {
+                        setForm(prev => ({
+                          ...prev,
+                          modelId: '',
+                          customModelName: newValue
+                        }));
+                      } else if (newValue && newValue.modelId) {
+                        setForm(prev => ({
+                          ...prev,
+                          modelId: newValue.modelId,
+                          customModelName: ''
+                        }));
+                      } else {
+                        setForm(prev => ({
+                          ...prev,
+                          modelId: '',
+                          customModelName: ''
+                        }));
+                      }
+                    }}
+                    onInputChange={(e, newInputValue) => {
+                      const matchingOption = models.find(
+                        m => m.modelName.toLowerCase() === newInputValue.toLowerCase()
+                      );
+                      if (matchingOption) {
+                        setForm(prev => ({
+                          ...prev,
+                          modelId: matchingOption.modelId,
+                          customModelName: ''
+                        }));
+                      } else {
+                        setForm(prev => ({
+                          ...prev,
+                          modelId: '',
+                          customModelName: newInputValue
+                        }));
+                      }
+                    }}
+                    disabled={!form.brandId}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="Select or type model…"
+                        size="small"
+                        sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+                      />
+                    )}
+                  />
+                </Box>
+                <Box sx={{ flex: 1 }}><Typography sx={lbl}>Serial Number</Typography>
+                  <TextField fullWidth size="small" placeholder="S/N" value={form.serialNumber} onChange={handleChange('serialNumber')}
+                    sx={{ '& .MuiOutlinedInput-root': { fontFamily: '"JetBrains Mono", monospace', fontSize: '13px' } }} /></Box>
               </Box>
             </Box>
           </Paper>
@@ -297,7 +410,7 @@ export default function NewTicketPage() {
 
           <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'flex-end' }}>
             <Button variant="outlined" startIcon={<CloseIcon />} onClick={() => navigate('/dashboard')} sx={{ px: 3 }}>Cancel</Button>
-            <Button variant="contained" startIcon={<SaveOutlinedIcon />} sx={{ px: 3 }} onClick={handleCreateTicket}>Create Ticket</Button>
+            <Button variant="contained" startIcon={<SaveOutlinedIcon />} sx={{ px: 3 }} onClick={handleCreateTicket}>Create Request</Button>
           </Box>
         </Box>
       </Stack>

@@ -31,6 +31,7 @@ import OrderPartsPage from './pages/Inventory/OrderPartsPage';
 import EmployeeDetailsPage from './pages/EmployeeDetails/EmployeeDetails';
 import UserDetailsPage from './pages/UserDetails/UserDetailsPage';
 import ProfilePage from './pages/Profile/ProfilePage';
+import EnquiriesPage from './pages/Enquiries/EnquiriesPage';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -52,41 +53,48 @@ function App() {
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/diagnosis" element={<DiagnosisPage />} />
-                <Route path="/inventory" element={<InventoryPage />} />
-                <Route path="/inventory/parts" element={<OrderPartsPage />} />
-
-                {/* Ticket Routes */}
+                
+                {/* Ticket Routes (Accessible by both customers and employees) */}
                 <Route path="/tickets/new" element={<NewTicketPage />} />
                 <Route path="/tickets/:id" element={<TicketDetailPage />} />
 
-                {/* Maintenance Routes */}
-                <Route path="/maintenance" element={<MaintenancePage />} />
-                <Route path="/maintenance/brands" element={<BrandManagementPage />} />
-                <Route path="/maintenance/branch" element={<BranchManagementPage />} />
-                <Route path="/maintenance/charge-type" element={<ChargeTypeManagementPage />} />
-                <Route path="/maintenance/department" element={<DepartmentManagementPage />} />
-                <Route path="/maintenance/device" element={<DeviceManagementPage />} />
-                <Route path="/maintenance/device-models" element={<DeviceModelManagementPage />} />
-                <Route path="/maintenance/device-type" element={<DeviceTypeManagementPage />} />
-                <Route path="/maintenance/payment-mode" element={<PaymentModeManagementPage />} />
-                <Route path="/maintenance/service-charges" element={<ServiceChargesManagementPage />} />
-                <Route path="/maintenance/status" element={<StatusManagementPage />} />
-                <Route path="/maintenance/ticket-type" element={<TicketTypeManagementPage />} />
+                {/* Enquiry Routes */}
+                <Route path="/enquiries" element={<EnquiriesPage />} />
 
-                {/* Billing Routes */}
-                <Route path="/billing" element={<Navigate to="/billing/billing-details" replace />} />
-                <Route path="/billing/billing-details" element={<BillingDetailsPage />} />
-                <Route path="/billing/create" element={<CreateInvoicePage />} />
+                {/* Restricted Employee/Admin Routes */}
+                <Route element={<ProtectedRoute allowedRoles={['ROLE_MANAGER', 'ROLE_PURCHASE', 'ROLE_ENGINEER', 'ROLE_ADMIN']} />}>
+                  <Route path="/diagnosis" element={<DiagnosisPage />} />
+                  <Route path="/inventory" element={<InventoryPage />} />
+                  <Route path="/inventory/parts" element={<OrderPartsPage />} />
 
-                {/* Placeholder routes for navigation items */}
-                <Route path="/maintenance/:section" element={<Box sx={{ p: 3 }}>Maintenance Section (WIP)</Box>} />
-                <Route path="/reports" element={<Box sx={{ p: 3 }}>Reports Page (WIP)</Box>} />
-                <Route path="/employees" element={<EmployeeDetailsPage />} />
-                <Route path="/users" element={<UserDetailsPage />} />
-                <Route path="/customers" element={<Box sx={{ p: 3 }}>Customers Page (WIP)</Box>} />
-                <Route path="/settings" element={<Box sx={{ p: 3 }}>Settings Page (WIP)</Box>} />
-                <Route path="/support" element={<Box sx={{ p: 3 }}>Support Desk (WIP)</Box>} />
+                  {/* Maintenance Routes */}
+                  <Route path="/maintenance" element={<MaintenancePage />} />
+                  <Route path="/maintenance/brands" element={<BrandManagementPage />} />
+                  <Route path="/maintenance/branch" element={<BranchManagementPage />} />
+                  <Route path="/maintenance/charge-type" element={<ChargeTypeManagementPage />} />
+                  <Route path="/maintenance/department" element={<DepartmentManagementPage />} />
+                  <Route path="/maintenance/device" element={<DeviceManagementPage />} />
+                  <Route path="/maintenance/device-models" element={<DeviceModelManagementPage />} />
+                  <Route path="/maintenance/device-type" element={<DeviceTypeManagementPage />} />
+                  <Route path="/maintenance/payment-mode" element={<PaymentModeManagementPage />} />
+                  <Route path="/maintenance/service-charges" element={<ServiceChargesManagementPage />} />
+                  <Route path="/maintenance/status" element={<StatusManagementPage />} />
+                  <Route path="/maintenance/ticket-type" element={<TicketTypeManagementPage />} />
+
+                  {/* Billing Routes */}
+                  <Route path="/billing" element={<Navigate to="/billing/billing-details" replace />} />
+                  <Route path="/billing/billing-details" element={<BillingDetailsPage />} />
+                  <Route path="/billing/create" element={<CreateInvoicePage />} />
+
+                  {/* Placeholder routes for navigation items */}
+                  <Route path="/maintenance/:section" element={<Box sx={{ p: 3 }}>Maintenance Section (WIP)</Box>} />
+                  <Route path="/reports" element={<Box sx={{ p: 3 }}>Reports Page (WIP)</Box>} />
+                  <Route path="/employees" element={<EmployeeDetailsPage />} />
+                  <Route path="/users" element={<UserDetailsPage />} />
+                  <Route path="/customers" element={<Box sx={{ p: 3 }}>Customers Page (WIP)</Box>} />
+                  <Route path="/settings" element={<Box sx={{ p: 3 }}>Settings Page (WIP)</Box>} />
+                  <Route path="/support" element={<Box sx={{ p: 3 }}>Support Desk (WIP)</Box>} />
+                </Route>
               </Route>
             </Route>
           </Routes>

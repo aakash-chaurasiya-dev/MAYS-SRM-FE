@@ -18,6 +18,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import api from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 
@@ -74,6 +75,10 @@ export default function TicketDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const fileInputRef = useRef(null);
+  const { user } = useAuth();
+
+  const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
+  const isNormalUser = rawRole === 'ROLE_USER';
   const [ticket, setTicket] = useState(null);
   const [attachments, setAttachments] = useState([]);
   const [timeline, setTimeline] = useState([]);
@@ -101,12 +106,30 @@ export default function TicketDetailPage() {
   // Dynamic entity edit states
   const [isCustomerEditMode, setIsCustomerEditMode] = useState(false);
   const [isDeviceEditMode, setIsDeviceEditMode] = useState(false);
+  const [isDescriptionEditMode, setIsDescriptionEditMode] = useState(false);
+  const [tempDescription, setTempDescription] = useState('');
   const [customerOptions, setCustomerOptions] = useState([]);
   const [deviceOptions, setDeviceOptions] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedDevice, setSelectedDevice] = useState(null);
 
+  // Editable device details form and dropdown lists states
+  const [editDeviceForm, setEditDeviceForm] = useState({
+    deviceTypeId: '',
+    brandId: '',
+    modelId: '',
+    serialNo: '',
+    warrantyType: '',
+    customModelName: '',
+  });
+  const [deviceTypes, setDeviceTypes] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [models, setModels] = useState([]);
+  const [filteredBrands, setFilteredBrands] = useState([]);
+  const [filteredModels, setFilteredModels] = useState([]);
+
   useEffect(() => {
+    if (isNormalUser) return;
     const fetchDepartments = async () => {
       try {
         const response = await api.get('/departments');
@@ -116,9 +139,10 @@ export default function TicketDetailPage() {
       }
     };
     fetchDepartments();
-  }, []);
+  }, [isNormalUser]);
 
   useEffect(() => {
+    if (isNormalUser) return;
     const fetchStatuses = async () => {
       try {
         const statustype = 'Ticket';
@@ -129,14 +153,14 @@ export default function TicketDetailPage() {
       }
     };
     fetchStatuses();
-  }, []);
+  }, [isNormalUser]);
 
   useEffect(() => {
+    if (isNormalUser || !editForm.departmentId) {
+      setEmployees([]);
+      return;
+    }
     const fetchEmployees = async () => {
-      if (!editForm.departmentId) {
-        setEmployees([]);
-        return;
-      }
       try {
         const response = await api.get(`/employees/department/${editForm.departmentId}`);
         setEmployees(Array.isArray(response.data) ? response.data : []);
@@ -146,26 +170,34 @@ export default function TicketDetailPage() {
       }
     };
     fetchEmployees();
-  }, [editForm.departmentId]);
+  }, [editForm.departmentId, isNormalUser]);
 
   const loadTicketDetails = async () => {
     try {
       setLoading(true);
       setError('');
 
-      const [
-        ticketResponse,
-        logsResponse,
-        attachmentsResponse,
-      ] = await Promise.all([
-        api.get(`/tickets/${id}`),
-        api.get(`/ticket-logs/${id}`),
-        api.get(`/tickets/${id}/attachments`),
-      ]);
+      let ticketData = null;
+      let logsData = [];
+      let attachmentsData = [];
 
-      const ticketData = ticketResponse.data;
-      const logsData = logsResponse.data;
-      const attachmentsData = attachmentsResponse.data;
+      if (isNormalUser) {
+        const [ticketResponse, attachmentsResponse] = await Promise.all([
+          api.get(`/tickets/${id}`),
+          api.get(`/tickets/${id}/attachments`),
+        ]);
+        ticketData = ticketResponse.data;
+        attachmentsData = attachmentsResponse.data;
+      } else {
+        const [ticketResponse, logsResponse, attachmentsResponse] = await Promise.all([
+          api.get(`/tickets/${id}`),
+          api.get(`/ticket-logs/${id}`),
+          api.get(`/tickets/${id}/attachments`),
+        ]);
+        ticketData = ticketResponse.data;
+        logsData = logsResponse.data;
+        attachmentsData = attachmentsResponse.data;
+      }
 
       const currentTicketId = Number(id);
 
@@ -314,53 +346,154 @@ export default function TicketDetailPage() {
   const handleEditDeviceClick = async () => {
     setIsDeviceEditMode(true);
     try {
-      const res = await api.get('/devices');
-      // 1. Extract the array of devices from the API response
-      let devicesList = [];
-      if (Array.isArray(res.data)) {
-        devicesList = res.data;
-      } else if (res.data && Array.isArray(res.data.data)) {
-        devicesList = res.data.data;
-      }
-      setDeviceOptions(devicesList);
+      // Fetch device types, brands, models
+      const [deviceTypesRes, brandsRes, modelsRes] = await Promise.all([
+        api.get('/devicetypes'),
+        api.get('/brands'),
+        api.get('/devicemodels')
+      ]);
+      
+      const loadedDeviceTypes = deviceTypesRes.data;
+      const loadedBrands = brandsRes.data;
+      const loadedModels = modelsRes.data;
 
-      // 2. Find the device that matches the ticket's current serial number
-      let currentDevice = null;
-      for (const device of devicesList) {
-        console.log("device", device.serialNo)
-        const deviceSerial = String(device.serialNo);
-        const ticketSerial = String(ticket?.deviceSerialNo);
+      setDeviceTypes(loadedDeviceTypes);
+      setBrands(loadedBrands);
+      setModels(loadedModels);
 
-        if (deviceSerial === ticketSerial) {
-          currentDevice = device;
-          break; // Stop searching once we found it
+      // Match names to find initial IDs
+      const initialDeviceType = loadedDeviceTypes.find(dt => dt.deviceTypeName === ticket?.deviceTypeName);
+      const initialBrand = loadedBrands.find(b => b.brandName === ticket?.deviceBrandName);
+      const initialModel = loadedModels.find(m => m.modelName === ticket?.deviceModelName);
+
+      const deviceTypeId = initialDeviceType ? initialDeviceType.deviceTypeId : '';
+      const brandId = initialBrand ? initialBrand.brandId : '';
+      const modelId = initialModel ? initialModel.modelId : '';
+      const serialNo = ticket?.deviceSerialNo || '';
+      const warrantyType = ticket?.warrantyType || '';
+
+      setEditDeviceForm({
+        deviceTypeId,
+        brandId,
+        modelId,
+        serialNo,
+        warrantyType,
+        customModelName: '',
+      });
+
+      // Filter brands based on deviceTypeId
+      if (deviceTypeId) {
+        const selectedDeviceType = loadedDeviceTypes.find(dt => dt.deviceTypeId === deviceTypeId);
+        if (selectedDeviceType) {
+          const filtered = loadedBrands.filter(b => b.deviceTypeName === selectedDeviceType.deviceTypeName);
+          setFilteredBrands(filtered.length > 0 ? filtered : loadedBrands);
+        } else {
+          setFilteredBrands(loadedBrands);
         }
+      } else {
+        setFilteredBrands([]);
       }
-      setSelectedDevice(currentDevice);
-      console.log("current", currentDevice);
-      console.log("deviceOptions", devicesList);
+
+      // Filter models based on brandId
+      if (brandId) {
+        const selectedBrand = loadedBrands.find(b => b.brandId === brandId);
+        if (selectedBrand) {
+          const filtered = loadedModels.filter(m => m.brandName === selectedBrand.brandName);
+          setFilteredModels(filtered.length > 0 ? filtered : loadedModels);
+        } else {
+          setFilteredModels(loadedModels);
+        }
+      } else {
+        setFilteredModels([]);
+      }
+
     } catch (err) {
-      console.error('Failed to fetch devices', err);
+      console.error('Failed to load device details for editing', err);
+      setError('Unable to load device metadata');
     }
+  };
+
+  const handleDeviceTypeChange = (e) => {
+    const deviceTypeId = e.target.value;
+    setEditDeviceForm(prev => ({ ...prev, deviceTypeId, brandId: '', modelId: '' }));
+    
+    const selectedDeviceType = deviceTypes.find(dt => dt.deviceTypeId === deviceTypeId);
+    if (selectedDeviceType) {
+      const filtered = brands.filter(b => b.deviceTypeName === selectedDeviceType.deviceTypeName);
+      setFilteredBrands(filtered.length > 0 ? filtered : brands);
+    } else {
+      setFilteredBrands(brands);
+    }
+    setFilteredModels([]);
+  };
+
+  const handleBrandChange = (e) => {
+    const brandId = e.target.value;
+    setEditDeviceForm(prev => ({ ...prev, brandId, modelId: '' }));
+
+    const selectedBrand = brands.find(b => b.brandId === brandId);
+    if (selectedBrand) {
+      const filtered = models.filter(m => m.brandName === selectedBrand.brandName);
+      setFilteredModels(filtered.length > 0 ? filtered : models);
+    } else {
+      setFilteredModels(models);
+    }
+  };
+
+  const handleDeviceFieldChange = (field) => (e) => {
+    setEditDeviceForm(prev => ({ ...prev, [field]: e.target.value }));
   };
 
   const handleSaveDevice = async () => {
     try {
       setLoading(true);
+      setError('');
+      
       const updatedTicket = {
         ...ticket,
-        deviceSerialNo: selectedDevice ? (selectedDevice.serialNo || selectedDevice.deviceSerialNo) : ticket?.deviceSerialNo,
-        deviceModelId: selectedDevice ? (selectedDevice.ModelId || selectedDevice.deviceModelId) : ticket?.deviceModelId,
+        deviceSerialNo: editDeviceForm.serialNo,
+        deviceModelId: editDeviceForm.modelId || null,
+        customModelName: editDeviceForm.customModelName || null,
+        brandId: editDeviceForm.brandId || null,
+        warrantyType: editDeviceForm.warrantyType || null,
       };
+
       await api.put(`/tickets/${id}`, updatedTicket);
       setIsDeviceEditMode(false);
       await loadTicketDetails();
       window.dispatchEvent(new CustomEvent('app-notification', {
-        detail: { message: 'Device linked successfully!', severity: 'success' }
+        detail: { message: 'Device details updated successfully!', severity: 'success' }
       }));
     } catch (err) {
-      console.error('Failed to update device', err);
-      setError(err.response?.data?.message || 'Unable to update device');
+      console.error('Failed to update device details', err);
+      setError(err.response?.data?.message || 'Unable to update device details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditDescriptionClick = () => {
+    setTempDescription(ticket?.ticketDescription || '');
+    setIsDescriptionEditMode(true);
+  };
+
+  const handleSaveDescription = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const updatedTicket = {
+        ...ticket,
+        ticketDescription: tempDescription,
+      };
+      await api.put(`/tickets/${id}`, updatedTicket);
+      setIsDescriptionEditMode(false);
+      await loadTicketDetails();
+      window.dispatchEvent(new CustomEvent('app-notification', {
+        detail: { message: 'Description updated successfully!', severity: 'success' }
+      }));
+    } catch (err) {
+      console.error('Failed to update description', err);
+      setError(err.response?.data?.message || 'Unable to update description');
     } finally {
       setLoading(false);
     }
@@ -448,35 +581,56 @@ export default function TicketDetailPage() {
         </Typography>
       )}
 
-      <Box sx={{ display: 'flex', justifyContent:'flex-end', gap: 1.5, mb: 3 }}>
-        <Button variant="outlined" color="primary" size="small" sx={{ fontSize: '12px' }} onClick={() => navigate(`/billing/create?ticketId=${id}`)}>Billing Details</Button>
-        {!isEditMode ? (
-          <Button variant="outlined" size="small" startIcon={<EditOutlinedIcon />} sx={{ fontSize: '12px' }} onClick={handleEditClick}>Edit</Button>
-        ) : (
-          <>
-            <Button variant="text" size="small" sx={{ fontSize: '12px' }} onClick={() => setIsEditMode(false)} disabled={loading}>Cancel</Button>
-            <Button variant="contained" size="small" startIcon={<SaveOutlinedIcon />} sx={{ fontSize: '12px' }} onClick={handleSaveClick} disabled={loading}>
-              {loading ? 'Saving...' : 'Save'}
-            </Button>
-          </>
-        )}
-      </Box>
+      {!isNormalUser && (
+        <Box sx={{ display: 'flex', justifyContent:'flex-end', gap: 1.5, mb: 3 }}>
+          <Button variant="outlined" color="primary" size="small" sx={{ fontSize: '12px' }} onClick={() => navigate(`/billing/create?ticketId=${id}`)}>Billing Details</Button>
+          {!isEditMode ? (
+            <Button variant="outlined" size="small" startIcon={<EditOutlinedIcon />} sx={{ fontSize: '12px' }} onClick={handleEditClick}>Edit</Button>
+          ) : (
+            <>
+              <Button variant="text" size="small" sx={{ fontSize: '12px' }} onClick={() => setIsEditMode(false)} disabled={loading}>Cancel</Button>
+              <Button variant="contained" size="small" startIcon={<SaveOutlinedIcon />} sx={{ fontSize: '12px' }} onClick={handleSaveClick} disabled={loading}>
+                {loading ? 'Saving...' : 'Save'}
+              </Button>
+            </>
+          )}
+        </Box>
+      )}
 
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2.5}>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={isNormalUser ? 0 : 2.5}>
         {/* Left Column */}
-        <Box sx={{ flex: 0.7 }}>
+        <Box sx={{ flex: isNormalUser ? 1 : 0.7 }}>
           {/* Issue Description */}
           <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
-            <Box sx={{ px: 2.5, py: 1.8 }}>
+            <Box sx={{ px: 2.5, py: 1.8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Issue Description</Typography>
+              {!isDescriptionEditMode ? (
+                <Button size="small" variant="text" sx={{ fontSize: '11px', minWidth: 0, p: '2px 6px' }} onClick={handleEditDescriptionClick}>Edit</Button>
+              ) : (
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button size="small" variant="text" sx={{ fontSize: '11px', minWidth: 0, p: '2px 6px' }} onClick={() => setIsDescriptionEditMode(false)}>Cancel</Button>
+                  <Button size="small" variant="contained" sx={{ fontSize: '11px', minWidth: 0, p: '2px 6px' }} onClick={handleSaveDescription}>Save</Button>
+                </Box>
+              )}
             </Box>
             <Divider />
             <Box sx={{ p: 2.5 }}>
-              <Box sx={{ bgcolor: theme.palette.background.default, borderRadius: '3px', border: `1px solid ${theme.palette.divider}`, p: 2, borderLeft: `3px solid ${theme.palette.primary.main}` }}>
-                <Typography sx={{ fontSize: '13px', color: theme.palette.text.primary, lineHeight: 1.7, fontStyle: issueDescription === 'Not available' ? 'normal' : 'italic' }}>
-                  {issueDescription}
-                </Typography>
-              </Box>
+              {isDescriptionEditMode ? (
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  value={tempDescription}
+                  onChange={(e) => setTempDescription(e.target.value)}
+                  sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+                />
+              ) : (
+                <Box sx={{ bgcolor: theme.palette.background.default, borderRadius: '3px', border: `1px solid ${theme.palette.divider}`, p: 2, borderLeft: `3px solid ${theme.palette.primary.main}` }}>
+                  <Typography sx={{ fontSize: '13px', color: theme.palette.text.primary, lineHeight: 1.7, fontStyle: issueDescription === 'Not available' ? 'normal' : 'italic' }}>
+                    {issueDescription}
+                  </Typography>
+                </Box>
+              )}
             </Box>
           </Paper>
 
@@ -488,13 +642,15 @@ export default function TicketDetailPage() {
                   <PersonOutlinedIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
                   <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Customer Information</Typography>
                 </Box>
-                {!isCustomerEditMode ? (
-                  <Button size="small" variant="text" sx={{ fontSize: '11px', minWidth: 0, p: '2px 6px' }} onClick={handleEditCustomerClick}>Edit</Button>
-                ) : (
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button size="small" variant="text" sx={{ fontSize: '11px', minWidth: 0, p: '2px 6px' }} onClick={() => setIsCustomerEditMode(false)}>Cancel</Button>
-                    <Button size="small" variant="contained" sx={{ fontSize: '11px', minWidth: 0, p: '2px 6px' }} onClick={handleSaveCustomer}>Save</Button>
-                  </Box>
+                {!isNormalUser && (
+                  !isCustomerEditMode ? (
+                    <Button size="small" variant="text" sx={{ fontSize: '11px', minWidth: 0, p: '2px 6px' }} onClick={handleEditCustomerClick}>Edit</Button>
+                  ) : (
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button size="small" variant="text" sx={{ fontSize: '11px', minWidth: 0, p: '2px 6px' }} onClick={() => setIsCustomerEditMode(false)}>Cancel</Button>
+                      <Button size="small" variant="contained" sx={{ fontSize: '11px', minWidth: 0, p: '2px 6px' }} onClick={handleSaveCustomer}>Save</Button>
+                    </Box>
+                  )
                 )}
               </Box>
               <Divider />
@@ -550,29 +706,156 @@ export default function TicketDetailPage() {
               </Box>
               <Divider />
               <Box sx={{ p: 2.5 }}>
-                {isDeviceEditMode && (
-                  <Box sx={{ mb: 2 }}>
-                    <Autocomplete
-                      options={deviceOptions}
-                      getOptionLabel={(option) => `${option.serialNo || ''} - ${option.ModelName || ''}`}
-                      value={selectedDevice}
-                      onChange={(e, newValue) => setSelectedDevice(newValue)}
-                      renderInput={(params) => <TextField {...params} label="Search Device by S/N" size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />}
-                    />
+                {isDeviceEditMode ? (
+                  <Stack spacing={2}>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography sx={lbl}>Device Type</Typography>
+                        <TextField
+                          select
+                          fullWidth
+                          size="small"
+                          value={editDeviceForm.deviceTypeId}
+                          onChange={handleDeviceTypeChange}
+                          displayEmpty
+                          sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+                        >
+                          <MenuItem value="" disabled>Select type…</MenuItem>
+                          {deviceTypes.map((t) => (
+                            <MenuItem key={t.deviceTypeId} value={t.deviceTypeId}>{t.deviceTypeName}</MenuItem>
+                          ))}
+                        </TextField>
+                      </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography sx={lbl}>Brand</Typography>
+                        <TextField
+                          select
+                          fullWidth
+                          size="small"
+                          value={editDeviceForm.brandId}
+                          onChange={handleBrandChange}
+                          disabled={!editDeviceForm.deviceTypeId || filteredBrands.length === 0}
+                          displayEmpty
+                          sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+                        >
+                          <MenuItem value="" disabled>Select brand…</MenuItem>
+                          {filteredBrands.map((b) => (
+                            <MenuItem key={b.brandId} value={b.brandId}>{b.brandName}</MenuItem>
+                          ))}
+                        </TextField>
+                      </Box>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography sx={lbl}>Model</Typography>
+                        <Autocomplete
+                          freeSolo
+                          options={filteredModels}
+                          getOptionLabel={(option) => {
+                            if (typeof option === 'string') {
+                              return option;
+                            }
+                            return option.modelName || '';
+                          }}
+                          value={
+                            filteredModels.find(m => String(m.modelId) === String(editDeviceForm.modelId)) || 
+                            editDeviceForm.customModelName || 
+                            ''
+                          }
+                          onChange={(e, newValue) => {
+                            if (typeof newValue === 'string') {
+                              setEditDeviceForm(prev => ({
+                                ...prev,
+                                modelId: '',
+                                customModelName: newValue
+                              }));
+                            } else if (newValue && newValue.modelId) {
+                              setEditDeviceForm(prev => ({
+                                ...prev,
+                                modelId: newValue.modelId,
+                                customModelName: ''
+                              }));
+                            } else {
+                              setEditDeviceForm(prev => ({
+                                ...prev,
+                                modelId: '',
+                                customModelName: ''
+                              }));
+                            }
+                          }}
+                          onInputChange={(e, newInputValue) => {
+                            const matchingOption = filteredModels.find(
+                              m => m.modelName.toLowerCase() === newInputValue.toLowerCase()
+                            );
+                            if (matchingOption) {
+                              setEditDeviceForm(prev => ({
+                                ...prev,
+                                modelId: matchingOption.modelId,
+                                customModelName: ''
+                              }));
+                            } else {
+                              setEditDeviceForm(prev => ({
+                                ...prev,
+                                modelId: '',
+                                customModelName: newInputValue
+                              }));
+                            }
+                          }}
+                          disabled={!editDeviceForm.brandId}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              placeholder="Select or type model…"
+                              size="small"
+                              sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+                            />
+                          )}
+                        />
+                      </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography sx={lbl}>Serial Number</Typography>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          placeholder="S/N"
+                          value={editDeviceForm.serialNo}
+                          onChange={handleDeviceFieldChange('serialNo')}
+                          sx={{ '& .MuiOutlinedInput-root': { fontFamily: '"JetBrains Mono", monospace', fontSize: '13px' } }}
+                        />
+                      </Box>
+                    </Box>
+                    <Box>
+                      <Typography sx={lbl}>Warranty Type</Typography>
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        value={editDeviceForm.warrantyType}
+                        onChange={handleDeviceFieldChange('warrantyType')}
+                        displayEmpty
+                        sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+                      >
+                        <MenuItem value="" disabled>Select…</MenuItem>
+                        {['Warranty', 'RMA', 'Out-of-Warranty', 'Internal'].map((t) => (
+                          <MenuItem key={t} value={t}>{t}</MenuItem>
+                        ))}
+                      </TextField>
+                    </Box>
+                  </Stack>
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                    {[['Brand', brand], 
+                      ['Model', model], 
+                      ['Serial No.', serialNo], 
+                      ['Warranty', warranty], 
+                      ['Type', ticketType]].map(([l, v]) => (
+                      <Box key={l} sx={{ mb: 1.2, width: '33.33%' }}>
+                        <Typography sx={lbl}>{l}</Typography>
+                        <Typography sx={{ fontSize: '13px', fontFamily: l === 'Serial No.' ? '"JetBrains Mono", monospace' : 'inherit' }}>{v}</Typography>
+                      </Box>
+                    ))}
                   </Box>
                 )}
-                <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                  {[['Brand', isDeviceEditMode ? (selectedDevice?.BrandName || selectedDevice?.deviceBrandName || 'Not available') : brand], 
-                    ['Model', isDeviceEditMode ? (selectedDevice?.ModelName || selectedDevice?.deviceModelName || 'Not available') : model], 
-                    ['Serial No.', isDeviceEditMode ? (selectedDevice?.serialNo || selectedDevice?.deviceSerialNo || 'Not available') : serialNo], 
-                    ['Warranty', warranty], 
-                    ['Type', isDeviceEditMode ? (selectedDevice?.TypeName || selectedDevice?.deviceTypeName || 'Not available') : ticketType]].map(([l, v]) => (
-                    <Box key={l} sx={{ mb: 1.2, width: '33.33%' }}>
-                      <Typography sx={lbl}>{l}</Typography>
-                      <Typography sx={{ fontSize: '13px', fontFamily: l === 'Serial No.' ? '"JetBrains Mono", monospace' : 'inherit' }}>{v}</Typography>
-                    </Box>
-                  ))}
-                </Box>
               </Box>
             </Paper>
           </Stack>
@@ -677,94 +960,99 @@ export default function TicketDetailPage() {
         </Box>
 
         {/* Right Column */}
-        <Box sx={{ flex: 0.3}}>
+        {!isNormalUser && (
+          <Box sx={{ flex: 0.3}}>
 
-          {/* Post Internal Update */}
-          <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
-            <Box sx={{ px: 2.5, py: 1.8 }}>
-              <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Post Internal Update</Typography>
-            </Box>
-            <Divider />
-            <Box sx={{ p: 2.5 }}>
-              <TextField 
-                fullWidth 
-                multiline 
-                rows={3} 
-                placeholder="Add an internal note or status update…" 
-                value={internalNote}
-                onChange={(e) => setInternalNote(e.target.value)}
-                disabled={!isEditMode}
-                sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} 
-              />
-            </Box>
-          </Paper>
+          {/* Post Internal Update (Only for Staff) */}
+          {!isNormalUser && (
+            <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
+              <Box sx={{ px: 2.5, py: 1.8 }}>
+                <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Post Internal Update</Typography>
+              </Box>
+              <Divider />
+              <Box sx={{ p: 2.5 }}>
+                <TextField 
+                  fullWidth 
+                  multiline 
+                  rows={3} 
+                  placeholder="Add an internal note or status update…" 
+                  value={internalNote}
+                  onChange={(e) => setInternalNote(e.target.value)}
+                  disabled={!isEditMode}
+                  sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} 
+                />
+              </Box>
+            </Paper>
+          )}
 
-          {/* Operations */}
-          <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
-            <Box sx={{ px: 2.5, py: 1.8 }}>
-              <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Operations</Typography>
-            </Box>
-            <Divider />
-            <Box sx={{ p: 2.5 }}>
-              <Stack spacing={2} sx={{ mb: 2.5 }}>
-                <Box>
-                  <Typography sx={lbl}>Department</Typography>
-                  {isEditMode ? (
-                    <TextField 
-                      select 
-                      fullWidth 
-                      size="small" 
-                      value={editForm.departmentId} 
-                      onChange={(e) => setEditForm({...editForm, departmentId: e.target.value, employeeId: ''})} 
-                      sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
-                    >
-                      <MenuItem value="">Unassigned</MenuItem>
-                      {departments.map(dep => <MenuItem key={dep.departmentId || dep.id} value={dep.departmentId || dep.id}>{dep.departmentName || dep.name}</MenuItem>)}
-                    </TextField>
-                  ) : (
-                    <Typography sx={{ fontSize: '13px' }}>{department}</Typography>
-                  )}
-                </Box>
-                <Box>
-                  <Typography sx={lbl}>Assigned To</Typography>
-                  {isEditMode ? (
-                    <TextField 
-                      select 
-                      fullWidth 
-                      size="small" 
-                      value={editForm.employeeId} 
-                      onChange={(e) => setEditForm({...editForm, employeeId: e.target.value})} 
-                      sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
-                      disabled={!editForm.departmentId}
-                    >
-                      <MenuItem value="">Unassigned</MenuItem>
-                      {employees.map(emp => <MenuItem key={emp.employeeId || emp.id} value={emp.employeeId || emp.id}>{emp.employeeName || emp.name}</MenuItem>)}
-                    </TextField>
-                  ) : (
-                    <Typography sx={{ fontSize: '13px' }}>{assignedTo}</Typography>
-                  )}
-                </Box>
-                
-                <Box>
-                  <Typography sx={lbl}>Status</Typography>
-                  {isEditMode ? (
-                    <TextField 
-                      select 
-                      fullWidth 
-                      size="small" 
-                      value={editForm.ticketStatusId} 
-                      onChange={(e) => setEditForm({...editForm, ticketStatusId: e.target.value})} 
-                      sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
-                    >
-                      {statuses.map(s => <MenuItem key={s.statusId || s.id} value={s.statusId || s.id}>{s.statusName || s.name}</MenuItem>)}
-                    </TextField>
-                  ) : (
-                    <Typography sx={{ fontSize: '13px' }}>{statusDisplay}</Typography>
-                  )}
-                </Box>
-              </Stack>
-            </Box>
-          </Paper>
+          {/* Operations (Only for Staff) */}
+          {!isNormalUser && (
+            <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
+              <Box sx={{ px: 2.5, py: 1.8 }}>
+                <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Operations</Typography>
+              </Box>
+              <Divider />
+              <Box sx={{ p: 2.5 }}>
+                <Stack spacing={2} sx={{ mb: 2.5 }}>
+                  <Box>
+                    <Typography sx={lbl}>Department</Typography>
+                    {isEditMode ? (
+                      <TextField 
+                        select 
+                        fullWidth 
+                        size="small" 
+                        value={editForm.departmentId} 
+                        onChange={(e) => setEditForm({...editForm, departmentId: e.target.value, employeeId: ''})} 
+                        sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+                      >
+                        <MenuItem value="">Unassigned</MenuItem>
+                        {departments.map(dep => <MenuItem key={dep.departmentId || dep.id} value={dep.departmentId || dep.id}>{dep.departmentName || dep.name}</MenuItem>)}
+                      </TextField>
+                    ) : (
+                      <Typography sx={{ fontSize: '13px' }}>{department}</Typography>
+                    )}
+                  </Box>
+                  <Box>
+                    <Typography sx={lbl}>Assigned To</Typography>
+                    {isEditMode ? (
+                      <TextField 
+                        select 
+                        fullWidth 
+                        size="small" 
+                        value={editForm.employeeId} 
+                        onChange={(e) => setEditForm({...editForm, employeeId: e.target.value})} 
+                        sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+                        disabled={!editForm.departmentId}
+                      >
+                        <MenuItem value="">Unassigned</MenuItem>
+                        {employees.map(emp => <MenuItem key={emp.employeeId || emp.id} value={emp.employeeId || emp.id}>{emp.employeeName || emp.name}</MenuItem>)}
+                      </TextField>
+                    ) : (
+                      <Typography sx={{ fontSize: '13px' }}>{assignedTo}</Typography>
+                    )}
+                  </Box>
+                  
+                  <Box>
+                    <Typography sx={lbl}>Status</Typography>
+                    {isEditMode ? (
+                      <TextField 
+                        select 
+                        fullWidth 
+                        size="small" 
+                        value={editForm.ticketStatusId} 
+                        onChange={(e) => setEditForm({...editForm, ticketStatusId: e.target.value})} 
+                        sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+                      >
+                        {statuses.map(s => <MenuItem key={s.statusId || s.id} value={s.statusId || s.id}>{s.statusName || s.name}</MenuItem>)}
+                      </TextField>
+                    ) : (
+                      <Typography sx={{ fontSize: '13px' }}>{statusDisplay}</Typography>
+                    )}
+                  </Box>
+                </Stack>
+              </Box>
+            </Paper>
+          )}
 
            {/* Activity Timeline */}
           <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden' }}>
@@ -796,6 +1084,7 @@ export default function TicketDetailPage() {
             </Box>
           </Paper>
         </Box>
+        )}
       </Stack>
 
       {/* Lightbox Dialog */}
