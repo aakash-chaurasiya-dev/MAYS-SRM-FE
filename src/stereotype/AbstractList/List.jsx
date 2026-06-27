@@ -662,7 +662,12 @@ export default function List({ config, rowSelectionModel: directRowSelectionMode
           checkboxSelection={checkboxSelection}
           disableRowSelectionOnClick
           paginationModel={paginationModel}
-          onPaginationModelChange={setPaginationModel}
+          onPaginationModelChange={(newModel) => {
+            setPaginationModel(newModel);
+            if (config.onPaginationChange) {
+              config.onPaginationChange(newModel);
+            }
+          }}
           pageSizeOptions={pagination.pageSizeOptions || DEFAULT_PAGE_SIZE_OPTIONS}
           getRowId={getRowId}
           onRowClick={onRowClick}
