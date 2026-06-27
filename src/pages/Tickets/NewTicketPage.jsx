@@ -13,7 +13,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
- 
+
 const PRIORITIES = ['Low', 'Normal', 'High', 'Critical'];
 const WARRANTY_TYPES = ['Warranty', 'RMA', 'Out-of-Warranty', 'Internal'];
 
@@ -36,6 +36,7 @@ export default function NewTicketPage() {
   // Form State
   const [form, setForm] = useState({
     customerId: '',
+    customCustomerName: '',
     phone: '',
     email: '',
     customerType: 'Walk-in',
@@ -160,10 +161,10 @@ export default function NewTicketPage() {
       if (customer) {
         setForm((prev) => ({ ...prev, phone: customer.mobileNo || '', email: customer.emailId || '' }));
       }
-    } else if (!isNormalUser) {
+    } else if (!isNormalUser && !form.customCustomerName) {
       setForm((prev) => ({ ...prev, phone: '', email: '' }));
     }
-  }, [form.customerId, customers, isNormalUser]);
+  }, [form.customerId, customers, isNormalUser, form.customCustomerName]);
 
   // Specific handlers for cascading dropdowns to reset children
   const handleDeviceTypeChange = (e) => {
@@ -177,22 +178,44 @@ export default function NewTicketPage() {
   };
 
   const handleCreateTicket = async () => {
-    const payload = {
-      userRefNo: String(form.customerId),
-      ticketTypeId: form.ticketTypeId,
-      emailId: form.email,
-      deviceSerialNo: form.serialNumber,
-      ticketDescription: `${form.issueTitle}: ${form.issueDescription}`,
-      warrantyType: form.warrantyType,
-      priority: form.priority,
-      remarks: `New ticket created for device S/N: ${form.serialNumber}`,
-      deviceModelId: form.modelId || null,
-      customModelName: form.customModelName || null,
-      brandId: form.brandId || null,
-      ticketStatusId: 1, // Defaulting to 1 for initial status
-    };
-
     try {
+      let finalCustomerId = form.customerId;
+
+      // If no existing customer selected but custom name typed, create the customer first
+      if (!finalCustomerId && form.customCustomerName && !isNormalUser) {
+        const nameParts = form.customCustomerName.trim().split(' ');
+        const firstName = nameParts[0] || 'Unknown';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        const newUserPayload = {
+          firstName,
+          lastName,
+          mobileNo: form.phone,
+          emailId: form.email,
+          password: 'Mays123',
+          isActive: true
+        };
+
+        console.log("Creating new customer:", newUserPayload);
+        const userRes = await api.post('/users', newUserPayload);
+        finalCustomerId = userRes.data.userId;
+      }
+
+      const payload = {
+        userRefNo: String(finalCustomerId),
+        ticketTypeId: form.ticketTypeId,
+        emailId: form.email,
+        deviceSerialNo: form.serialNumber,
+        ticketDescription: `${form.issueTitle}: ${form.issueDescription}`,
+        warrantyType: form.warrantyType,
+        priority: form.priority,
+        remarks: `New ticket created for device S/N: ${form.serialNumber}`,
+        deviceModelId: form.modelId || null,
+        customModelName: form.customModelName || null,
+        brandId: form.brandId || null,
+        ticketStatusId: 1, // Defaulting to 1 for initial status
+      };
+
       console.log("Creating ticket with payload:", payload);
       await api.post('/tickets', payload);
       window.dispatchEvent(new CustomEvent('app-notification', {
@@ -201,6 +224,9 @@ export default function NewTicketPage() {
       navigate('/dashboard');
     } catch (error) {
       console.error('Failed to create ticket:', error);
+      window.dispatchEvent(new CustomEvent('app-notification', {
+        detail: { message: 'Failed to create ticket or customer', severity: 'error' }
+      }));
     }
   };
 
@@ -239,34 +265,92 @@ export default function NewTicketPage() {
                   sx={{ mb: 2 }}
                 />
               ) : (
-                <TextField fullWidth size="small" select value={form.customerId} onChange={handleChange('customerId')} sx={{ mb: 2 }} displayEmpty>
-                  <MenuItem value="" disabled>
-                    <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                      <PersonOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
-                      Select a customer
-                    </Box>
-                  </MenuItem>
-                  {customers.map((c) => <MenuItem key={c.userId} value={c.userId}>{`${c.firstName} ${c.lastName}`}</MenuItem>)}
-                </TextField>
+                <Autocomplete
+                  freeSolo
+                  options={customers}
+                  getOptionLabel={(option) => {
+                    if (typeof option === 'string') {
+                      return option;
+                    }
+                    return `${option.firstName} ${option.lastName}`;
+                  }}
+                  value={
+                    customers.find((c) => String(c.userId) === String(form.customerId)) ||
+                    form.customCustomerName ||
+                    ''
+                  }
+                  onChange={(e, newValue) => {
+                    if (typeof newValue === 'string') {
+                      setForm((prev) => ({
+                        ...prev,
+                        customerId: '',
+                        customCustomerName: newValue
+                      }));
+                    } else if (newValue && newValue.userId) {
+                      setForm((prev) => ({
+                        ...prev,
+                        customerId: newValue.userId,
+                        customCustomerName: ''
+                      }));
+                    } else {
+                      setForm((prev) => ({
+                        ...prev,
+                        customerId: '',
+                        customCustomerName: ''
+                      }));
+                    }
+                  }}
+                  onInputChange={(e, newInputValue) => {
+                    const matchingOption = customers.find(
+                      (c) => `${c.firstName} ${c.lastName}`.toLowerCase() === newInputValue.toLowerCase()
+                    );
+                    if (matchingOption) {
+                      setForm((prev) => ({
+                        ...prev,
+                        customerId: matchingOption.userId,
+                        customCustomerName: ''
+                      }));
+                    } else {
+                      setForm((prev) => ({
+                        ...prev,
+                        customerId: '',
+                        customCustomerName: newInputValue
+                      }));
+                    }
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Select or type a customer…"
+                      size="small"
+                      sx={{ mb: 2, '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+                    />
+                  )}
+                />
               )}
               <Box sx={{ display: 'flex', gap: 2, mb: isNormalUser ? 0 : 2 }}>
                 <Box sx={{ flex: 1 }}>
                   <Typography sx={lbl}>Phone</Typography>
-                  <TextField fullWidth size="small" placeholder="+1 (555) 000-0000" value={form.phone} InputProps={{ readOnly: true }}
+                  <TextField fullWidth size="small" placeholder="+1 (555) 000-0000" value={form.phone} onChange={handleChange('phone')} InputProps={{ readOnly: !!form.customerId }}
                     slotProps={{ input: { startAdornment: <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}><PhoneOutlinedIcon fontSize="small" /></Box> } }} />
                 </Box>
                 <Box sx={{ flex: 1 }}>
                   <Typography sx={lbl}>Email</Typography>
-                  <TextField fullWidth size="small" placeholder="customer@email.com" value={form.email} InputProps={{ readOnly: true }}
+                  <TextField fullWidth size="small" placeholder="customer@email.com" value={form.email} onChange={handleChange('email')} InputProps={{ readOnly: !!form.customerId }}
                     slotProps={{ input: { startAdornment: <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}><EmailOutlinedIcon fontSize="small" /></Box> } }} />
                 </Box>
               </Box>
               {!isNormalUser && (
                 <>
                   <Typography sx={lbl}>Customer Type</Typography>
-                  <TextField fullWidth size="small" select value={form.customerType} onChange={handleChange('customerType')}>
-                    {['Walk-in', 'Professional Client', 'Corporate Account', 'Government'].map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
-                  </TextField>
+                  <Autocomplete
+                    options={['Walk-in', 'Professional Client', 'Corporate Account', 'Government']}
+                    value={form.customerType}
+                    onChange={(e, newValue) => handleChange('customerType')({ target: { value: newValue || '' } })}
+                    renderInput={(params) => (
+                      <TextField {...params} size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />
+                    )}
+                  />
                 </>
               )}
             </Box>
@@ -279,20 +363,37 @@ export default function NewTicketPage() {
             <Box sx={{ p: 2.5 }}>
               <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
                 <Box sx={{ flex: 1 }}><Typography sx={lbl}>Device Type</Typography>
-                  <TextField fullWidth size="small" select value={form.deviceTypeId} onChange={handleDeviceTypeChange} displayEmpty>
-                    <MenuItem value="" disabled>Select type…</MenuItem>
-                    {deviceTypes.map((t) => <MenuItem key={t.deviceTypeId} value={t.deviceTypeId}>{t.deviceTypeName}</MenuItem>)}
-                  </TextField></Box>
+                  <Autocomplete
+                    options={deviceTypes}
+                    getOptionLabel={(option) => option.deviceTypeName}
+                    value={deviceTypes.find((t) => t.deviceTypeId === form.deviceTypeId) || null}
+                    onChange={(e, newValue) => {
+                      handleDeviceTypeChange({ target: { value: newValue ? newValue.deviceTypeId : '' } });
+                    }}
+                    renderInput={(params) => (
+                      <TextField {...params} placeholder="Select type…" size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />
+                    )}
+                  />
+                </Box>
                 <Box sx={{ flex: 1 }}><Typography sx={lbl}>Brand</Typography>
-                  <TextField fullWidth size="small" select value={form.brandId} onChange={handleBrandChange} disabled={!form.deviceTypeId || brands.length === 0} displayEmpty>
-                    <MenuItem value="" disabled>Select brand…</MenuItem>
-                    {brands.map((b) => <MenuItem key={b.brandId} value={b.brandId}>{b.brandName}</MenuItem>)}
-                  </TextField></Box>
+                  <Autocomplete
+                    options={brands}
+                    getOptionLabel={(option) => option.brandName}
+                    value={brands.find((b) => b.brandId === form.brandId) || null}
+                    onChange={(e, newValue) => {
+                      handleBrandChange({ target: { value: newValue ? newValue.brandId : '' } });
+                    }}
+                    disabled={!form.deviceTypeId || brands.length === 0}
+                    renderInput={(params) => (
+                      <TextField {...params} placeholder="Select brand…" size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />
+                    )}
+                  />
+                </Box>
               </Box>
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <Box sx={{ flex: 1 }}><Typography sx={lbl}>Model</Typography>
                   <Autocomplete
-                    freeSolo
+                    // freeSolo
                     options={models}
                     getOptionLabel={(option) => {
                       if (typeof option === 'string') {
@@ -301,8 +402,8 @@ export default function NewTicketPage() {
                       return option.modelName || '';
                     }}
                     value={
-                      models.find(m => String(m.modelId) === String(form.modelId)) || 
-                      form.customModelName || 
+                      models.find(m => String(m.modelId) === String(form.modelId)) ||
+                      form.customModelName ||
                       ''
                     }
                     onChange={(e, newValue) => {
@@ -350,7 +451,7 @@ export default function NewTicketPage() {
                         {...params}
                         placeholder="Select or type model…"
                         size="small"
-                        sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+                        sx={{ mb: 2, '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
                       />
                     )}
                   />
@@ -371,20 +472,38 @@ export default function NewTicketPage() {
             <Box sx={{ p: 2.5 }}>
               <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
                 <Box sx={{ flex: 1 }}><Typography sx={lbl}>Priority</Typography>
-                  <TextField fullWidth size="small" select value={form.priority} onChange={handleChange('priority')}>
-                    {PRIORITIES.map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
-                  </TextField></Box>
+                  <Autocomplete
+                    options={PRIORITIES}
+                    value={form.priority}
+                    onChange={(e, newValue) => handleChange('priority')({ target: { value: newValue || 'Normal' } })}
+                    renderInput={(params) => (
+                      <TextField {...params} size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />
+                    )}
+                  />
+                </Box>
                 <Box sx={{ flex: 1 }}><Typography sx={lbl}>Warranty Type</Typography>
-                  <TextField fullWidth size="small" select value={form.warrantyType} onChange={handleChange('warrantyType')} displayEmpty>
-                    <MenuItem value="" disabled>Select…</MenuItem>
-                    {WARRANTY_TYPES.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
-                  </TextField></Box>
+                  <Autocomplete
+                    options={WARRANTY_TYPES}
+                    value={form.warrantyType}
+                    onChange={(e, newValue) => handleChange('warrantyType')({ target: { value: newValue || '' } })}
+                    renderInput={(params) => (
+                      <TextField {...params} placeholder="Select…" size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />
+                    )}
+                  />
+                </Box>
               </Box>
               <Typography sx={lbl}>Ticket Type</Typography>
-              <TextField fullWidth size="small" select value={form.ticketTypeId} onChange={handleChange('ticketTypeId')} sx={{ mb: 2 }} displayEmpty>
-                <MenuItem value="" disabled>Select type…</MenuItem>
-                {ticketTypes.map((t) => <MenuItem key={t.ticketTypeId} value={t.ticketTypeId}>{t.ticketTypeName}</MenuItem>)}
-              </TextField>
+              <Autocomplete
+                options={ticketTypes}
+                getOptionLabel={(option) => option.ticketTypeName}
+                value={ticketTypes.find((t) => t.ticketTypeId === form.ticketTypeId) || null}
+                onChange={(e, newValue) => {
+                  handleChange('ticketTypeId')({ target: { value: newValue ? newValue.ticketTypeId : '' } });
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} placeholder="Select type…" size="small" sx={{ mb: 2, '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />
+                )}
+              />
               <Typography sx={lbl}>Issue Title</Typography>
               <TextField fullWidth size="small" placeholder="Brief summary" value={form.issueTitle}
                 onChange={handleChange('issueTitle')} sx={{ mb: 2 }} />
@@ -399,8 +518,10 @@ export default function NewTicketPage() {
             <Box sx={secHdr}><Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Upload Attachments</Typography></Box>
             <Divider />
             <Box sx={{ p: 2.5 }}>
-              <Box sx={{ border: `2px dashed ${theme.palette.divider}`, borderRadius: '3px', p: 4, textAlign: 'center',
-                cursor: 'pointer', transition: 'border-color 0.2s', '&:hover': { borderColor: theme.palette.primary.main } }}>
+              <Box sx={{
+                border: `2px dashed ${theme.palette.divider}`, borderRadius: '3px', p: 4, textAlign: 'center',
+                cursor: 'pointer', transition: 'border-color 0.2s', '&:hover': { borderColor: theme.palette.primary.main }
+              }}>
                 <CloudUploadOutlinedIcon sx={{ fontSize: 40, color: theme.palette.text.secondary, mb: 1 }} />
                 <Typography sx={{ fontSize: '13px', fontWeight: 600 }}>Drop device photos, warranty PDFs, or invoices here.</Typography>
                 <Typography sx={{ fontSize: '11px', color: theme.palette.text.secondary, mt: 0.5 }}>JPG, PNG, PDF up to 10MB each</Typography>

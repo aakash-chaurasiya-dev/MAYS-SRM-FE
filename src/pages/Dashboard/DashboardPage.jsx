@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box, Paper, Typography, Chip, Button, Divider, TextField,
 } from '@mui/material';
@@ -10,42 +10,43 @@ import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import List from '../../stereotype/AbstractList/List';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 const TICKET_COLUMNS = [
   { field: 'id', headerName: 'Ticket ID', width: 110, renderType: 'link' },
-  { field: 'customer', headerName: 'Customer', width: 170 },
-  { field: 'email', headerName: 'Email', width: 220 },
-  { field: 'device', headerName: 'Device', width: 170 },
-  { field: 'description', headerName: 'Issue Description', flex: 1.8 },
-  { field: 'serialNo', headerName: 'Serial No', width: 140 },
-  { field: 'branch', headerName: 'Branch', width: 140 },
+  { field: 'customer', headerName: 'Customer', width: 180 },
+  { field: 'serialNo', headerName: 'Serial No', width: 150 },
+  { field: 'branch', headerName: 'Branch', width: 150 },
+  { field: 'department', headerName: 'Department', width: 150 },
   {
     field: 'status', headerName: 'Status', width: 130, renderType: 'chip',
     chipColorMap: {
       'OPEN': 'error', 'IN PROGRESS': 'warning', 'RESOLVED': 'success', 'CLOSED': 'success',
     },
   },
-  {
-    field: 'warranty', headerName: 'Warranty', width: 130, renderType: 'chip',
-    chipColorMap: { 'In Warranty': 'success', 'Out of Warranty': 'error' },
-  },
-  { field: 'assigned', headerName: 'Assigned To', width: 180 },
-  { field: 'department', headerName: 'Department', width: 150 },
-  { field: 'type', headerName: 'Type', width: 130 },
+  { field: 'createdDate', headerName: 'Created Date', flex: 1 },
 ];
 
 /* ── Stat Card Component ── */
-function StatCard({ title, value, icon, iconColor, iconBg }) {
+function StatCard({ title, value, icon, iconColor, iconBg, selected, onClick }) {
   const theme = useTheme();
   return (
     <Paper
-      elevation={1}
+      elevation={selected ? 3 : 1}
+      onClick={onClick}
       sx={{
         p: 2.5, flex: 1, minWidth: 160, borderRadius: '3px',
         display: 'flex', alignItems: 'center', gap: 2,
+        cursor: onClick ? 'pointer' : 'default',
+        border: selected ? `2px solid ${iconColor}` : '2px solid transparent',
+        transition: 'all 0.2s ease',
+        '&:hover': {
+          transform: onClick ? 'translateY(-2px)' : 'none',
+          boxShadow: onClick ? '0 4px 12px rgba(0,0,0,0.08)' : 'none'
+        }
       }}
     >
       <Box sx={{
@@ -77,97 +78,158 @@ export default function DashboardPage() {
   const { user } = useAuth();
   
   const [tickets, setTickets] = useState([]);
-  const [enquiries, setEnquiries] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingEnquiries, setLoadingEnquiries] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [fetchedPages, setFetchedPages] = useState(new Set());
+  const [selectedDept, setSelectedDept] = useState('All');
 
   const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
   const isNormalUser = rawRole === 'ROLE_USER';
 
+  // 1. Fetch Stats (Admin only) - Automatically refreshes every 60 seconds
+  const { data: stats } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => {
+      const res = await api.get('/tickets/dashboard/stats');
+      return res.data;
+    },
+    enabled: !isNormalUser,
+    refetchInterval: 60000, // Poll every 60 seconds
+  });
+
+  // 2. Fetch Initial Tickets (Admin)
+  const { data: adminTicketsInitial, isLoading: loadingAdminTickets } = useQuery({
+    queryKey: ['dashboard-tickets-admin', selectedDept],
+    queryFn: async () => {
+      const baseEndpoint = selectedDept === 'All' 
+         ? '/tickets/dashboard' 
+         : `/tickets/dashboard/department/${selectedDept}`;
+
+      const [res0, res1] = await Promise.all([
+        api.get(`${baseEndpoint}?offset=0&limit=10`),
+        api.get(`${baseEndpoint}?offset=1&limit=10`)
+      ]);
+      
+      const combined = [...(res0.data.content || []), ...(res1.data.content || [])];
+      return Array.from(new Map(combined.map(item => [item.ticketId, item])).values());
+    },
+    enabled: !isNormalUser,
+  });
+
+  // 3. Fetch Tickets (Normal User)
+  const { data: userTickets, isLoading: loadingUserTickets } = useQuery({
+    queryKey: ['dashboard-tickets-user', user?.userId],
+    queryFn: async () => {
+      // Using user.userId from AuthContext instead of fetching /auth/me again
+      const ticketsResponse = await api.get(`/tickets/user/${user.userId}`);
+      return ticketsResponse.data || [];
+    },
+    enabled: isNormalUser && !!user?.userId,
+  });
+
+  // Sync React Query data to local state for rendering & custom pagination append logic
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    if (isNormalUser && userTickets) {
+      setTickets(userTickets);
+    } else if (!isNormalUser && adminTicketsInitial) {
+      setTickets(adminTicketsInitial);
+      setFetchedPages(new Set([0, 1]));
+    }
+  }, [isNormalUser, userTickets, adminTicketsInitial]);
+
+  const loading = isNormalUser ? loadingUserTickets : loadingAdminTickets;
+
+  // Prefetch logic triggered by grid navigation
+  const handlePaginationChange = useCallback(async (newModel) => {
+    if (isNormalUser) return;
+    
+    const currentPage = newModel.page;
+    const nextPage = currentPage + 1; // Always prefetch the next contiguous page
+    
+    if (!fetchedPages.has(nextPage)) {
       try {
-        if (isNormalUser) {
-          const meResponse = await api.get('/auth/me');
-          const myId = meResponse.data.userId;
-          const [ticketsResponse, enquiriesResponse] = await Promise.all([
-            api.get(`/tickets/user/${myId}`),
-            api.get(`/enquiries/user/${myId}`)
-          ]);
-          setTickets(ticketsResponse.data || []);
-          setEnquiries(enquiriesResponse.data || []);
-        } else {
-          const ticketsResponse = await api.get('/tickets');
-          setTickets(ticketsResponse.data || []);
+        const baseEndpoint = selectedDept === 'All' 
+             ? '/tickets/dashboard' 
+             : `/tickets/dashboard/department/${selectedDept}`;
+
+        const res = await api.get(`${baseEndpoint}?offset=${nextPage}&limit=${newModel.pageSize}`);
+        const newTickets = res.data.content || [];
+        
+        if (newTickets.length > 0) {
+          setTickets(prev => {
+            const combined = [...prev, ...newTickets];
+            return Array.from(new Map(combined.map(item => [item.ticketId, item])).values());
+          });
         }
+        
+        setFetchedPages(prev => {
+          const nextSet = new Set(prev);
+          nextSet.add(nextPage);
+          return nextSet;
+        });
       } catch (err) {
-        console.error('Failed to fetch dashboard data', err);
-      } finally {
-        setLoading(false);
-        setLoadingEnquiries(false);
+        console.error('Failed to prefetch page', nextPage, err);
       }
-    };
-    fetchDashboardData();
-  }, [isNormalUser]);
+    }
+  }, [fetchedPages, isNormalUser, selectedDept]);
 
-  // Compute dynamic stats
-  const getDepartmentName = (ticket) => ticket.departmentName;
-
-  const adminCount = tickets.filter(t => getDepartmentName(t) === 'Admin').length;
-  const engineerCount = tickets.filter(t => getDepartmentName(t) === 'Engineer').length;
-  const managerCount = tickets.filter(t => getDepartmentName(t) === 'MANAGER').length;
-  const purchaseCount = tickets.filter(t => getDepartmentName(t) === 'Purchase Team').length;
+  // Fetch counts from API stats response
+  const getDeptCount = (deptName) => {
+    if (!stats) return 0;
+    const dept = stats.departmentCounts.find(d => d.departmentName === deptName);
+    return dept ? dept.ticketCount : 0;
+  };
 
   const STATS = [
     {
-      title: 'Total Tickets', value: tickets.length,
+      id: 'All', title: 'Total Tickets', value: stats ? stats.totalTickets : 0,
       icon: <ConfirmationNumberOutlinedIcon />,
       iconColor: '#0052cc', iconBg: '#0052cc14',
     },
     {
-      title: 'Admin Tickets', value: adminCount,
+      id: 'Admin', title: 'Admin Tickets', value: getDeptCount('Admin'),
       icon: <AdminPanelSettingsOutlinedIcon />,
       iconColor: '#003d9b', iconBg: '#003d9b14',
     },
     {
-      title: 'Engineer Tickets', value: engineerCount,
+      id: 'Engineer', title: 'Engineer Tickets', value: getDeptCount('Engineer'),
       icon: <EngineeringOutlinedIcon />,
       iconColor: '#006c47', iconBg: '#006c4714',
     },
     {
-      title: 'Manager Tickets', value: managerCount,
+      id: 'MANAGER', title: 'Manager Tickets', value: getDeptCount('MANAGER'),
       icon: <ManageAccountsOutlinedIcon />,
       iconColor: '#B95000', iconBg: '#B9500014',
     },
     {
-      title: 'Purchase Tickets', value: purchaseCount,
+      id: 'Purchase Team', title: 'Purchase Tickets', value: getDeptCount('Purchase Team'),
       icon: <ShoppingCartOutlinedIcon />,
       iconColor: '#7b2600', iconBg: '#7b260014',
     },
   ];
 
-  // Map raw API data to rows
+  // Map raw API data to grid rows gracefully handling DTO fields
   const mappedRows = tickets.map(t => {
-    const brand = t.device?.model?.brand?.brandName || 'Unknown Brand';
-    const model = t.device?.model?.modelName || t.deviceModelName || 'Unknown Model';
-    const customerName = `${t.userMaster?.firstName || t.userFirstName || ''} ${t.userMaster?.lastName || t.userLastName || ''}`.trim() || 'Unknown Customer';
+    const tId = t.ticketId || t.id;
+    const fName = t.userFirstName || t.userMaster?.firstName || '';
+    const lName = t.userLastName || t.userMaster?.lastName || '';
+    const customerName = `${fName} ${lName}`.trim() || 'Unknown Customer';
+    
+    const serial = t.deviceSerialNo || t.device?.serialNo || 'N/A';
+    const branch = t.branchName || t.ticketBranch?.branchName || 'Unknown Branch';
+    const status = t.ticketStatusName || t.ticketStatus?.statusName || 'UNKNOWN';
+    const dept = t.departmentName || t.employee?.department?.departmentName || 'Unassigned';
+    
+    const cDate = t.createdDate ? new Date(t.createdDate).toLocaleString() : 'N/A';
 
     return {
-      id: `TK-${t.ticketId}`,
+      id: `TK-${tId}`,
       customer: customerName,
-      email: t.emailId || t.userMaster?.emailId || 'N/A',
-      device: `${brand} ${model}`,
-      description: t.ticketDescription || 'No description provided',
-      serialNo: t.device?.serialNo || t.deviceSerialNo || 'N/A',
-      branch: t.ticketBranch?.branchName || t.branchName || 'Unknown Branch',
-      status: t.ticketStatus?.statusName || t.ticketStatusName || 'UNKNOWN',
-      warranty: t.warrantyType || 'Unknown',
-      assigned: t.employee?.employeeName || t.employeeName || 'Unassigned',
-      department: t.employee?.department?.departmentName || t.departmentName || 'Unassigned',
-      type: t.ticketType?.ticketTypeName || t.ticketTypeName || 'Unknown',
-      priority: t.priority || 'Normal',
-      rawId: t.ticketId,
+      serialNo: serial,
+      branch: branch,
+      status: status,
+      department: dept,
+      createdDate: cDate,
+      rawId: tId,
     };
   });
 
@@ -175,21 +237,22 @@ export default function DashboardPage() {
     const query = searchQuery.toLowerCase();
     return (
       row.id.toLowerCase().includes(query) ||
-      row.device.toLowerCase().includes(query) ||
-      row.description.toLowerCase().includes(query) ||
-      row.status.toLowerCase().includes(query)
+      row.serialNo.toLowerCase().includes(query) ||
+      row.status.toLowerCase().includes(query) ||
+      row.customer.toLowerCase().includes(query)
     );
   });
 
   const listConfig = {
-    title: 'Tickets',
-    rows: mappedRows,
+    title: selectedDept === 'All' ? 'Tickets' : `${selectedDept} Tickets`,
+    rows: mappedRows, // List handles its own internal search/filtering
     columns: TICKET_COLUMNS,
     loading: loading,
     actions: [
       { label: 'New Ticket', icon: <AddOutlinedIcon />, onClick: () => navigate('/tickets/new') },
     ],
     pagination: { pageSize: 10 },
+    onPaginationChange: handlePaginationChange,
     searchPlaceholder: 'Search tickets…',
     getRowId: (row) => row.id,
     onRowClick: (params) => navigate(`/tickets/${params.row.rawId}`),
@@ -225,7 +288,7 @@ export default function DashboardPage() {
           <TextField
             fullWidth
             size="small"
-            placeholder="Search tickets by ID, device, or status…"
+            placeholder="Search tickets by ID, serial no, or status…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             sx={{ bgcolor: theme.palette.background.paper }}
@@ -295,176 +358,9 @@ export default function DashboardPage() {
                     sx={{ fontWeight: 600, borderRadius: '3px', height: 20, fontSize: '11px' }}
                   />
                 </Box>
-
                 <Typography sx={{ fontWeight: 600, fontSize: '16px', mb: 0.5 }}>
-                  {ticket.device}
+                  {ticket.serialNo}
                 </Typography>
-
-                <Typography
-                  sx={{
-                    fontSize: '13px',
-                    color: theme.palette.text.secondary,
-                    mb: 2,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {ticket.description}
-                </Typography>
-
-                <Divider sx={{ mb: 1.5 }} />
-
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography sx={{ fontSize: '11px', color: theme.palette.text.secondary }}>
-                    Priority:{' '}
-                    <Box
-                      component="span"
-                      sx={{
-                        fontWeight: 600,
-                        color:
-                          ticket.priority === 'Critical'
-                            ? 'error.main'
-                            : ticket.priority === 'High'
-                            ? 'warning.main'
-                            : 'text.primary',
-                      }}
-                    >
-                      {ticket.priority}
-                    </Box>
-                  </Typography>
-                  <Typography sx={{ fontSize: '11px', color: theme.palette.text.secondary }}>
-                    {ticket.warranty}
-                  </Typography>
-                </Box>
-              </Paper>
-            ))}
-          </Box>
-        )}
-
-        <Divider sx={{ my: 4 }} />
-
-        {/* ── Enquiries Section ── */}
-        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-          <Box>
-            <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>
-              My Enquiries
-            </Typography>
-            <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
-              Pre-service diagnostic requests and model specifications queries
-            </Typography>
-          </Box>
-          <Button
-            variant="outlined"
-            onClick={() => navigate('/enquiries')}
-            sx={{ fontWeight: 600, textTransform: 'none', py: 0.8 }}
-          >
-            Manage Enquiries
-          </Button>
-        </Box>
-
-        {/* Enquiries Grid */}
-        {loadingEnquiries ? (
-          <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
-            Loading your enquiries…
-          </Typography>
-        ) : enquiries.length === 0 ? (
-          <Paper sx={{ p: 4, textAlign: 'center', border: `1px dashed ${theme.palette.divider}`, bgcolor: 'transparent' }}>
-            <Typography sx={{ fontSize: '14px', fontWeight: 600, color: theme.palette.text.secondary }}>
-              You have not submitted any technical support enquiries.
-            </Typography>
-            <Button
-              variant="outlined"
-              onClick={() => navigate('/enquiries')}
-              sx={{ mt: 2, textTransform: 'none' }}
-            >
-              Submit New Enquiry
-            </Button>
-          </Paper>
-        ) : (
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr', md: 'repeat(2, 1fr)' }, gap: 2.5 }}>
-            {enquiries.slice(0, 4).map((enq) => (
-              <Paper
-                key={enq.enquiryId}
-                elevation={1}
-                onClick={() => navigate('/enquiries')}
-                sx={{
-                  p: 2.5,
-                  borderRadius: '4px',
-                  borderLeft: `4px solid ${
-                    enq.statusName && (enq.statusName.toUpperCase().includes('REPLIED') || enq.statusName.toUpperCase().includes('RESOLVED') || enq.statusName.toUpperCase().includes('CLOSED'))
-                      ? theme.palette.success.main
-                      : theme.palette.warning.main
-                  }`,
-                  cursor: 'pointer',
-                  transition: 'box-shadow 0.2s, transform 0.2s',
-                  '&:hover': {
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                    transform: 'translateY(-2px)',
-                  },
-                }}
-              >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                  <Typography sx={{ fontWeight: 600, fontSize: '13px', color: theme.palette.primary.main }}>
-                    ENQ-{enq.enquiryId}
-                  </Typography>
-                  <Chip
-                    label={enq.statusName || 'PENDING'}
-                    size="small"
-                    color={
-                      enq.statusName && (enq.statusName.toUpperCase().includes('REPLIED') || enq.statusName.toUpperCase().includes('RESOLVED') || enq.statusName.toUpperCase().includes('CLOSED'))
-                        ? 'success'
-                        : 'warning'
-                    }
-                    sx={{ fontWeight: 600, borderRadius: '3px', height: 20, fontSize: '11px' }}
-                  />
-                </Box>
-
-                <Typography sx={{ fontWeight: 600, fontSize: '16px', mb: 0.5 }}>
-                  {enq.brandName || 'General Brand'} {enq.serialNo ? `(S/N: ${enq.serialNo})` : ''}
-                </Typography>
-
-                <Typography sx={{ fontWeight: 600, fontSize: '13.5px', mb: 1, color: 'text.secondary' }}>
-                  {enq.enquiryFor}
-                </Typography>
-
-                <Typography
-                  sx={{
-                    fontSize: '13px',
-                    color: theme.palette.text.secondary,
-                    mb: enq.remark ? 1.5 : 0,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {enq.queryText}
-                </Typography>
-
-                {enq.remark && (
-                  <Box sx={{ p: 1.5, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : '#f8f9fa', borderRadius: '3px', border: `1px solid ${theme.palette.divider}`, mt: 1.5 }}>
-                    <Typography sx={{ fontSize: '10px', fontWeight: 700, color: 'success.main', mb: 0.3, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      Support Advice
-                    </Typography>
-                    <Typography
-                      sx={{
-                        fontSize: '12px',
-                        color: theme.palette.text.primary,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {enq.remark}
-                    </Typography>
-                  </Box>
-                )}
               </Paper>
             ))}
           </Box>
@@ -500,12 +396,17 @@ export default function DashboardPage() {
         }}
       >
         {STATS.map((stat) => (
-          <StatCard key={stat.title} {...stat} />
+          <StatCard 
+            key={stat.title} 
+            {...stat} 
+            selected={selectedDept === stat.id}
+            onClick={() => setSelectedDept(stat.id)}
+          />
         ))}
       </Box>
 
       {/* ── Tickets DataGrid ── */}
-      <List config={listConfig} />
+      <List key={selectedDept} config={listConfig} />
     </Box>
   );
 }
