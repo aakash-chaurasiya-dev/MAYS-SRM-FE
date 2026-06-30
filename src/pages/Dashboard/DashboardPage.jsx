@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import List from '../../stereotype/AbstractList/List';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useGlobalLoading } from '../../contexts/GlobalLoadingContext';
 
 const TICKET_COLUMNS = [
   { field: 'id', headerName: 'Ticket ID', width: 110, renderType: 'link' },
@@ -76,6 +77,15 @@ export default function DashboardPage() {
   const theme = useTheme();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showLoading, hideLoading } = useGlobalLoading();
+  
+  const handleNewTicketClick = () => {
+    showLoading('Loading New Ticket...');
+    setTimeout(() => {
+      hideLoading();
+      navigate('/tickets/new');
+    }, 800);
+  };
   
   const [tickets, setTickets] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -249,7 +259,7 @@ export default function DashboardPage() {
     columns: TICKET_COLUMNS,
     loading: loading,
     actions: [
-      { label: 'New Ticket', icon: <AddOutlinedIcon />, onClick: () => navigate('/tickets/new') },
+      { label: 'New Ticket', icon: <AddOutlinedIcon />, onClick: handleNewTicketClick },
     ],
     pagination: { pageSize: 10 },
     onPaginationChange: handlePaginationChange,
@@ -276,7 +286,7 @@ export default function DashboardPage() {
           <Button
             variant="contained"
             startIcon={<AddOutlinedIcon />}
-            onClick={() => navigate('/tickets/new')}
+            onClick={handleNewTicketClick}
             sx={{ fontWeight: 600, textTransform: 'none', py: 0.9 }}
           >
             New Support Request
@@ -309,7 +319,7 @@ export default function DashboardPage() {
               <Button
                 variant="outlined"
                 startIcon={<AddOutlinedIcon />}
-                onClick={() => navigate('/tickets/new')}
+                onClick={handleNewTicketClick}
                 sx={{ mt: 2, textTransform: 'none' }}
               >
                 Create Support Ticket

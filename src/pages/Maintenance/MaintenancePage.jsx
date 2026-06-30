@@ -13,6 +13,7 @@ import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 
 const CONFIG_ITEMS = [
+  { key: 'accessories', label: 'Ticket Accessories', desc: 'Manage list of device accessories.', icon: <CategoryOutlinedIcon />, path: '/maintenance/accessories' },
   { key: 'branch', label: 'Branch', desc: 'Manage workshop locations and centers.', icon: <StorefrontOutlinedIcon />, path: '/maintenance/branch' },
   { key: 'brand', label: 'Brand', desc: 'Configure manufacturer list (Apple, Dell, etc.)', icon: <CategoryOutlinedIcon />, path: '/maintenance/brands' },
   { key: 'charge-type', label: 'Charge Type', desc: 'Define billing and service charge types.', icon: <PaidOutlinedIcon />, path: '/maintenance/charge-type' },

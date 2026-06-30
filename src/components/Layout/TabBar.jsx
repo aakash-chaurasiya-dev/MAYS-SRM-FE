@@ -19,11 +19,16 @@ export default function TabBar() {
 
   // Use location.pathname as the source of truth for the active tab
   const currentActiveTab = location.pathname;
+  
+  // If the current path doesn't match any open tab (e.g., during navigation before the new tab mounts),
+  // pass false to MUI Tabs to prevent the "invalid value" warning.
+  const isTabValid = tabs.some(tab => tab.id === currentActiveTab);
+  const tabsValue = isTabValid ? currentActiveTab : false;
 
   return (
     <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
       <Tabs
-        value={currentActiveTab}
+        value={tabsValue}
         onChange={(e, newValue) => handleTabClick(newValue)}
         variant="scrollable"
         scrollButtons="auto"

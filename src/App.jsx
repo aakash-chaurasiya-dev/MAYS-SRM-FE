@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Box } from '@mui/material';
 import { TabNavigationProvider } from './contexts/TabNavigationContext';
+import { GlobalLoadingProvider } from './contexts/GlobalLoadingContext';
 
 // Layout
 import AppLayout from './components/Layout/AppLayout';
@@ -25,6 +26,7 @@ import PaymentModeManagementPage from './pages/Maintenance/PaymentMode/PaymentMo
 import ServiceChargesManagementPage from './pages/Maintenance/ServiceCharges/ServiceChargesManagementPage';
 import StatusManagementPage from './pages/Maintenance/Status/StatusManagementPage';
 import TicketTypeManagementPage from './pages/Maintenance/TicketType/TicketTypeManagementPage';
+import AccessoryManagementPage from './pages/Maintenance/Accessory/AccessoryManagementPage';
 import BillingDetailsPage from './pages/Billing/BillingDetailsPage';
 import CreateInvoicePage from './pages/Billing/CreateInvoicePage';
 import OrderPartsPage from './pages/Inventory/OrderPartsPage';
@@ -36,10 +38,11 @@ import EnquiriesPage from './pages/Enquiries/EnquiriesPage';
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
 import GlobalNotificationPopup from './components/GlobalNotificationPopup';
+import GlobalLoading from './components/GlobalLoading';
 
 function App() {
   return (
-    <>
+    <GlobalLoadingProvider>
       <BrowserRouter>
         <TabNavigationProvider>
           <Routes>
@@ -80,6 +83,7 @@ function App() {
                   <Route path="/maintenance/service-charges" element={<ServiceChargesManagementPage />} />
                   <Route path="/maintenance/status" element={<StatusManagementPage />} />
                   <Route path="/maintenance/ticket-type" element={<TicketTypeManagementPage />} />
+                  <Route path="/maintenance/accessories" element={<AccessoryManagementPage />} />
 
                   {/* Billing Routes */}
                   <Route path="/billing" element={<Navigate to="/billing/billing-details" replace />} />
@@ -101,7 +105,8 @@ function App() {
         </TabNavigationProvider>
       </BrowserRouter>
       <GlobalNotificationPopup />
-    </>
+      <GlobalLoading />
+    </GlobalLoadingProvider>
   );
 }
 

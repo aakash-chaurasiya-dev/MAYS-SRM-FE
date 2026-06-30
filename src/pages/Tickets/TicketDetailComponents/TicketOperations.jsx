@@ -59,12 +59,8 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
     if (isEditMode) {
       setInitialLoad(true);
 
-      const deptId = ticket?.departmentId || ticket?.department?.departmentId || 
-                     departments.find(d => (d.departmentName || d.name) === ticket?.departmentName)?.departmentId || 
-                     departments.find(d => (d.departmentName || d.name) === ticket?.department?.departmentName)?.departmentId || '';
-                     
-      const statId = ticket?.ticketStatusId || 
-                     statuses.find(s => (s.statusName || s.name)?.toLowerCase() === (ticket?.ticketStatusName || ticket?.status)?.toLowerCase())?.statusId || '';
+      const deptId = ticket?.departmentId || ticket?.department?.departmentId || '';
+      const statId = ticket?.ticketStatusId || '';
 
       setEditForm(prev => ({
         ...prev,
@@ -72,13 +68,12 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
         ticketStatusId: statId || '',
       }));
     }
-  }, [isEditMode, ticket, departments, statuses]);
+  }, [isEditMode, ticket]);
 
   // Set initial employee when the dependent employees array finishes loading
   useEffect(() => {
     if (initialLoad && employees.length > 0) {
-      const empId = ticket?.employeeId || ticket?.assigneeEmployeeId || ticket?.employee?.employeeId || 
-                    employees.find(e => (e.employeeName || e.name) === ticket?.employeeName)?.employeeId || '';
+      const empId = ticket?.employeeId || ticket?.assigneeEmployeeId || ticket?.employee?.employeeId || '';
       
       setOriginalEmployeeId(String(empId));
       setEditForm(prev => ({ ...prev, employeeId: empId }));
@@ -98,17 +93,10 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
 
   useImperativeHandle(ref, () => ({
     getFormData: () => {
-      const selectedDept = departments.find(d => String(d.departmentId || d.id) === String(editForm.departmentId));
-      const selectedEmp = employees.find(e => String(e.employeeId || e.id) === String(editForm.employeeId));
-      const selectedStatus = statuses.find(s => String(s.statusId || s.id) === String(editForm.ticketStatusId));
-
       return {
         employeeId: editForm.employeeId || null,
         departmentId: editForm.departmentId || null,
-        employeeName: selectedEmp ? (selectedEmp.employeeName || selectedEmp.name) : ticket?.employeeName,
-        departmentName: selectedDept ? (selectedDept.departmentName || selectedDept.name) : ticket?.departmentName,
         ticketStatusId: editForm.ticketStatusId || null,
-        ticketStatusName: selectedStatus ? (selectedStatus.statusName || selectedStatus.name) : ticket?.ticketStatusName,
       };
     }
   }));

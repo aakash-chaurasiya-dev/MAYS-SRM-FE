@@ -1,39 +1,44 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   Box, Paper, Typography, TextField, Button, Divider,
   MenuItem, Stack, Autocomplete
 } from '@mui/material';
-import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
-import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
-import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
-import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-
+import { useGlobalLoading } from '../../contexts/GlobalLoadingContext';
+import ChargeDetails from '../Billing/components/ChargeDetails';
+import CustomerDetails from './NEWTicketCOmponents/CustomerDetails';
+import DeviceInformation from './NEWTicketCOmponents/DeviceInformation';
+import IssueDescription from './NEWTicketCOmponents/IssueDescription';
+import UploadAttachments from './NEWTicketCOmponents/UploadAttachments';
+import TicketAccessoriesChecklist from './NEWTicketCOmponents/TicketAccessoriesChecklist';
 const PRIORITIES = ['Low', 'Normal', 'High', 'Critical'];
 const WARRANTY_TYPES = ['Warranty', 'RMA', 'Out-of-Warranty', 'Internal'];
+
+const defaultLineItem = () => ({
+  id: crypto.randomUUID(),
+  chargeTypeId: '',
+  productId: '',
+  serviceChargeId: '',
+  statusId: '',
+  amount: 0,
+});
 
 export default function NewTicketPage() {
   const theme = useTheme();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showLoading, hideLoading } = useGlobalLoading();
 
   const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
   const isNormalUser = rawRole === 'ROLE_USER';
 
-  // API Data State
-  const [customers, setCustomers] = useState([]);
-  const [deviceTypes, setDeviceTypes] = useState([]);
-  const [brands, setBrands] = useState([]);
-  const [models, setModels] = useState([]);
-  const [ticketTypes, setTicketTypes] = useState([]);
-  const [meData, setMeData] = useState(null);
-
-  // Form State
+  // --- 1. Form State ---
   const [form, setForm] = useState({
     customerId: '',
     customCustomerName: '',
@@ -52,112 +57,137 @@ export default function NewTicketPage() {
     issueDescription: '',
   });
 
-  // Generic change handler for simple fields
+  const [selectedAccessories, setSelectedAccessories] = useState([]);
+
   const handleChange = (field) => (e) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
-  // Fetch logged in profile details if normal user
-  useEffect(() => {
-    const fetchMeData = async () => {
-      if (isNormalUser) {
-        try {
-          const res = await api.get('/auth/me');
-          setMeData(res.data);
-          setForm((prev) => ({
-            ...prev,
-            customerId: res.data.userId,
-            phone: res.data.mobileNo || '',
-            email: res.data.emailId || '',
-          }));
-        } catch (error) {
-          console.error("Failed to fetch user profile", error);
-        }
+  // --- 2. React Query Fetches (Ticket Data) ---
+  const { data: meData } = useQuery({
+    queryKey: ['me'],
+    queryFn: async () => (await api.get('/auth/me')).data,
+    enabled: isNormalUser,
+  });
+
+  const { data: deviceTypes = [] } = useQuery({
+    queryKey: ['deviceTypes'],
+    queryFn: async () => (await api.get('/devicetypes')).data,
+  });
+
+  const { data: ticketTypes = [] } = useQuery({
+    queryKey: ['ticketTypes'],
+    queryFn: async () => (await api.get('/ticket-types')).data,
+  });
+
+  const { data: customers = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: async () => (await api.get('/users')).data,
+    enabled: !isNormalUser,
+  });
+
+  const { data: brands = [] } = useQuery({
+    queryKey: ['brands', form.deviceTypeId],
+    queryFn: async () => {
+      const res = await api.get('/brands');
+      const selectedDeviceType = deviceTypes.find(dt => dt.deviceTypeId === form.deviceTypeId);
+      if (selectedDeviceType) {
+        return res.data.filter(b => b.deviceTypeName === selectedDeviceType.deviceTypeName) || res.data;
       }
-    };
-    fetchMeData();
-  }, [isNormalUser]);
+      return res.data;
+    },
+    enabled: !!form.deviceTypeId && deviceTypes.length > 0,
+  });
 
-  // Fetch initial data on component mount
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        if (isNormalUser) {
-          // Customers (ROLE_USER) don't call manager-restricted `/users` endpoint
-          const [deviceTypesRes, ticketTypesRes] = await Promise.all([
-            api.get('/devicetypes'),
-            api.get('/ticket-types'),
-          ]);
-          setDeviceTypes(deviceTypesRes.data);
-          setTicketTypes(ticketTypesRes.data);
-        } else {
-          const [customersRes, deviceTypesRes, ticketTypesRes] = await Promise.all([
-            api.get('/users'),
-            api.get('/devicetypes'),
-            api.get('/ticket-types'),
-          ]);
-          setCustomers(customersRes.data);
-          setDeviceTypes(deviceTypesRes.data);
-          setTicketTypes(ticketTypesRes.data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch initial data", error);
+  const { data: models = [] } = useQuery({
+    queryKey: ['models', form.brandId],
+    queryFn: async () => {
+      const res = await api.get('/devicemodels');
+      const selectedBrand = brands.find(b => b.brandId === form.brandId);
+      if (selectedBrand) {
+        return res.data.filter(m => m.brandName === selectedBrand.brandName) || res.data;
       }
-    };
-    fetchInitialData();
-  }, [isNormalUser]);
+      return res.data;
+    },
+    enabled: !!form.brandId && brands.length > 0,
+  });
 
-  // Effect for cascading device type -> brands
+  // --- 3. React Query Fetches (Billing Lookups) ---
+  const { data: chargeTypes = [] } = useQuery({
+    queryKey: ['chargeTypes'],
+    queryFn: async () => (await api.get('/charge-types')).data?.data || (await api.get('/charge-types')).data || [],
+  });
+  const { data: products = [] } = useQuery({
+    queryKey: ['products'],
+    queryFn: async () => (await api.get('/inventory')).data?.data || (await api.get('/inventory')).data || [],
+  });
+  const { data: services = [] } = useQuery({
+    queryKey: ['services'],
+    queryFn: async () => (await api.get('/service-charges')).data?.data || (await api.get('/service-charges')).data || [],
+  });
+  const { data: billingStatuses = [] } = useQuery({
+    queryKey: ['billingStatuses'],
+    queryFn: async () => (await api.get('/statuses/type/Billing')).data?.data || (await api.get('/statuses/type/Billing')).data || [],
+  });
+
+  // --- 4. Billing Items State & Handlers ---
+  const [items, setItems] = useState([]);
+
+  const updateItem = useCallback((id, key, value) => {
+    setItems(prev => prev.map(item => item.id === id ? { ...item, [key]: value } : item));
+  }, []);
+
+  const addItem = () => {
+    const pendingStatus = billingStatuses.find(s => s.statusName?.toLowerCase() === 'pending');
+    setItems(prev => [...prev, { ...defaultLineItem(), statusId: pendingStatus ? pendingStatus.statusId : '' }]);
+  };
+  
+  const removeItem = (id) => setItems(prev => prev.filter(i => i.id !== id));
+
+  const handleProductChange = (id, productId) => {
+    const product = products.find(p => p.productId === productId);
+    setItems(prev => prev.map(item => item.id === id ? { ...item, productId, amount: product ? product.sellingPrice : item.amount } : item));
+  };
+
+  const handleServiceChange = (id, serviceChargeId) => {
+    const service = services.find(s => s.chargeId === serviceChargeId);
+    setItems(prev => prev.map(item => item.id === id ? { ...item, serviceChargeId, amount: service ? service.amount : item.amount } : item));
+  };
+ 
+  const getChargeTypeInfo = (chargeTypeId) => {
+    const ct = chargeTypes.find(c => c.chargeTypeId === chargeTypeId);
+    if (!ct) return { isProduct: false, isService: false };
+    const name = (ct.chargeName || '').toLowerCase();
+    const isProduct = name.includes('product');
+    const isService = name.includes('service');
+    return { isProduct, isService };
+  };
+
+  const updateChargeType = (id, newTypeId) => {
+    setItems(prev => prev.map(item => {
+      if (item.id === id) {
+        return { ...item, chargeTypeId: newTypeId, productId: '', serviceChargeId: '' };
+      }
+      return item;
+    }));
+  };
+
+  // --- 5. Effects ---
+  // Populate meData once loaded
   useEffect(() => {
-    if (form.deviceTypeId) {
-      const fetchBrands = async () => {
-        try {
-          const res = await api.get('/brands');
-          const selectedDeviceType = deviceTypes.find(dt => dt.deviceTypeId === form.deviceTypeId);
-          if (selectedDeviceType) {
-            const filteredBrands = res.data.filter(b => b.deviceTypeName === selectedDeviceType.deviceTypeName);
-            setBrands(filteredBrands.length > 0 ? filteredBrands : res.data);
-          } else {
-            setBrands(res.data);
-          }
-        } catch (error) {
-          console.error("Failed to fetch brands", error);
-          setBrands([]);
-        }
-      };
-      fetchBrands();
-    } else {
-      setBrands([]);
+    if (meData && isNormalUser) {
+      setForm((prev) => ({
+        ...prev,
+        customerId: meData.userId,
+        phone: meData.mobileNo || '',
+        email: meData.emailId || '',
+      }));
     }
-  }, [form.deviceTypeId, deviceTypes]);
+  }, [meData, isNormalUser]);
 
-  // Effect for cascading brand -> models
+  // Auto-populate customer info (Only for staff choosing a customer)
   useEffect(() => {
-    if (form.brandId) {
-      const fetchModels = async () => {
-        try {
-          const res = await api.get('/devicemodels');
-          const selectedBrand = brands.find(b => b.brandId === form.brandId);
-          if (selectedBrand) {
-            const filteredModels = res.data.filter(m => m.brandName === selectedBrand.brandName);
-            setModels(filteredModels.length > 0 ? filteredModels : res.data);
-          } else {
-            setModels(res.data);
-          }
-        } catch (error) {
-          console.error("Failed to fetch models", error);
-          setModels([]);
-        }
-      };
-      fetchModels();
-    } else {
-      setModels([]);
-    }
-  }, [form.brandId, brands]);
-
-  // Effect to auto-populate customer info (Only for staff choosing a customer)
-  useEffect(() => {
-    if (form.customerId && !isNormalUser) {
-      const customer = customers.find((c) => c.userId === form.customerId);
+    if (form.customerId && !isNormalUser && customers.length > 0) {
+      const customer = customers.find((c) => String(c.userId) === String(form.customerId));
       if (customer) {
         setForm((prev) => ({ ...prev, phone: customer.mobileNo || '', email: customer.emailId || '' }));
       }
@@ -166,7 +196,33 @@ export default function NewTicketPage() {
     }
   }, [form.customerId, customers, isNormalUser, form.customCustomerName]);
 
-  // Specific handlers for cascading dropdowns to reset children
+  // Auto-add Service Charge when Brand is selected
+  useEffect(() => {
+    if (form.brandId && brands.length > 0 && services.length > 0) {
+      const selectedBrand = brands.find(b => b.brandId === form.brandId);
+      if (selectedBrand) {
+        // Find a matching service charge by brand name
+        const matchingService = services.find(s => s.brandName === selectedBrand.brandName);
+        if (matchingService) {
+          // Check if it's already added to prevent duplicates
+          const alreadyAdded = items.some(i => i.serviceChargeId === matchingService.chargeId);
+          if (!alreadyAdded) {
+            const pendingStatus = billingStatuses.find(s => s.statusName?.toLowerCase() === 'pending');
+            const ctService = chargeTypes.find(ct => (ct.chargeName || '').toLowerCase().includes('service'));
+            
+            setItems(prev => [...prev, {
+              ...defaultLineItem(),
+              chargeTypeId: ctService ? ctService.chargeTypeId : '',
+              serviceChargeId: matchingService.chargeId,
+              amount: matchingService.amount || 0,
+              statusId: pendingStatus ? pendingStatus.statusId : ''
+            }]);
+          }
+        }
+      }
+    }
+  }, [form.brandId, brands, services, billingStatuses, chargeTypes]);
+
   const handleDeviceTypeChange = (e) => {
     const { value } = e.target;
     setForm((prev) => ({ ...prev, deviceTypeId: value, brandId: '', modelId: '', customModelName: '' }));
@@ -177,26 +233,16 @@ export default function NewTicketPage() {
     setForm((prev) => ({ ...prev, brandId: value, modelId: '', customModelName: '' }));
   };
 
-  const handleCreateTicket = async () => {
-    try {
+  // --- 6. Mutation ---
+  const createTicketMutation = useMutation({
+    mutationFn: async () => {
       let finalCustomerId = form.customerId;
-
-      // If no existing customer selected but custom name typed, create the customer first
+      
       if (!finalCustomerId && form.customCustomerName && !isNormalUser) {
         const nameParts = form.customCustomerName.trim().split(' ');
         const firstName = nameParts[0] || 'Unknown';
         const lastName = nameParts.slice(1).join(' ') || '';
-
-        const newUserPayload = {
-          firstName,
-          lastName,
-          mobileNo: form.phone,
-          emailId: form.email,
-          password: 'Mays123',
-          isActive: true
-        };
-
-        console.log("Creating new customer:", newUserPayload);
+        const newUserPayload = { firstName, lastName, mobileNo: form.phone, emailId: form.email, password: 'Mays123', isActive: true };
         const userRes = await api.post('/users', newUserPayload);
         finalCustomerId = userRes.data.userId;
       }
@@ -216,18 +262,45 @@ export default function NewTicketPage() {
         ticketStatusId: 1, // Defaulting to 1 for initial status
       };
 
-      console.log("Creating ticket with payload:", payload);
-      await api.post('/tickets', payload);
-      window.dispatchEvent(new CustomEvent('app-notification', {
-        detail: { message: 'Ticket created successfully!', severity: 'success' }
-      }));
+      const ticketRes = await api.post('/tickets', payload);
+      const newTicketId = ticketRes.data?.data?.ticketId || ticketRes.data?.ticketId;
+
+      if (newTicketId && items.length > 0) {
+        const chargesPayload = items.map(i => ({
+          chargeTypeId: i.chargeTypeId || null,
+          productId: i.productId || null,
+          serviceChargeId: i.serviceChargeId || null,
+          statusId: i.statusId || null,
+          amount: i.amount || 0,
+        }));
+        await api.put(`/billing/ticket/${newTicketId}/charges`, chargesPayload);
+      }
+
+      if (newTicketId && selectedAccessories.length > 0) {
+        const accPayload = selectedAccessories.map(accId => ({
+          ticketId: newTicketId,
+          accessoryId: accId
+        }));
+        await api.post('/ticket-accessories/bulk', accPayload);
+      }
+
+      return newTicketId;
+    },
+    onSuccess: () => {
+      hideLoading();
+      window.dispatchEvent(new CustomEvent('app-notification', { detail: { message: 'Ticket created successfully!', severity: 'success' }}));
       navigate('/dashboard');
-    } catch (error) {
+    },
+    onError: (error) => {
+      hideLoading();
       console.error('Failed to create ticket:', error);
-      window.dispatchEvent(new CustomEvent('app-notification', {
-        detail: { message: 'Failed to create ticket or customer', severity: 'error' }
-      }));
+      window.dispatchEvent(new CustomEvent('app-notification', { detail: { message: 'Failed to create ticket or customer', severity: 'error' }}));
     }
+  });
+
+  const handleCreateTicket = () => {
+    showLoading('Creating Ticket...');
+    createTicketMutation.mutate();
   };
 
   const lbl = {
@@ -250,291 +323,80 @@ export default function NewTicketPage() {
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2.5}>
         <Box sx={{ flex: 1 }}>
-          {/* Customer Details */}
-          <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
-            <Box sx={secHdr}><Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Your Information</Typography></Box>
-            <Divider />
-            <Box sx={{ p: 2.5 }}>
-              <Typography sx={lbl}>Name</Typography>
-              {isNormalUser ? (
-                <TextField
-                  fullWidth
-                  size="small"
-                  value={meData ? `${meData.firstName} ${meData.lastName}` : 'Loading...'}
-                  InputProps={{ readOnly: true }}
-                  sx={{ mb: 2 }}
-                />
-              ) : (
-                <Autocomplete
-                  freeSolo
-                  options={customers}
-                  getOptionLabel={(option) => {
-                    if (typeof option === 'string') {
-                      return option;
-                    }
-                    return `${option.firstName} ${option.lastName}`;
-                  }}
-                  value={
-                    customers.find((c) => String(c.userId) === String(form.customerId)) ||
-                    form.customCustomerName ||
-                    ''
-                  }
-                  onChange={(e, newValue) => {
-                    if (typeof newValue === 'string') {
-                      setForm((prev) => ({
-                        ...prev,
-                        customerId: '',
-                        customCustomerName: newValue
-                      }));
-                    } else if (newValue && newValue.userId) {
-                      setForm((prev) => ({
-                        ...prev,
-                        customerId: newValue.userId,
-                        customCustomerName: ''
-                      }));
-                    } else {
-                      setForm((prev) => ({
-                        ...prev,
-                        customerId: '',
-                        customCustomerName: ''
-                      }));
-                    }
-                  }}
-                  onInputChange={(e, newInputValue) => {
-                    const matchingOption = customers.find(
-                      (c) => `${c.firstName} ${c.lastName}`.toLowerCase() === newInputValue.toLowerCase()
-                    );
-                    if (matchingOption) {
-                      setForm((prev) => ({
-                        ...prev,
-                        customerId: matchingOption.userId,
-                        customCustomerName: ''
-                      }));
-                    } else {
-                      setForm((prev) => ({
-                        ...prev,
-                        customerId: '',
-                        customCustomerName: newInputValue
-                      }));
-                    }
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Select or type a customer…"
-                      size="small"
-                      sx={{ mb: 2, '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
-                    />
-                  )}
-                />
-              )}
-              <Box sx={{ display: 'flex', gap: 2, mb: isNormalUser ? 0 : 2 }}>
-                <Box sx={{ flex: 1 }}>
-                  <Typography sx={lbl}>Phone</Typography>
-                  <TextField fullWidth size="small" placeholder="+1 (555) 000-0000" value={form.phone} onChange={handleChange('phone')} InputProps={{ readOnly: !!form.customerId }}
-                    slotProps={{ input: { startAdornment: <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}><PhoneOutlinedIcon fontSize="small" /></Box> } }} />
-                </Box>
-                <Box sx={{ flex: 1 }}>
-                  <Typography sx={lbl}>Email</Typography>
-                  <TextField fullWidth size="small" placeholder="customer@email.com" value={form.email} onChange={handleChange('email')} InputProps={{ readOnly: !!form.customerId }}
-                    slotProps={{ input: { startAdornment: <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}><EmailOutlinedIcon fontSize="small" /></Box> } }} />
-                </Box>
-              </Box>
-              {!isNormalUser && (
-                <>
-                  <Typography sx={lbl}>Customer Type</Typography>
-                  <Autocomplete
-                    options={['Walk-in', 'Professional Client', 'Corporate Account', 'Government']}
-                    value={form.customerType}
-                    onChange={(e, newValue) => handleChange('customerType')({ target: { value: newValue || '' } })}
-                    renderInput={(params) => (
-                      <TextField {...params} size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />
-                    )}
-                  />
-                </>
-              )}
-            </Box>
-          </Paper>
+          <CustomerDetails 
+            isNormalUser={isNormalUser} 
+            form={form} 
+            setForm={setForm} 
+            handleChange={handleChange} 
+            customers={customers} 
+            lbl={lbl} 
+            secHdr={secHdr} 
+          />
 
-          {/* Device Information */}
-          <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden' }}>
-            <Box sx={secHdr}><Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Device Information</Typography></Box>
-            <Divider />
-            <Box sx={{ p: 2.5 }}>
-              <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                <Box sx={{ flex: 1 }}><Typography sx={lbl}>Device Type</Typography>
-                  <Autocomplete
-                    options={deviceTypes}
-                    getOptionLabel={(option) => option.deviceTypeName}
-                    value={deviceTypes.find((t) => t.deviceTypeId === form.deviceTypeId) || null}
-                    onChange={(e, newValue) => {
-                      handleDeviceTypeChange({ target: { value: newValue ? newValue.deviceTypeId : '' } });
-                    }}
-                    renderInput={(params) => (
-                      <TextField {...params} placeholder="Select type…" size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />
-                    )}
-                  />
-                </Box>
-                <Box sx={{ flex: 1 }}><Typography sx={lbl}>Brand</Typography>
-                  <Autocomplete
-                    options={brands}
-                    getOptionLabel={(option) => option.brandName}
-                    value={brands.find((b) => b.brandId === form.brandId) || null}
-                    onChange={(e, newValue) => {
-                      handleBrandChange({ target: { value: newValue ? newValue.brandId : '' } });
-                    }}
-                    disabled={!form.deviceTypeId || brands.length === 0}
-                    renderInput={(params) => (
-                      <TextField {...params} placeholder="Select brand…" size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />
-                    )}
-                  />
-                </Box>
-              </Box>
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Box sx={{ flex: 1 }}><Typography sx={lbl}>Model</Typography>
-                  <Autocomplete
-                    // freeSolo
-                    options={models}
-                    getOptionLabel={(option) => {
-                      if (typeof option === 'string') {
-                        return option;
-                      }
-                      return option.modelName || '';
-                    }}
-                    value={
-                      models.find(m => String(m.modelId) === String(form.modelId)) ||
-                      form.customModelName ||
-                      ''
-                    }
-                    onChange={(e, newValue) => {
-                      if (typeof newValue === 'string') {
-                        setForm(prev => ({
-                          ...prev,
-                          modelId: '',
-                          customModelName: newValue
-                        }));
-                      } else if (newValue && newValue.modelId) {
-                        setForm(prev => ({
-                          ...prev,
-                          modelId: newValue.modelId,
-                          customModelName: ''
-                        }));
-                      } else {
-                        setForm(prev => ({
-                          ...prev,
-                          modelId: '',
-                          customModelName: ''
-                        }));
-                      }
-                    }}
-                    onInputChange={(e, newInputValue) => {
-                      const matchingOption = models.find(
-                        m => m.modelName.toLowerCase() === newInputValue.toLowerCase()
-                      );
-                      if (matchingOption) {
-                        setForm(prev => ({
-                          ...prev,
-                          modelId: matchingOption.modelId,
-                          customModelName: ''
-                        }));
-                      } else {
-                        setForm(prev => ({
-                          ...prev,
-                          modelId: '',
-                          customModelName: newInputValue
-                        }));
-                      }
-                    }}
-                    disabled={!form.brandId}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        placeholder="Select or type model…"
-                        size="small"
-                        sx={{ mb: 2, '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
-                      />
-                    )}
-                  />
-                </Box>
-                <Box sx={{ flex: 1 }}><Typography sx={lbl}>Serial Number</Typography>
-                  <TextField fullWidth size="small" placeholder="S/N" value={form.serialNumber} onChange={handleChange('serialNumber')}
-                    sx={{ '& .MuiOutlinedInput-root': { fontFamily: '"JetBrains Mono", monospace', fontSize: '13px' } }} /></Box>
-              </Box>
-            </Box>
-          </Paper>
+          <DeviceInformation 
+            form={form} 
+            setForm={setForm} 
+            handleChange={handleChange} 
+            handleDeviceTypeChange={handleDeviceTypeChange} 
+            deviceTypes={deviceTypes} 
+            brands={brands} 
+            models={models} 
+            lbl={lbl} 
+            secHdr={secHdr} 
+          />
+
+          {/* Ticket Accessories */}
+          {form.deviceTypeId && (
+            <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
+              <Box sx={secHdr}><Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Ticket Accessories</Typography></Box>
+              <Divider />
+              <TicketAccessoriesChecklist 
+                deviceTypeId={form.deviceTypeId} 
+                selectedAccessories={selectedAccessories} 
+                onChange={setSelectedAccessories} 
+              />
+            </Paper>
+          )}
         </Box>
 
         <Box sx={{ flex: 1 }}>
-          {/* Issue Description */}
-          <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
-            <Box sx={secHdr}><Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Issue Description</Typography></Box>
-            <Divider />
-            <Box sx={{ p: 2.5 }}>
-              <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                <Box sx={{ flex: 1 }}><Typography sx={lbl}>Priority</Typography>
-                  <Autocomplete
-                    options={PRIORITIES}
-                    value={form.priority}
-                    onChange={(e, newValue) => handleChange('priority')({ target: { value: newValue || 'Normal' } })}
-                    renderInput={(params) => (
-                      <TextField {...params} size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />
-                    )}
-                  />
-                </Box>
-                <Box sx={{ flex: 1 }}><Typography sx={lbl}>Warranty Type</Typography>
-                  <Autocomplete
-                    options={WARRANTY_TYPES}
-                    value={form.warrantyType}
-                    onChange={(e, newValue) => handleChange('warrantyType')({ target: { value: newValue || '' } })}
-                    renderInput={(params) => (
-                      <TextField {...params} placeholder="Select…" size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />
-                    )}
-                  />
-                </Box>
-              </Box>
-              <Typography sx={lbl}>Ticket Type</Typography>
-              <Autocomplete
-                options={ticketTypes}
-                getOptionLabel={(option) => option.ticketTypeName}
-                value={ticketTypes.find((t) => t.ticketTypeId === form.ticketTypeId) || null}
-                onChange={(e, newValue) => {
-                  handleChange('ticketTypeId')({ target: { value: newValue ? newValue.ticketTypeId : '' } });
-                }}
-                renderInput={(params) => (
-                  <TextField {...params} placeholder="Select type…" size="small" sx={{ mb: 2, '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />
-                )}
-              />
-              <Typography sx={lbl}>Issue Title</Typography>
-              <TextField fullWidth size="small" placeholder="Brief summary" value={form.issueTitle}
-                onChange={handleChange('issueTitle')} sx={{ mb: 2 }} />
-              <Typography sx={lbl}>Description</Typography>
-              <TextField fullWidth multiline rows={5} placeholder="Detailed description of the issue…"
-                value={form.issueDescription} onChange={handleChange('issueDescription')}
-                sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />
-            </Box>
-          </Paper>
-          {/* Upload */}
-          <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
-            <Box sx={secHdr}><Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Upload Attachments</Typography></Box>
-            <Divider />
-            <Box sx={{ p: 2.5 }}>
-              <Box sx={{
-                border: `2px dashed ${theme.palette.divider}`, borderRadius: '3px', p: 4, textAlign: 'center',
-                cursor: 'pointer', transition: 'border-color 0.2s', '&:hover': { borderColor: theme.palette.primary.main }
-              }}>
-                <CloudUploadOutlinedIcon sx={{ fontSize: 40, color: theme.palette.text.secondary, mb: 1 }} />
-                <Typography sx={{ fontSize: '13px', fontWeight: 600 }}>Drop device photos, warranty PDFs, or invoices here.</Typography>
-                <Typography sx={{ fontSize: '11px', color: theme.palette.text.secondary, mt: 0.5 }}>JPG, PNG, PDF up to 10MB each</Typography>
-              </Box>
-            </Box>
-          </Paper>
+          <IssueDescription 
+            form={form} 
+            handleChange={handleChange} 
+            ticketTypes={ticketTypes} 
+            lbl={lbl} 
+            secHdr={secHdr} 
+          />
 
-          <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'flex-end' }}>
-            <Button variant="outlined" startIcon={<CloseIcon />} onClick={() => navigate('/dashboard')} sx={{ px: 3 }}>Cancel</Button>
-            <Button variant="contained" startIcon={<SaveOutlinedIcon />} sx={{ px: 3 }} onClick={handleCreateTicket}>Create Request</Button>
-          </Box>
+          <UploadAttachments secHdr={secHdr} />
+
         </Box>
       </Stack>
+      
+      {/* --- Billing Charges --- */}
+      {!isNormalUser && (
+        <Box sx={{ mt: 1 }}>
+          <ChargeDetails 
+            items={items} 
+            chargeTypes={chargeTypes} 
+            products={products} 
+            services={services} 
+            statuses={billingStatuses}
+            addItem={addItem}
+            removeItem={removeItem}
+            updateItem={updateItem}
+            updateChargeType={updateChargeType}
+            handleProductChange={handleProductChange}
+            handleServiceChange={handleServiceChange}
+            getChargeTypeInfo={getChargeTypeInfo}
+          />
+        </Box>
+      )}
+
+      <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'flex-end', mt: 4 }}>
+        <Button variant="outlined" startIcon={<CloseIcon />} onClick={() => navigate('/dashboard')} sx={{ px: 3 }}>Cancel</Button>
+        <Button variant="contained" startIcon={<SaveOutlinedIcon />} sx={{ px: 3 }} onClick={handleCreateTicket}>Create Request</Button>
+      </Box>
     </Box>
   );
 }

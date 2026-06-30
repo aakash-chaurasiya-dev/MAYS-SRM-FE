@@ -20,6 +20,7 @@ import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { useTheme } from '@mui/material/styles';
 import { useAppThemeContext } from '../../theme/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useGlobalLoading } from '../../contexts/GlobalLoadingContext';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import Logo from '../Logo/Logo';
 
@@ -64,6 +65,7 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose }) {
   const theme = useTheme();
   const { mode, toggleTheme } = useAppThemeContext();
   const { logout, user } = useAuth();
+  const { showLoading, hideLoading } = useGlobalLoading();
   const location = useLocation();
   const navigate = useNavigate();
   const [inventoryOpen, setInventoryOpen] = useState(location.pathname.startsWith('/inventory'));
@@ -102,6 +104,14 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose }) {
   const handleNav = (path) => {
     navigate(path);
     if (onMobileClose) onMobileClose();
+  };
+
+  const handleNewTicketClick = () => {
+    showLoading('Loading New Ticket...');
+    setTimeout(() => {
+      hideLoading();
+      handleNav('/tickets/new');
+    }, 800);
   };
 
   const drawerContent = (
@@ -230,7 +240,7 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose }) {
         <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
           <Button variant="contained" fullWidth
             startIcon={desktopOpen ? <AddIcon /> : undefined}
-            onClick={() => handleNav('/tickets/new')}
+            onClick={handleNewTicketClick}
             sx={{ borderRadius: '6px', py: 0.9, fontSize: '13px', fontWeight: 600,
               textTransform: 'none', minWidth: desktopOpen ? 'auto' : 40,
               px: desktopOpen ? 2 : 0, justifyContent: 'center' }}>
