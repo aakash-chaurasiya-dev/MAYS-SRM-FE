@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Typography, Button, Paper, Divider, Dialog, DialogContent } from '@mui/material';
+import React, { useState } from 'react';
+import { Box, Typography, Button, Paper, Divider, Dialog, DialogContent, CircularProgress } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { useQuery } from '@tanstack/react-query';
 import api from '../../../services/api';
 
 /**
@@ -26,16 +27,17 @@ const formatTimestamp = (value) => {
 export default function TicketTimeline({ ticketId, timeline = [] }) {
   const theme = useTheme();
   const [logDetailModalOpen, setLogDetailModalOpen] = useState(false);
-  const [fullLogs, setFullLogs] = useState([]);
 
-  useEffect(() => {
-    if (logDetailModalOpen && ticketId) {
+  const { data: fullLogs = [], isLoading } = useQuery({
+    queryKey: ['ticket-logs', ticketId],
+    queryFn: async () => {
       console.log(`Fetching full logs for Ticket ID: ${ticketId}`);
-      api.get(`/ticket-logs/${ticketId}`)
-        .then(res => setFullLogs(res.data))
-        .catch(err => console.error('Failed to fetch full logs:', err));
-    }
-  }, [logDetailModalOpen, ticketId]);
+      const res = await api.get(`/ticket-logs/${ticketId}`);
+      return res.data;
+    },
+    enabled: !!(logDetailModalOpen && ticketId),
+    staleTime: 5 * 60 * 1000, // 5 minutes (prevents refetching every time modal opens)
+  });
 
   return (
     <>
@@ -76,7 +78,11 @@ export default function TicketTimeline({ ticketId, timeline = [] }) {
         <DialogContent sx={{ p: 3 }}>
           <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>Full Ticket Logs</Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: '60vh', overflowY: 'auto' }}>
-            {fullLogs.length === 0 ? (
+            {isLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                <CircularProgress size={30} />
+              </Box>
+            ) : fullLogs.length === 0 ? (
               <Typography>No logs found.</Typography>
             ) : (
               fullLogs.map((log, i) => (

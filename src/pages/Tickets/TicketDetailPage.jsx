@@ -6,14 +6,14 @@ import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Import modular components
-import TicketHeader from './components/TicketHeader';
-import TicketIssue from './components/TicketIssue';
-import TicketCustomer from './components/TicketCustomer';
-import TicketDevice from './components/TicketDevice';
-import TicketAttachments from './components/TicketAttachments';
-import TicketOperations from './components/TicketOperations';
-import TicketTimeline from './components/TicketTimeline';
-import TicketInternalUpdate from './components/TicketInternalUpdate';
+import TicketHeader from './TicketDetailComponents/TicketHeader';
+import TicketIssue from './TicketDetailComponents/TicketIssue';
+import TicketCustomer from './TicketDetailComponents/TicketCustomer';
+import TicketDevice from './TicketDetailComponents/TicketDevice';
+import TicketAttachments from './TicketDetailComponents/TicketAttachments';
+import TicketOperations from './TicketDetailComponents/TicketOperations';
+import TicketTimeline from './TicketDetailComponents/TicketTimeline';
+import TicketInternalUpdate from './TicketDetailComponents/TicketInternalUpdate';
 
 /**
  * Helper to safely format timestamp strings.
@@ -110,15 +110,18 @@ export default function TicketDetailPage() {
   });
 
   // 3. Fetch Logs (Staff Only)
-  const { data: timeline = [] } = useQuery({
-    queryKey: ['ticket-logs', id],
+  const { data: rawLogs = [] } = useQuery({
+    queryKey: ['ticket-logs-latest', id],
     queryFn: async () => {
       const res = await api.get(`/ticket-logs/${id}/latest`);
-      const logsData = Array.isArray(res.data) ? res.data : [];
-      return logsData.map(createTimelineEntry);
+      return Array.isArray(res.data) ? res.data : [];
     },
     enabled: !isNormalUser, // Only fetch if it's a staff member
   });
+
+  const timeline = Array.isArray(rawLogs) ? rawLogs.map(createTimelineEntry) : [];
+  const latestRemarkLog = Array.isArray(rawLogs) ? rawLogs.find(log => log.assignorRemarks && log.assignorRemarks.trim() !== '') : null;
+  const latestRemark = latestRemarkLog ? latestRemarkLog.assignorRemarks : 'No internal updates yet.';
 
   // 4. Unified Update Mutation
   const updateTicketMutation = useMutation({
@@ -209,6 +212,8 @@ export default function TicketDetailPage() {
             ref={internalNoteRef}
             ticket={ticket} 
             ticketId={id}
+            isEditMode={isEditMode}
+            latestRemark={latestRemark}
           />
           
           <Stack direction="row" spacing={2.5} flexWrap="wrap" useFlexGap>
