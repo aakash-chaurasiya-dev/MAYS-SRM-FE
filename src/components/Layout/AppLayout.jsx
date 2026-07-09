@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Box, useMediaQuery } from '@mui/material';
 import { Outlet } from 'react-router-dom';
 import AppSidebar from './AppSidebar';
-import TopBar from './TopBar';
 import TabBar from './TabBar';
 import { useTheme } from '@mui/material/styles';
 
@@ -24,15 +23,45 @@ export default function AppLayout() {
     }
   };
 
-  const drawerWidth = desktopOpen ? 240 : 64;
+  const [sidebarWidth, setSidebarWidth] = useState(240);
+  const [isResizing, setIsResizing] = useState(false);
+
+  const startResizing = useCallback(() => {
+    setIsResizing(true);
+  }, []);
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  const resize = useCallback((e) => {
+    if (isResizing) {
+      const newWidth = Math.min(Math.max(e.clientX, 200), 500);
+      setSidebarWidth(newWidth);
+    }
+  }, [isResizing]);
+
+  useEffect(() => {
+    window.addEventListener('mousemove', resize);
+    window.addEventListener('mouseup', stopResizing);
+    return () => {
+      window.removeEventListener('mousemove', resize);
+      window.removeEventListener('mouseup', stopResizing);
+    };
+  }, [resize, stopResizing]);
+
+  const drawerWidth = desktopOpen ? sidebarWidth : 64;
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', cursor: isResizing ? 'ew-resize' : 'auto', userSelect: isResizing ? 'none' : 'auto' }}>
       {/* ── Sidebar ── */}
       <AppSidebar 
         mobileOpen={mobileOpen} 
         desktopOpen={desktopOpen}
         onMobileClose={() => setMobileOpen(false)} 
+        drawerWidth={drawerWidth}
+        onStartResizing={startResizing}
+        isResizing={isResizing}
       />
 
       
@@ -47,15 +76,13 @@ export default function AppLayout() {
           bgcolor: theme.palette.background.default,
           minHeight: '100vh',
           width: { md: `calc(100% - ${drawerWidth}px)` },
-          transition: theme.transitions.create('width', {
+          transition: isResizing ? 'none' : theme.transitions.create('width', {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
           }),
         }}
       >
-        <TabBar />
-
-        <TopBar onMenuClick={handleDrawerToggle} />
+        <TabBar onMenuClick={handleDrawerToggle} />
 
         {/* ── Page content ── */}
         <Box

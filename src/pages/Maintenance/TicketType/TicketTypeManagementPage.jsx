@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, Button, Divider, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -13,7 +14,7 @@ export default function TicketTypeManagementPage() {
   const theme = useTheme();
   const navigate = useNavigate();
 
-  const [ticketTypes, setTicketTypes] = useState([]);
+  const queryClient = useQueryClient();
   
   const [selectedIds, setSelectedIds] = useState([]);
   const [clearSelectionKey, setClearSelectionKey] = useState(0);
@@ -21,33 +22,27 @@ export default function TicketTypeManagementPage() {
   // Modal & Form State
   const [openModal, setOpenModal] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' | 'update'
-  const [submitLoading, setSubmitLoading] = useState(false);
   
   // Delete Confirmation State
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const initialFormState = {
     ticketTypeId: '', ticketTypeName: '', ticketTypeDescription: '',
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const fetchTicketTypes = useCallback(async () => {
-    try {
+  const { data: ticketTypes = [] } = useQuery({
+    queryKey: ['ticketTypes'],
+    queryFn: async () => {
       const response = await api.get('/ticket-types');
       const data = response.data?.data || response.data || [];
-      setTicketTypes(data.map((tt, index) => ({
+      return data.map((tt, index) => ({
         ...tt,
         id: tt.ticketTypeId || `fallback-id-${index}`,
-      })));
-    } catch (error) {
-      console.error('Failed to fetch ticket types:', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchTicketTypes();
-  }, [fetchTicketTypes]);
+      }));
+    },
+    staleTime: 1000 * 60 * 60,
+  });
 
   const handleOpenCreateModal = () => {
     setModalMode('create');
@@ -82,45 +77,50 @@ export default function TicketTypeManagementPage() {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitLoading(true);
-    try {
-      const payload = {
-        ticketTypeName: formData.ticketTypeName,
-        ticketTypeDescription: formData.ticketTypeDescription,
-      };
-
+  const submitMutation = useMutation({
+    mutationFn: async (payload) => {
       if (modalMode === 'create') {
-        await api.post('/ticket-types', payload);
+        return api.post('/ticket-types', payload);
       } else {
-        await api.put(`/ticket-types/${formData.ticketTypeId}`, payload);
+        return api.put(`/ticket-types/${formData.ticketTypeId}`, payload);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ticketTypes'] });
+      if (modalMode !== 'create') {
         setSelectedIds([]); 
         setClearSelectionKey(prev => prev + 1);
       }
       handleCloseModal();
-      fetchTicketTypes();
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error(`Failed to ${modalMode} ticket type:`, error);
-    } finally {
-      setSubmitLoading(false);
     }
-  };
+  });
 
-  const handleDeleteConfirm = async () => {
-    setDeleteLoading(true);
-    try {
-      const ttId = selectedIds[0];
-      await api.delete(`/ticket-types/${ttId}`);
+  const deleteMutation = useMutation({
+    mutationFn: async (ttId) => api.delete(`/ticket-types/${ttId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ticketTypes'] });
       setOpenDeleteConfirm(false);
       setSelectedIds([]);
       setClearSelectionKey(prev => prev + 1);
-      fetchTicketTypes();
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Failed to delete ticket type:', error);
-    } finally {
-      setDeleteLoading(false);
     }
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    submitMutation.mutate({
+      ticketTypeName: formData.ticketTypeName,
+      ticketTypeDescription: formData.ticketTypeDescription,
+    });
+  };
+
+  const handleDeleteConfirm = () => {
+    deleteMutation.mutate(selectedIds[0]);
   };
 
   const config = useMemo(() => ({
@@ -236,9 +236,9 @@ export default function TicketTypeManagementPage() {
         </DialogContent>
         <Divider />
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={handleCloseModal} variant="outlined" disabled={submitLoading} sx={{ px: 3 }}>Cancel</Button>
-          <Button type="submit" form="tickettype-form" variant="contained" disabled={submitLoading} sx={{ px: 3, minWidth: 100 }}>
-            {submitLoading ? <CircularProgress size={24} color="inherit" /> : (modalMode === 'create' ? 'Save Type' : 'Update Type')}
+          <Button onClick={handleCloseModal} variant="outlined" disabled={submitMutation.isPending} sx={{ px: 3 }}>Cancel</Button>
+          <Button type="submit" form="tickettype-form" variant="contained" disabled={submitMutation.isPending} sx={{ px: 3, minWidth: 100 }}>
+            {submitMutation.isPending ? <CircularProgress size={24} color="inherit" /> : (modalMode === 'create' ? 'Save Type' : 'Update Type')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -254,9 +254,9 @@ export default function TicketTypeManagementPage() {
         </DialogContent>
         <Divider />
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteLoading}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteLoading} sx={{ minWidth: 90 }}>
-             {deleteLoading ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
+          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteMutation.isPending}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteMutation.isPending} sx={{ minWidth: 90 }}>
+             {deleteMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -108,7 +108,7 @@ export default function DashboardPage() {
 
   // 2. Fetch Initial Tickets (Admin)
   const { data: adminTicketsInitial, isLoading: loadingAdminTickets } = useQuery({
-    queryKey: ['dashboard-tickets-admin', selectedDept],
+    queryKey: ['dashboard-ticket-list', selectedDept],
     queryFn: async () => {
       const baseEndpoint = selectedDept === 'All' 
          ? '/tickets/dashboard' 
@@ -127,7 +127,7 @@ export default function DashboardPage() {
 
   // 3. Fetch Tickets (Normal User)
   const { data: userTickets, isLoading: loadingUserTickets } = useQuery({
-    queryKey: ['dashboard-tickets-user', user?.userId],
+    queryKey: ['dashboard-ticket-list-user', user?.userId],
     queryFn: async () => {
       // Using user.userId from AuthContext instead of fetching /auth/me again
       const ticketsResponse = await api.get(`/tickets/user/${user.userId}`);
@@ -382,15 +382,6 @@ export default function DashboardPage() {
   /* ── Employee-Specific Command Center ── */
   return (
     <Box>
-      {/* ── Header ── */}
-      <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>
-          Admin Command Center
-        </Typography>
-        <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
-          Real-time overview of workshop operations
-        </Typography>
-      </Box>
 
       {/* ── Stat Cards Row ── */}
       <Box

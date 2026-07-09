@@ -86,29 +86,29 @@ export default function NewTicketPage() {
   });
 
   const { data: brands = [] } = useQuery({
-    queryKey: ['brands', form.deviceTypeId],
-    queryFn: async () => {
-      const res = await api.get('/brands');
+    queryKey: ['brands'],
+    queryFn: async () => (await api.get('/brands')).data,
+    select: (data) => {
+      if (!form.deviceTypeId) return [];
       const selectedDeviceType = deviceTypes.find(dt => dt.deviceTypeId === form.deviceTypeId);
       if (selectedDeviceType) {
-        return res.data.filter(b => b.deviceTypeName === selectedDeviceType.deviceTypeName) || res.data;
+        return data.filter(b => b.deviceTypeName === selectedDeviceType.deviceTypeName);
       }
-      return res.data;
+      return data;
     },
-    enabled: !!form.deviceTypeId && deviceTypes.length > 0,
   });
 
   const { data: models = [] } = useQuery({
-    queryKey: ['models', form.brandId],
-    queryFn: async () => {
-      const res = await api.get('/devicemodels');
+    queryKey: ['models'],
+    queryFn: async () => (await api.get('/devicemodels')).data,
+    select: (data) => {
+      if (!form.brandId) return [];
       const selectedBrand = brands.find(b => b.brandId === form.brandId);
       if (selectedBrand) {
-        return res.data.filter(m => m.brandName === selectedBrand.brandName) || res.data;
+        return data.filter(m => m.brandName === selectedBrand.brandName);
       }
-      return res.data;
+      return data;
     },
-    enabled: !!form.brandId && brands.length > 0,
   });
 
   // --- 3. React Query Fetches (Billing Lookups) ---
@@ -125,34 +125,40 @@ export default function NewTicketPage() {
     queryFn: async () => (await api.get('/service-charges')).data?.data || (await api.get('/service-charges')).data || [],
   });
   const { data: billingStatuses = [] } = useQuery({
-    queryKey: ['billingStatuses'],
-    queryFn: async () => (await api.get('/statuses/type/Billing')).data?.data || (await api.get('/statuses/type/Billing')).data || [],
+    queryKey: ['statuses'],
+    queryFn: async () => {
+      const res = await api.get('/statuses');
+      return res.data?.data || res.data || [];
+    },
+    select: (data) => data.filter(s => s.statusType === 'Billing' || s.statusType === 'BILLING')
+  });
+  const { data: paymentModes = [] } = useQuery({
+    queryKey: ['paymentModes'],
+    queryFn: async () => {
+      const res = await api.get('/payment-modes');
+      const data = res.data?.data || res.data || [];
+      return data.map((pm, idx) => ({ ...pm, id: pm.payModeId || `fallback-pm-${idx}` }));
+    },
   });
 
   // --- 4. Billing Items State & Handlers ---
   const [items, setItems] = useState([]);
 
-  const updateItem = useCallback((id, key, value) => {
-    setItems(prev => prev.map(item => item.id === id ? { ...item, [key]: value } : item));
+  const updateItemBatch = useCallback((id, updatedFields) => {
+    setItems(prev => prev.map(item => item.id === id ? { ...item, ...updatedFields } : item));
   }, []);
 
-  const addItem = () => {
+  const getNewItemTemplate = () => {
     const pendingStatus = billingStatuses.find(s => s.statusName?.toLowerCase() === 'pending');
-    setItems(prev => [...prev, { ...defaultLineItem(), statusId: pendingStatus ? pendingStatus.statusId : '' }]);
+    return { ...defaultLineItem(), statusId: pendingStatus ? pendingStatus.statusId : '' };
+  };
+
+  const addNewItem = (newItem) => {
+    setItems(prev => [...prev, newItem]);
   };
   
   const removeItem = (id) => setItems(prev => prev.filter(i => i.id !== id));
 
-  const handleProductChange = (id, productId) => {
-    const product = products.find(p => p.productId === productId);
-    setItems(prev => prev.map(item => item.id === id ? { ...item, productId, amount: product ? product.sellingPrice : item.amount } : item));
-  };
-
-  const handleServiceChange = (id, serviceChargeId) => {
-    const service = services.find(s => s.chargeId === serviceChargeId);
-    setItems(prev => prev.map(item => item.id === id ? { ...item, serviceChargeId, amount: service ? service.amount : item.amount } : item));
-  };
- 
   const getChargeTypeInfo = (chargeTypeId) => {
     const ct = chargeTypes.find(c => c.chargeTypeId === chargeTypeId);
     if (!ct) return { isProduct: false, isService: false };
@@ -160,15 +166,6 @@ export default function NewTicketPage() {
     const isProduct = name.includes('product');
     const isService = name.includes('service');
     return { isProduct, isService };
-  };
-
-  const updateChargeType = (id, newTypeId) => {
-    setItems(prev => prev.map(item => {
-      if (item.id === id) {
-        return { ...item, chargeTypeId: newTypeId, productId: '', serviceChargeId: '' };
-      }
-      return item;
-    }));
   };
 
   // --- 5. Effects ---
@@ -270,6 +267,7 @@ export default function NewTicketPage() {
           chargeTypeId: i.chargeTypeId || null,
           productId: i.productId || null,
           serviceChargeId: i.serviceChargeId || null,
+          paymentModeId: i.paymentModeId || null,
           statusId: i.statusId || null,
           amount: i.amount || 0,
         }));
@@ -382,12 +380,11 @@ export default function NewTicketPage() {
             products={products} 
             services={services} 
             statuses={billingStatuses}
-            addItem={addItem}
+            paymentModes={paymentModes}
+            getNewItemTemplate={getNewItemTemplate}
+            addNewItem={addNewItem}
             removeItem={removeItem}
-            updateItem={updateItem}
-            updateChargeType={updateChargeType}
-            handleProductChange={handleProductChange}
-            handleServiceChange={handleServiceChange}
+            updateItemBatch={updateItemBatch}
             getChargeTypeInfo={getChargeTypeInfo}
           />
         </Box>

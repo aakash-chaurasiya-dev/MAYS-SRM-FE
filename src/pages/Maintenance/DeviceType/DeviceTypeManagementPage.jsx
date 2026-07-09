@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, Button, Divider, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -13,7 +14,7 @@ export default function DeviceTypeManagementPage() {
   const theme = useTheme();
   const navigate = useNavigate();
 
-  const [deviceTypes, setDeviceTypes] = useState([]);
+  const queryClient = useQueryClient();
   
   const [selectedIds, setSelectedIds] = useState([]);
   const [clearSelectionKey, setClearSelectionKey] = useState(0);
@@ -21,33 +22,27 @@ export default function DeviceTypeManagementPage() {
   // Modal & Form State
   const [openModal, setOpenModal] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' | 'update'
-  const [submitLoading, setSubmitLoading] = useState(false);
   
   // Delete Confirmation State
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const initialFormState = {
     deviceTypeId: '', deviceTypeName: '', deviceTypeDescription: '',
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const fetchDeviceTypes = useCallback(async () => {
-    try {
+  const { data: deviceTypes = [] } = useQuery({
+    queryKey: ['deviceTypes'],
+    queryFn: async () => {
       const response = await api.get('/devicetypes');
       const data = response.data?.data || response.data || [];
-      setDeviceTypes(data.map((type, index) => ({
+      return data.map((type, index) => ({
         ...type,
         id: type.deviceTypeId || `fallback-id-${index}`,
-      })));
-    } catch (error) {
-      console.error('Failed to fetch device types:', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchDeviceTypes();
-  }, [fetchDeviceTypes]);
+      }));
+    },
+    staleTime: 1000 * 60 * 60,
+  });
 
   const handleOpenCreateModal = () => {
     setModalMode('create');
@@ -82,45 +77,50 @@ export default function DeviceTypeManagementPage() {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitLoading(true);
-    try {
-      const payload = {
-        deviceTypeName: formData.deviceTypeName,
-        deviceTypeDescription: formData.deviceTypeDescription,
-      };
-
+  const submitMutation = useMutation({
+    mutationFn: async (payload) => {
       if (modalMode === 'create') {
-        await api.post('/devicetypes', payload);
+        return api.post('/devicetypes', payload);
       } else {
-        await api.put(`/devicetypes/${formData.deviceTypeId}`, payload);
+        return api.put(`/devicetypes/${formData.deviceTypeId}`, payload);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deviceTypes'] });
+      if (modalMode !== 'create') {
         setSelectedIds([]); 
         setClearSelectionKey(prev => prev + 1);
       }
       handleCloseModal();
-      fetchDeviceTypes();
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error(`Failed to ${modalMode} device type:`, error);
-    } finally {
-      setSubmitLoading(false);
     }
-  };
+  });
 
-  const handleDeleteConfirm = async () => {
-    setDeleteLoading(true);
-    try {
-      const typeId = selectedIds[0];
-      await api.delete(`/devicetypes/${typeId}`);
+  const deleteMutation = useMutation({
+    mutationFn: async (typeId) => api.delete(`/devicetypes/${typeId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deviceTypes'] });
       setOpenDeleteConfirm(false);
       setSelectedIds([]);
       setClearSelectionKey(prev => prev + 1);
-      fetchDeviceTypes();
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Failed to delete device type:', error);
-    } finally {
-      setDeleteLoading(false);
     }
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    submitMutation.mutate({
+      deviceTypeName: formData.deviceTypeName,
+      deviceTypeDescription: formData.deviceTypeDescription,
+    });
+  };
+
+  const handleDeleteConfirm = () => {
+    deleteMutation.mutate(selectedIds[0]);
   };
 
   const config = useMemo(() => ({
@@ -150,23 +150,6 @@ export default function DeviceTypeManagementPage() {
 
   return (
     <Box sx={{ p: 2 }}>
-      {/* Breadcrumb / Back */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => navigate('/maintenance')}
-          sx={{ fontSize: '12px', color: theme.palette.text.secondary }}>
-          Maintenance
-        </Button>
-      </Box>
-
-      <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>
-          Device Type Management
-        </Typography>
-        <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
-          Manage device categories such as Laptops, Phones, Servers, etc.
-        </Typography>
-      </Box>
-
       <List 
         config={config} 
         rowSelectionModel={selectedIds}
@@ -236,9 +219,9 @@ export default function DeviceTypeManagementPage() {
         </DialogContent>
         <Divider />
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={handleCloseModal} variant="outlined" disabled={submitLoading} sx={{ px: 3 }}>Cancel</Button>
-          <Button type="submit" form="devicetype-form" variant="contained" disabled={submitLoading} sx={{ px: 3, minWidth: 100 }}>
-            {submitLoading ? <CircularProgress size={24} color="inherit" /> : (modalMode === 'create' ? 'Save Device Type' : 'Update Device Type')}
+          <Button onClick={handleCloseModal} variant="outlined" disabled={submitMutation.isPending} sx={{ px: 3 }}>Cancel</Button>
+          <Button type="submit" form="devicetype-form" variant="contained" disabled={submitMutation.isPending} sx={{ px: 3, minWidth: 100 }}>
+            {submitMutation.isPending ? <CircularProgress size={24} color="inherit" /> : (modalMode === 'create' ? 'Save Device Type' : 'Update Device Type')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -254,9 +237,9 @@ export default function DeviceTypeManagementPage() {
         </DialogContent>
         <Divider />
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteLoading}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteLoading} sx={{ minWidth: 90 }}>
-             {deleteLoading ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
+          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteMutation.isPending}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteMutation.isPending} sx={{ minWidth: 90 }}>
+             {deleteMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, Button, Divider, Typography, MenuItem } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -22,44 +23,49 @@ export default function AccessoryManagementPage() {
   // Modal & Form State
   const [openModal, setOpenModal] = useState(false);
   const [modalMode, setModalMode] = useState('create');
-  const [submitLoading, setSubmitLoading] = useState(false);
   
   // Delete Confirmation State
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   const initialFormState = {
     accessoryId: '', accessoryName: '', description: '', deviceTypeId: ''
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const fetchAccessories = useCallback(async () => {
-    try {
+  const { data: accessoriesData, isLoading: accessoriesLoading, refetch: refetchAccessories } = useQuery({
+    queryKey: ['accessories'],
+    queryFn: async () => {
       const response = await api.get('/device-accessories');
       const data = response.data?.data || response.data || [];
-      setAccessories(data.map((acc, index) => ({
+      return data.map((acc, index) => ({
         ...acc,
         id: acc.accessoryId || `fallback-id-${index}`,
-      })));
-    } catch (error) {
-      console.error('Failed to fetch accessories:', error);
-    }
-  }, []);
+      }));
+    },
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
 
-  const fetchDeviceTypes = useCallback(async () => {
-    try {
+  const { data: deviceTypesData } = useQuery({
+    queryKey: ['deviceTypes'],
+    queryFn: async () => {
       const response = await api.get('/devicetypes');
       const data = response.data?.data || response.data || [];
-      setDeviceTypes(data);
-    } catch (error) {
-      console.error('Failed to fetch device types:', error);
-    }
-  }, []);
+      return data.map((type, index) => ({
+        ...type,
+        id: type.deviceTypeId || `fallback-id-${index}`,
+      }));
+    },
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
 
   useEffect(() => {
-    fetchAccessories();
-    fetchDeviceTypes();
-  }, [fetchAccessories, fetchDeviceTypes]);
+    if (accessoriesData) setAccessories(accessoriesData);
+  }, [accessoriesData]);
+
+  useEffect(() => {
+    if (deviceTypesData) setDeviceTypes(deviceTypesData);
+  }, [deviceTypesData]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');
@@ -95,46 +101,51 @@ export default function AccessoryManagementPage() {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitLoading(true);
-    try {
-      const payload = {
-        accessoryName: formData.accessoryName,
-        description: formData.description,
-        deviceTypeId: formData.deviceTypeId,
-      };
-
+  const submitMutation = useMutation({
+    mutationFn: async (payload) => {
       if (modalMode === 'create') {
-        await api.post('/device-accessories', payload);
+        return api.post('/device-accessories', payload);
       } else {
-        await api.put(`/device-accessories/${formData.accessoryId}`, payload);
+        return api.put(`/device-accessories/${formData.accessoryId}`, payload);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accessories'] });
+      if (modalMode !== 'create') {
         setSelectedIds([]); 
         setClearSelectionKey(prev => prev + 1);
       }
       handleCloseModal();
-      fetchAccessories();
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error(`Failed to ${modalMode} accessory:`, error);
-    } finally {
-      setSubmitLoading(false);
     }
-  };
+  });
 
-  const handleDeleteConfirm = async () => {
-    setDeleteLoading(true);
-    try {
-      const id = selectedIds[0];
-      await api.delete(`/device-accessories/${id}`);
+  const deleteMutation = useMutation({
+    mutationFn: async (id) => api.delete(`/device-accessories/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accessories'] });
       setOpenDeleteConfirm(false);
       setSelectedIds([]);
       setClearSelectionKey(prev => prev + 1);
-      fetchAccessories();
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Failed to delete accessory:', error);
-    } finally {
-      setDeleteLoading(false);
     }
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    submitMutation.mutate({
+      accessoryName: formData.accessoryName,
+      description: formData.description,
+      deviceTypeId: formData.deviceTypeId,
+    });
+  };
+
+  const handleDeleteConfirm = () => {
+    deleteMutation.mutate(selectedIds[0]);
   };
 
   const config = useMemo(() => ({
@@ -146,6 +157,18 @@ export default function AccessoryManagementPage() {
       { field: 'accessoryName', headerName: 'Name', flex: 1.5, renderType: 'link' },
       { field: 'deviceTypeName', headerName: 'Device Type', flex: 1.5 },
       { field: 'description', headerName: 'Description', flex: 2 },
+      { 
+        field: 'insertDate', 
+        headerName: 'Created At', 
+        width: 160,
+        valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString() : '' 
+      },
+      { 
+        field: 'lastUpdateDate', 
+        headerName: 'Updated At', 
+        width: 160,
+        valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString() : '' 
+      },
     ],
     checkboxSelection: true,
     searchable: true,
@@ -165,22 +188,6 @@ export default function AccessoryManagementPage() {
 
   return (
     <Box sx={{ p: 2 }}>
-      {/* Breadcrumb / Back */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => navigate('/maintenance')}
-          sx={{ fontSize: '12px', color: theme.palette.text.secondary }}>
-          Maintenance
-        </Button>
-      </Box>
-
-      <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>
-          Accessory Management
-        </Typography>
-        <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
-          Manage ticket accessories such as Chargers, Cables, Cases mapped to Device Types.
-        </Typography>
-      </Box>
 
       <List 
         config={config} 
@@ -266,9 +273,9 @@ export default function AccessoryManagementPage() {
         </DialogContent>
         <Divider />
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={handleCloseModal} variant="outlined" disabled={submitLoading} sx={{ px: 3 }}>Cancel</Button>
-          <Button type="submit" form="accessory-form" variant="contained" disabled={submitLoading} sx={{ px: 3, minWidth: 100 }}>
-            {submitLoading ? <CircularProgress size={24} color="inherit" /> : (modalMode === 'create' ? 'Save Accessory' : 'Update Accessory')}
+          <Button onClick={handleCloseModal} variant="outlined" disabled={submitMutation.isPending} sx={{ px: 3 }}>Cancel</Button>
+          <Button type="submit" form="accessory-form" variant="contained" disabled={submitMutation.isPending} sx={{ px: 3, minWidth: 100 }}>
+            {submitMutation.isPending ? <CircularProgress size={24} color="inherit" /> : (modalMode === 'create' ? 'Save Accessory' : 'Update Accessory')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -284,9 +291,9 @@ export default function AccessoryManagementPage() {
         </DialogContent>
         <Divider />
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteLoading}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteLoading} sx={{ minWidth: 90 }}>
-             {deleteLoading ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
+          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteMutation.isPending}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteMutation.isPending} sx={{ minWidth: 90 }}>
+             {deleteMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

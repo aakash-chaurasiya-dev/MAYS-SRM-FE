@@ -14,6 +14,7 @@ import TicketAttachments from './TicketDetailComponents/TicketAttachments';
 import TicketOperations from './TicketDetailComponents/TicketOperations';
 import TicketTimeline from './TicketDetailComponents/TicketTimeline';
 import TicketInternalUpdate from './TicketDetailComponents/TicketInternalUpdate';
+import TicketAccessories from './TicketDetailComponents/TicketAccessories';
 
 /**
  * Helper to safely format timestamp strings.
@@ -36,7 +37,7 @@ const createTimelineEntry = (log) => {
   const timestamp = formatTimestamp(log?.modificationDate);
 
   let actionParts = [];
-  
+
   if (log?.status) {
     actionParts.push(`Status updated to ${log.status}`);
   } else if (log?.oldStatus && log?.newStatus && log.oldStatus !== log.newStatus) {
@@ -72,7 +73,7 @@ export default function TicketDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  
+
   const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
   const isNormalUser = rawRole === 'ROLE_USER';
 
@@ -82,15 +83,16 @@ export default function TicketDetailPage() {
   // Component Refs for Unified Save
   const issueRef = useRef();
   const customerRef = useRef();
-  const deviceRef = useRef();
-  const operationsRef = useRef();
-  const internalNoteRef = useRef();
+  const deviceRef = useRef(null);
+  const operationsRef = useRef(null);
+  const internalNoteRef = useRef(null);
+  const accessoriesRef = useRef(null);
 
   // 1. Fetch Ticket Data
-  const { 
-    data: ticket, 
-    isLoading: isTicketLoading, 
-    error: ticketError 
+  const {
+    data: ticket,
+    isLoading: isTicketLoading,
+    error: ticketError
   } = useQuery({
     queryKey: ['ticket', id],
     queryFn: async () => {
@@ -138,6 +140,9 @@ export default function TicketDetailPage() {
       // Invalidate the query to trigger a background refetch
       queryClient.invalidateQueries({ queryKey: ['ticket', id] });
       queryClient.invalidateQueries({ queryKey: ['ticket-logs', id] });
+      queryClient.invalidateQueries({ queryKey: ['ticket-logs-latest', id] });
+      queryClient.invalidateQueries({ queryKey: ['ticket-accessories', id] });
+
 
       // Clear the internal note text box
       if (internalNoteRef.current?.clearNote) {
@@ -161,6 +166,7 @@ export default function TicketDetailPage() {
     const deviceData = deviceRef.current?.getFormData() || {};
     const operationsData = operationsRef.current?.getFormData() || {};
     const noteData = internalNoteRef.current?.getFormData() || {};
+    const accessoriesData = accessoriesRef.current?.getFormData() || {};
 
     const payload = {
       ...ticket,
@@ -169,6 +175,7 @@ export default function TicketDetailPage() {
       ...customerData,
       ...deviceData,
       ...operationsData,
+      ...accessoriesData,
     };
 
     // Only add remarks if they exist to avoid overwriting with null unnecessarily
@@ -184,11 +191,11 @@ export default function TicketDetailPage() {
 
   return (
     <Box>
-      <TicketHeader 
-        ticket={ticket} 
-        loading={loading} 
-        error={error} 
-        isNormalUser={isNormalUser} 
+      <TicketHeader
+        ticket={ticket}
+        loading={loading}
+        error={error}
+        isNormalUser={isNormalUser}
         isEditMode={isEditMode}
         onNavigateBack={() => navigate(-1)}
         onNavigateBilling={() => navigate(`/billing/create?ticketId=${id}`)}
@@ -199,54 +206,61 @@ export default function TicketDetailPage() {
       />
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={isNormalUser ? 0 : 2.5}>
-        
+
         {/* Left Column */}
         <Box sx={{ flex: isNormalUser ? 1 : 0.7 }}>
-          <TicketIssue 
+          <TicketIssue
             ref={issueRef}
-            ticket={ticket} 
+            ticket={ticket}
             isEditMode={isEditMode}
           />
 
-          <TicketInternalUpdate 
+          <TicketInternalUpdate
             ref={internalNoteRef}
-            ticket={ticket} 
+            ticket={ticket}
             ticketId={id}
             isEditMode={isEditMode}
             latestRemark={latestRemark}
           />
-          
+
           <Stack direction="row" spacing={2.5} flexWrap="wrap" useFlexGap>
-            <TicketCustomer 
+            <TicketCustomer
               ref={customerRef}
-              ticket={ticket} 
-              isNormalUser={isNormalUser} 
+              ticket={ticket}
+              isNormalUser={isNormalUser}
               isEditMode={isEditMode}
             />
-            <TicketDevice 
+            <TicketDevice
               ref={deviceRef}
-              ticket={ticket} 
+              ticket={ticket}
               isEditMode={isEditMode}
             />
           </Stack>
 
-          <TicketAttachments 
-            ticketId={id} 
-            attachments={attachments} 
+          <TicketAccessories
+            ref={accessoriesRef}
+            ticket={ticket}
+            ticketId={id}
+            isEditMode={isEditMode}
+          />
+
+          <TicketAttachments
+            ticketId={id}
+            attachments={attachments}
           />
         </Box>
 
         {/* Right Column (Staff Only) */}
         {!isNormalUser && (
           <Box sx={{ flex: 0.3 }}>
-            <TicketOperations 
+            <TicketOperations
               ref={operationsRef}
-              ticket={ticket} 
+              ticket={ticket}
               isEditMode={isEditMode}
             />
-            <TicketTimeline 
-              ticketId={id} 
-              timeline={timeline} 
+            <TicketTimeline
+              ticketId={id}
+              timeline={timeline}
             />
           </Box>
         )}

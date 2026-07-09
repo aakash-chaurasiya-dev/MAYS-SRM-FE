@@ -7,7 +7,7 @@ import { Box, Typography, Paper, Divider, TextField } from '@mui/material';
  * 
  * Allows staff to post internal notes/updates without changing ticket status.
  */
-const TicketInternalUpdate = forwardRef(({ ticket, ticketId, isEditMode, latestRemark }, ref) => {
+const TicketInternalUpdate = forwardRef(({isEditMode, latestRemark }, ref) => {
 
   
   const [internalNote, setInternalNote] = useState('');
