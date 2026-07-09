@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, Button, Divider, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -13,7 +14,7 @@ export default function DepartmentManagementPage() {
   const theme = useTheme();
   const navigate = useNavigate();
 
-  const [departments, setDepartments] = useState([]);
+  const queryClient = useQueryClient();
   
   const [selectedIds, setSelectedIds] = useState([]);
   const [clearSelectionKey, setClearSelectionKey] = useState(0);
@@ -21,33 +22,27 @@ export default function DepartmentManagementPage() {
   // Modal & Form State
   const [openModal, setOpenModal] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' | 'update'
-  const [submitLoading, setSubmitLoading] = useState(false);
   
   // Delete Confirmation State
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const initialFormState = {
     departmentId: '', departmentName: '', departmentDescription: '',
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const fetchDepartments = useCallback(async () => {
-    try {
+  const { data: departments = [] } = useQuery({
+    queryKey: ['departments'],
+    queryFn: async () => {
       const response = await api.get('/departments');
       const data = response.data?.data || response.data || [];
-      setDepartments(data.map((dept, index) => ({
+      return data.map((dept, index) => ({
         ...dept,
         id: dept.departmentId || `fallback-id-${index}`,
-      })));
-    } catch (error) {
-      console.error('Failed to fetch departments:', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchDepartments();
-  }, [fetchDepartments]);
+      }));
+    },
+    staleTime: 1000 * 60 * 60,
+  });
 
   const handleOpenCreateModal = () => {
     setModalMode('create');
@@ -82,45 +77,50 @@ export default function DepartmentManagementPage() {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitLoading(true);
-    try {
-      const payload = {
-        departmentName: formData.departmentName,
-        departmentDescription: formData.departmentDescription,
-      };
-
+  const submitMutation = useMutation({
+    mutationFn: async (payload) => {
       if (modalMode === 'create') {
-        await api.post('/departments', payload);
+        return api.post('/departments', payload);
       } else {
-        await api.put(`/departments/${formData.departmentId}`, payload);
+        return api.put(`/departments/${formData.departmentId}`, payload);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      if (modalMode !== 'create') {
         setSelectedIds([]); 
         setClearSelectionKey(prev => prev + 1);
       }
       handleCloseModal();
-      fetchDepartments();
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error(`Failed to ${modalMode} department:`, error);
-    } finally {
-      setSubmitLoading(false);
     }
-  };
+  });
 
-  const handleDeleteConfirm = async () => {
-    setDeleteLoading(true);
-    try {
-      const deptId = selectedIds[0];
-      await api.delete(`/departments/${deptId}`);
+  const deleteMutation = useMutation({
+    mutationFn: async (deptId) => api.delete(`/departments/${deptId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
       setOpenDeleteConfirm(false);
       setSelectedIds([]);
       setClearSelectionKey(prev => prev + 1);
-      fetchDepartments();
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Failed to delete department:', error);
-    } finally {
-      setDeleteLoading(false);
     }
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    submitMutation.mutate({
+      departmentName: formData.departmentName,
+      departmentDescription: formData.departmentDescription,
+    });
+  };
+
+  const handleDeleteConfirm = () => {
+    deleteMutation.mutate(selectedIds[0]);
   };
 
   const config = useMemo(() => ({
@@ -150,23 +150,6 @@ export default function DepartmentManagementPage() {
 
   return (
     <Box sx={{ p: 2 }}>
-      {/* Breadcrumb / Back */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => navigate('/maintenance')}
-          sx={{ fontSize: '12px', color: theme.palette.text.secondary }}>
-          Maintenance
-        </Button>
-      </Box>
-
-      <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>
-          Department Management
-        </Typography>
-        <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
-          Manage organizational units such as Hardware, Software, and Logistics
-        </Typography>
-      </Box>
-
       <List 
         config={config} 
         rowSelectionModel={selectedIds}
@@ -236,9 +219,9 @@ export default function DepartmentManagementPage() {
         </DialogContent>
         <Divider />
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={handleCloseModal} variant="outlined" disabled={submitLoading} sx={{ px: 3 }}>Cancel</Button>
-          <Button type="submit" form="department-form" variant="contained" disabled={submitLoading} sx={{ px: 3, minWidth: 100 }}>
-            {submitLoading ? <CircularProgress size={24} color="inherit" /> : (modalMode === 'create' ? 'Save Department' : 'Update Department')}
+          <Button onClick={handleCloseModal} variant="outlined" disabled={submitMutation.isPending} sx={{ px: 3 }}>Cancel</Button>
+          <Button type="submit" form="department-form" variant="contained" disabled={submitMutation.isPending} sx={{ px: 3, minWidth: 100 }}>
+            {submitMutation.isPending ? <CircularProgress size={24} color="inherit" /> : (modalMode === 'create' ? 'Save Department' : 'Update Department')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -254,9 +237,9 @@ export default function DepartmentManagementPage() {
         </DialogContent>
         <Divider />
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteLoading}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteLoading} sx={{ minWidth: 90 }}>
-             {deleteLoading ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
+          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteMutation.isPending}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteMutation.isPending} sx={{ minWidth: 90 }}>
+             {deleteMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

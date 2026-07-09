@@ -29,7 +29,7 @@ export default function CustomerDetails({ isNormalUser, form, setForm, handleCha
             options={customers}
             getOptionLabel={(option) => {
               if (typeof option === 'string') return option;
-              return `${option.firstName} ${option.lastName} - ${option.phone}`;
+              return `${option.firstName} ${option.lastName} - ${option.mobileNo}`;
             }}
             value={
               customers.find(c => String(c.userId) === String(form.customerId)) ||
@@ -64,7 +64,7 @@ export default function CustomerDetails({ isNormalUser, form, setForm, handleCha
               }
             }}
             onInputChange={(e, newInputValue) => {
-              const matchingCustomer = customers.find(c => 
+              const matchingCustomer = customers.find(c =>
                 `${c.firstName} ${c.lastName} - ${c.phone}` === newInputValue ||
                 `${c.firstName} ${c.lastName}` === newInputValue
               );

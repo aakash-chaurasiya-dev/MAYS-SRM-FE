@@ -11,21 +11,57 @@ import {
   Alert,
   TextField,
   Button,
-  Stack
+  Stack,
+  IconButton,
+  Badge,
+  Tooltip,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText
 } from '@mui/material';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import CloseIcon from '@mui/icons-material/Close';
+import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
+import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { useTheme } from '@mui/material/styles';
+import { useNavigate } from 'react-router-dom';
+import { useAppThemeContext } from '../../theme/ThemeContext';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function ProfilePage() {
   const theme = useTheme();
   const { user, logout } = useAuth();
-  const [profileData, setProfileData] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  const queryClient = useQueryClient();
+  
+  const { data: profileData, isLoading: loading, error: queryError } = useQuery({
+    queryKey: ['profile'],
+    queryFn: async () => {
+      const response = await api.get('/auth/me');
+      return response.data;
+    }
+  });
+  
+  const navigate = useNavigate();
+  const { mode, toggleTheme } = useAppThemeContext();
+  const [settingsAnchorEl, setSettingsAnchorEl] = useState(null);
+
+  const handleSettingsOpen = (event) => setSettingsAnchorEl(event.currentTarget);
+  const handleSettingsClose = () => setSettingsAnchorEl(null);
+
+  const handleSupportClick = () => {
+    handleSettingsClose();
+    navigate('/support');
+  };
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [form, setForm] = useState({
@@ -63,30 +99,14 @@ export default function ProfilePage() {
     setForm(prev => ({ ...prev, [field]: e.target.value }));
   };
 
-  const handleSave = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      const payload = isEmployee ? {
-        employeeName: form.employeeName,
-        mobileNo: form.mobileNo,
-        email: form.email,
-        address: form.address,
-        vendor: form.vendor,
-        pincode: form.pincode,
-        city: form.city,
-      } : {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        mobileNo: form.mobileNo,
-        emailId: form.emailId,
-        address: form.address,
-      };
-
+  const updateProfileMutation = useMutation({
+    mutationFn: async (payload) => {
       await api.put('/auth/me', payload);
-
-      if (form.mobileNo !== profileData.mobileNo) {
+      const response = await api.get('/auth/me');
+      return response.data;
+    },
+    onSuccess: (updatedData, variables) => {
+      if (variables.mobileNo !== profileData.mobileNo) {
         window.dispatchEvent(new CustomEvent('app-notification', {
           detail: { message: 'Mobile number changed. Logging out for security...', severity: 'warning' }
         }));
@@ -96,36 +116,40 @@ export default function ProfilePage() {
         return;
       }
 
-      const response = await api.get('/auth/me');
-      setProfileData(response.data);
+      queryClient.setQueryData(['profile'], updatedData);
       setIsEditMode(false);
       
       window.dispatchEvent(new CustomEvent('app-notification', {
         detail: { message: 'Profile updated successfully!', severity: 'success' }
       }));
-    } catch (err) {
+    },
+    onError: (err) => {
       console.error('Failed to update profile:', err);
       setError(err.response?.data?.message || 'Failed to save profile details.');
-    } finally {
-      setLoading(false);
     }
-  };
+  });
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await api.get('/auth/me');
-        setProfileData(response.data);
-      } catch (err) {
-        console.error('Error fetching profile:', err);
-        setError('Failed to load profile details.');
-      } finally {
-        setLoading(false);
-      }
+  const handleSave = () => {
+    setError('');
+    
+    const payload = isEmployee ? {
+      employeeName: form.employeeName,
+      mobileNo: form.mobileNo,
+      email: form.email,
+      address: form.address,
+      vendor: form.vendor,
+      pincode: form.pincode,
+      city: form.city,
+    } : {
+      firstName: form.firstName,
+      lastName: form.lastName,
+      mobileNo: form.mobileNo,
+      emailId: form.emailId,
+      address: form.address,
     };
 
-    fetchProfile();
-  }, []);
+    updateProfileMutation.mutate(payload);
+  };
 
   if (loading) {
     return (
@@ -135,10 +159,10 @@ export default function ProfilePage() {
     );
   }
 
-  if (error) {
+  if (queryError || (!profileData && !loading)) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error">{error}</Alert>
+        <Alert severity="error">{queryError?.message || 'Failed to load profile details.'}</Alert>
       </Box>
     );
   }
@@ -156,20 +180,67 @@ export default function ProfilePage() {
         <Typography variant="h4" fontWeight={700} sx={{ color: theme.palette.text.primary, mb: 0 }}>
           My Profile
         </Typography>
-        {!isEditMode ? (
-          <Button variant="outlined" startIcon={<EditOutlinedIcon />} onClick={handleEditClick}>
-            Edit Profile
-          </Button>
-        ) : (
-          <Stack direction="row" spacing={1.5}>
-            <Button variant="text" startIcon={<CloseIcon />} onClick={() => setIsEditMode(false)}>
-              Cancel
-            </Button>
-            <Button variant="contained" startIcon={<SaveOutlinedIcon />} onClick={handleSave}>
-              Save Changes
-            </Button>
-          </Stack>
-        )}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Tooltip title="Notifications">
+            <IconButton sx={{ color: theme.palette.text.secondary }}>
+              <Badge badgeContent={3} color="error" variant="dot">
+                <NotificationsNoneOutlinedIcon />
+              </Badge>
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Settings">
+            <IconButton onClick={handleSettingsOpen} sx={{ color: theme.palette.text.secondary }}>
+              <SettingsOutlinedIcon />
+            </IconButton>
+          </Tooltip>
+          <Menu
+            anchorEl={settingsAnchorEl}
+            open={Boolean(settingsAnchorEl)}
+            onClose={handleSettingsClose}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+          >
+            <MenuItem onClick={handleSupportClick}>
+              <ListItemIcon>
+                <SupportAgentOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Support</ListItemText>
+            </MenuItem>
+            <MenuItem onClick={() => { toggleTheme(); handleSettingsClose(); }}>
+              <ListItemIcon>
+                {mode === 'dark' ? <Brightness7Icon fontSize="small" /> : <Brightness4Icon fontSize="small" />}
+              </ListItemIcon>
+              <ListItemText>{mode === 'dark' ? 'Light Mode' : 'Dark Mode'}</ListItemText>
+            </MenuItem>
+          </Menu>
+
+          <Tooltip title="Logout">
+            <IconButton sx={{ color: theme.palette.error.main }} onClick={() => logout()}>
+              <LogoutOutlinedIcon />
+            </IconButton>
+          </Tooltip>
+          {!isEditMode ? (
+            <Tooltip title="Edit Profile">
+              <IconButton color="primary" onClick={handleEditClick}>
+                <EditOutlinedIcon />
+              </IconButton>
+            </Tooltip>
+          ) : (
+            <Stack direction="row" spacing={1}>
+              <Tooltip title="Cancel">
+                <IconButton color="error" onClick={() => setIsEditMode(false)}>
+                  <CloseIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Save Changes">
+                <IconButton color="success" onClick={handleSave}>
+                  <SaveOutlinedIcon />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+          )}
+        </Box>
       </Box>
       
       <Card sx={{ borderRadius: 2, boxShadow: theme.shadows[2] }}>
@@ -322,7 +393,7 @@ export default function ProfilePage() {
                   <Typography variant="subtitle1" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
                     {role}
                   </Typography>
-                  <Box sx={{ mt: 1, display: 'inline-block', px: 1.5, py: 0.5, bgcolor: profileData.isActive ? 'success.light' : 'error.light', color: 'white', borderRadius: 1, fontSize: '0.75rem', fontWeight: 600 }}>
+                  <Box sx={{ mt: 1, display: 'inline-block', px: 1.5, py: 0.5, bgcolor: profileData.isActive ? '#32cd32' : 'error.light', color: 'white', borderRadius: 1, fontSize: '0.75rem', fontWeight: 600 }}>
                     {profileData.isActive ? 'ACTIVE' : 'INACTIVE'}
                   </Box>
                 </Box>

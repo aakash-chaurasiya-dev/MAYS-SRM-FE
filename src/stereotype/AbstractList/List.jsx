@@ -661,6 +661,8 @@ export default function List({ config, rowSelectionModel: directRowSelectionMode
           density={density}
           checkboxSelection={checkboxSelection}
           disableRowSelectionOnClick
+          paginationMode={config.paginationMode || 'client'}
+          rowCount={config.rowCount}
           paginationModel={paginationModel}
           onPaginationModelChange={(newModel) => {
             setPaginationModel(newModel);

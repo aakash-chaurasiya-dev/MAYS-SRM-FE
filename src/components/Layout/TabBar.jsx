@@ -1,9 +1,10 @@
 import { Box, Tabs, Tab, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import MenuIcon from '@mui/icons-material/Menu';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTabNavigation } from '../../contexts/TabNavigationContext';
 
-export default function TabBar() {
+export default function TabBar({ onMenuClick }) {
   const { tabs, removeTab } = useTabNavigation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -19,14 +20,20 @@ export default function TabBar() {
 
   // Use location.pathname as the source of truth for the active tab
   const currentActiveTab = location.pathname;
-  
+
   // If the current path doesn't match any open tab (e.g., during navigation before the new tab mounts),
   // pass false to MUI Tabs to prevent the "invalid value" warning.
   const isTabValid = tabs.some(tab => tab.id === currentActiveTab);
   const tabsValue = isTabValid ? currentActiveTab : false;
 
   return (
-    <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
+      <IconButton
+        onClick={onMenuClick}
+        sx={{ ml: 1, mr: 1, color: 'text.secondary' }}
+      >
+        <MenuIcon />
+      </IconButton>
       <Tabs
         value={tabsValue}
         onChange={(e, newValue) => handleTabClick(newValue)}

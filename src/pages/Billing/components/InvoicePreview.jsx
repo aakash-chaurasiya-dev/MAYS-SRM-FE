@@ -50,7 +50,7 @@ export default function InvoicePreview({ open, onClose, form, items, totals }) {
 
       {/* ── Scrollable invoice canvas ── */}
       <DialogContent sx={{ bgcolor: '#d9d9e2', p: 5, overflowY: 'auto', flex: 1 }}>
-        <Box sx={{
+        <Box id="printable-invoice" sx={{
           width: '210mm', minHeight: '297mm', bgcolor: '#fff', mx: 'auto',
           p: '16mm', boxShadow: 6,
           display: 'flex', flexDirection: 'column', gap: 4, fontSize: '13px',
@@ -60,10 +60,10 @@ export default function InvoicePreview({ open, onClose, form, items, totals }) {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Typography sx={{ fontSize: '28px', fontWeight: 700, color: 'primary.main', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-                Workshop Pro
+                Mays Computers
               </Typography>
               <Typography sx={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'text.secondary' }}>
-                Services Pvt Ltd
+                Complete IT Solutions
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.8 }}>
                 402, Tech Square, Phase 7<br />

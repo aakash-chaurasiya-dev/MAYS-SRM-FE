@@ -157,16 +157,7 @@ export default function PaymentModeManagementPage() {
           Maintenance
         </Button>
       </Box>
-
-      <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>
-          Payment Mode Management
-        </Typography>
-        <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
-          Manage available payment modes for customer billing and invoices
-        </Typography>
-      </Box>
-
+      
       <List 
         config={config} 
         rowSelectionModel={selectedIds}

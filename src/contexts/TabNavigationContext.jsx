@@ -6,10 +6,15 @@ import { ROUTE_CONFIG } from '../services/route-config.jsx';
 
 const TabNavigationContext = createContext();
 
-const findRouteInfo = (pathname) => {
+const findRouteInfo = (pathname, search = '') => {
+  const searchParams = new URLSearchParams(search);
+  const queryParams = Object.fromEntries(searchParams.entries());
+
   // First, check for a static match
   if (ROUTE_CONFIG[pathname]) {
-    return { ...ROUTE_CONFIG[pathname], params: {} };
+    const routeInfo = ROUTE_CONFIG[pathname];
+    const title = typeof routeInfo.title === 'function' ? routeInfo.title({ ...queryParams }) : routeInfo.title;
+    return { ...routeInfo, title, params: queryParams };
   }
 
   // Then, check for a dynamic match
@@ -17,8 +22,8 @@ const findRouteInfo = (pathname) => {
     const match = matchPath(routePath, pathname);
     if (match) {
       const routeInfo = ROUTE_CONFIG[routePath];
-      const title = typeof routeInfo.title === 'function' ? routeInfo.title(match.params) : pathname;
-      return { ...routeInfo, title, params: match.params };
+      const title = typeof routeInfo.title === 'function' ? routeInfo.title({ ...match.params, ...queryParams }) : routeInfo.title;
+      return { ...routeInfo, title, params: { ...match.params, ...queryParams } };
     }
   }
   return null;
@@ -32,7 +37,10 @@ export function TabNavigationProvider({ children }) {
         const parsedTabs = JSON.parse(savedTabs);
         // Re-attach icons dynamically since they cannot be serialized
         return parsedTabs.map((tab) => {
-          const routeInfo = findRouteInfo(tab.path);
+          const parts = tab.path.split('?');
+          const pathname = parts[0];
+          const search = parts[1] ? `?${parts[1]}` : '';
+          const routeInfo = findRouteInfo(pathname, search);
           return {
             ...tab,
             icon: routeInfo ? routeInfo.icon : null,
@@ -68,15 +76,16 @@ export function TabNavigationProvider({ children }) {
 
   // Sync with router to add/activate tabs on navigation
   useEffect(() => {
-    const { pathname } = location;
-    const routeInfo = findRouteInfo(pathname);
+    const { pathname, search } = location;
+    const fullPath = pathname + search;
+    const routeInfo = findRouteInfo(pathname, search);
     if (routeInfo) {
       setTabs((prevTabs) => {
-        const isTabOpen = prevTabs.some((tab) => tab.path === pathname);
+        const isTabOpen = prevTabs.some((tab) => tab.id === fullPath);
         if (!isTabOpen) {
           const newTab = {
-            id: pathname,
-            path: pathname,
+            id: fullPath,
+            path: fullPath,
             title: routeInfo.title,
             icon: routeInfo.icon,
             isClosable: routeInfo.isClosable !== false,
@@ -85,9 +94,9 @@ export function TabNavigationProvider({ children }) {
         }
         return prevTabs;
       });
-      setActiveTabId(pathname);
+      setActiveTabId(fullPath);
     }
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   const removeTab = useCallback((tabIdToRemove) => {
     const tabIndex = tabs.findIndex((tab) => tab.id === tabIdToRemove);

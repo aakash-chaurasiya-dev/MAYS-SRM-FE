@@ -79,9 +79,11 @@ const TicketDevice = forwardRef(({ ticket, isEditMode }, ref) => {
       // Populate cascades
       if (deviceTypeId) {
         const dType = deviceTypes.find(dt => dt.deviceTypeId === deviceTypeId);
+        window.dispatchEvent(new CustomEvent('ticketDeviceTypeChanged', { detail: dType?.deviceTypeName || '' }));
         const filtered = brands.filter(b => b.deviceTypeName === dType?.deviceTypeName);
         setFilteredBrands(filtered.length > 0 ? filtered : brands);
       } else {
+        window.dispatchEvent(new CustomEvent('ticketDeviceTypeChanged', { detail: '' }));
         setFilteredBrands([]);
       }
 
@@ -121,6 +123,8 @@ const TicketDevice = forwardRef(({ ticket, isEditMode }, ref) => {
     setEditForm(prev => ({ ...prev, deviceTypeId, brandId: '', modelId: '' }));
     
     const selectedDeviceType = deviceTypes.find(dt => dt.deviceTypeId === deviceTypeId);
+    window.dispatchEvent(new CustomEvent('ticketDeviceTypeChanged', { detail: selectedDeviceType?.deviceTypeName || '' }));
+    
     if (selectedDeviceType) {
       const filtered = brands.filter(b => b.deviceTypeName === selectedDeviceType.deviceTypeName);
       setFilteredBrands(filtered.length > 0 ? filtered : brands);
@@ -223,11 +227,24 @@ const TicketDevice = forwardRef(({ ticket, isEditMode }, ref) => {
             </Box>
           </Stack>
         ) : (
-          <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-            {[['Brand', brand], ['Model', model], ['Serial No.', serialNo], ['Warranty', warranty], ['Type', ticketType]].map(([label, value]) => (
-              <Box key={label} sx={{ mb: 1.2, width: '33.33%' }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 2 }}>
+            {[
+              { label: 'Brand', value: brand, mono: false },
+              { label: 'Model', value: model, mono: false },
+              { label: 'Serial No.', value: serialNo, mono: true },
+              { label: 'Warranty', value: warranty, mono: false },
+              { label: 'Type', value: ticketType, mono: false }
+            ].map(({ label, value, mono }) => (
+              <Box key={label} sx={{ display: 'flex', flexDirection: 'column' }}>
                 <Typography sx={lbl}>{label}</Typography>
-                <Typography sx={{ fontSize: '13px', fontFamily: label === 'Serial No.' ? '"JetBrains Mono", monospace' : 'inherit' }}>{value}</Typography>
+                <Typography sx={{ 
+                  fontSize: '13px', 
+                  fontFamily: mono ? '"JetBrains Mono", monospace' : 'inherit',
+                  color: value === 'Not available' ? theme.palette.text.disabled : theme.palette.text.primary,
+                  fontWeight: value !== 'Not available' ? 500 : 400
+                }}>
+                  {value}
+                </Typography>
               </Box>
             ))}
           </Box>

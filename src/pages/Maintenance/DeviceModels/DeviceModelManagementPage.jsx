@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, Button, Divider, Typography, MenuItem } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -13,8 +14,7 @@ export default function DeviceModelManagementPage() {
   const theme = useTheme();
   const navigate = useNavigate();
 
-  const [deviceModels, setDeviceModels] = useState([]);
-  const [brands, setBrands] = useState([]);
+  const queryClient = useQueryClient();
   
   const [selectedIds, setSelectedIds] = useState([]);
   const [clearSelectionKey, setClearSelectionKey] = useState(0);
@@ -22,44 +22,53 @@ export default function DeviceModelManagementPage() {
   // Modal & Form State
   const [openModal, setOpenModal] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' | 'update'
-  const [submitLoading, setSubmitLoading] = useState(false);
   
   // Delete Confirmation State
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const initialFormState = {
-    modelId: '', modelName: '', modelDescription: '', brandId: '',
+    modelId: '', modelName: '', modelDescription: '', brandId: '', deviceTypeId: '',
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const fetchDeviceModels = useCallback(async () => {
-    try {
+  const { data: deviceModels = [] } = useQuery({
+    queryKey: ['deviceModels'],
+    queryFn: async () => {
       const response = await api.get('/devicemodels');
       const data = response.data?.data || response.data || [];
-      setDeviceModels(data.map((model, index) => ({
+      return data.map((model, index) => ({
         ...model,
         id: model.modelId || `fallback-id-${index}`,
-      })));
-    } catch (error) {
-      console.error('Failed to fetch device models:', error);
-    }
-  }, []);
+      }));
+    },
+    staleTime: 1000 * 60 * 60,
+  });
 
-  const fetchBrands = useCallback(async () => {
-    try {
+  const { data: brands = [] } = useQuery({
+    queryKey: ['brands'],
+    queryFn: async () => {
       const response = await api.get('/brands');
       const data = response.data?.data || response.data || [];
-      setBrands(data);
-    } catch (error) {
-      console.error('Failed to fetch brands:', error);
-    }
-  }, []);
+      return data.map((brand, index) => ({
+        ...brand,
+        id: brand.brandId || `fallback-id-${index}`,
+      }));
+    },
+    staleTime: 1000 * 60 * 60,
+  });
 
-  useEffect(() => {
-    fetchDeviceModels();
-    fetchBrands();
-  }, [fetchDeviceModels, fetchBrands]);
+  const { data: deviceTypes = [] } = useQuery({
+    queryKey: ['deviceTypes'],
+    queryFn: async () => {
+      const response = await api.get('/devicetypes');
+      const data = response.data?.data || response.data || [];
+      return data.map((type, index) => ({
+        ...type,
+        id: type.deviceTypeId || `fallback-id-${index}`,
+      }));
+    },
+    staleTime: 1000 * 60 * 60,
+  });
 
   const handleOpenCreateModal = () => {
     setModalMode('create');
@@ -75,6 +84,7 @@ export default function DeviceModelManagementPage() {
       
       // Try to match brandId from brandName if possible
       let matchedBrandId = '';
+      let matchedDeviceTypeId = '';
       if (modelToUpdate.brandName && brands.length > 0) {
         const match = brands.find(b => 
           b.brandName === modelToUpdate.brandName || 
@@ -82,17 +92,20 @@ export default function DeviceModelManagementPage() {
         );
         if (match) {
           matchedBrandId = match.brandId || match.id || '';
+          matchedDeviceTypeId = match.deviceTypeId || '';
         }
       }
 
       // If response DTO implicitly contains brandId, use it
       const existingBrandId = modelToUpdate.brandId || matchedBrandId;
+      const existingDeviceTypeId = modelToUpdate.deviceTypeId || matchedDeviceTypeId;
 
       setFormData({
         modelId: modelToUpdate.modelId || '',
         modelName: modelToUpdate.modelName || '',
         modelDescription: modelToUpdate.modelDescription || '',
         brandId: existingBrandId,
+        deviceTypeId: existingDeviceTypeId,
       });
       setOpenModal(true);
     }
@@ -105,52 +118,60 @@ export default function DeviceModelManagementPage() {
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: value };
+      if (name === 'deviceTypeId') {
+        updated.brandId = ''; // Reset brand when device type changes
+      }
+      return updated;
+    });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitLoading(true);
-    try {
-      const payload = {
-        modelName: formData.modelName,
-        modelDescription: formData.modelDescription,
-        brandId: formData.brandId,
-      };
-
+  const submitMutation = useMutation({
+    mutationFn: async (payload) => {
       if (modalMode === 'create') {
-        await api.post('/devicemodels', payload);
+        return api.post('/devicemodels', payload);
       } else {
-        await api.put(`/devicemodels/${formData.modelId}`, payload);
+        return api.put(`/devicemodels/${formData.modelId}`, payload);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deviceModels'] });
+      if (modalMode !== 'create') {
         setSelectedIds([]); 
         setClearSelectionKey(prev => prev + 1);
       }
       handleCloseModal();
-      fetchDeviceModels();
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error(`Failed to ${modalMode} device model:`, error);
-    } finally {
-      setSubmitLoading(false);
     }
-  };
+  });
 
-  const handleDeleteConfirm = async () => {
-    setDeleteLoading(true);
-    try {
-      const modelId = selectedIds[0];
-      await api.delete(`/devicemodels/${modelId}`);
+  const deleteMutation = useMutation({
+    mutationFn: async (modelId) => api.delete(`/devicemodels/${modelId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deviceModels'] });
       setOpenDeleteConfirm(false);
       setSelectedIds([]);
       setClearSelectionKey(prev => prev + 1);
-      fetchDeviceModels();
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Failed to delete device model:', error);
-    } finally {
-      setDeleteLoading(false);
     }
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    submitMutation.mutate({
+      modelName: formData.modelName,
+      modelDescription: formData.modelDescription,
+      brandId: formData.brandId,
+    });
+  };
+
+  const handleDeleteConfirm = () => {
+    deleteMutation.mutate(selectedIds[0]);
   };
 
   const deviceModelConfig = useMemo(() => ({
@@ -161,6 +182,7 @@ export default function DeviceModelManagementPage() {
       { field: 'id', headerName: 'Model ID', width: 90 },
       { field: 'modelName', headerName: 'Model Name', flex: 1.2, renderType: 'link' },
       { field: 'modelDescription', headerName: 'Description', flex: 2 },
+      { field: 'deviceTypeName', headerName: 'Device Type', flex: 1.5 },
       { field: 'brandName', headerName: 'Brand', flex: 1.5 },
     ],
     checkboxSelection: true,
@@ -181,23 +203,6 @@ export default function DeviceModelManagementPage() {
 
   return (
     <Box sx={{ p: 2 }}>
-      {/* Breadcrumb / Back */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => navigate('/maintenance')}
-          sx={{ fontSize: '12px', color: theme.palette.text.secondary }}>
-          Maintenance
-        </Button>
-      </Box>
-
-      <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>
-          Device Model Management
-        </Typography>
-        <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
-          Manage hardware models and associate them with existing brands
-        </Typography>
-      </Box>
-
       <List 
         config={deviceModelConfig} 
         rowSelectionModel={selectedIds}
@@ -264,18 +269,34 @@ export default function DeviceModelManagementPage() {
               sx={{ mb: 2 }}
             />
 
+            <Typography sx={lbl}>Device Type</Typography>
+            <TextField
+              fullWidth size="small" select
+              name="deviceTypeId" value={formData.deviceTypeId} onChange={handleFormChange} required
+              sx={{ mb: 2 }}
+            >
+              <MenuItem value="" disabled>Select device type…</MenuItem>
+              {deviceTypes.map((dt) => (
+                <MenuItem key={dt.deviceTypeId || dt.id} value={dt.deviceTypeId || dt.id}>
+                  {dt.deviceTypeName || dt.name}
+                </MenuItem>
+              ))}
+            </TextField>
+
             <Typography sx={lbl}>Brand</Typography>
             <TextField
               fullWidth size="small" select
-              name="brandId" value={formData.brandId} onChange={handleFormChange} required
+              name="brandId" value={formData.brandId} onChange={handleFormChange} required disabled={!formData.deviceTypeId}
               sx={{ mb: 2 }}
             >
               <MenuItem value="" disabled>Select brand…</MenuItem>
-              {brands.map((b) => (
-                <MenuItem key={b.brandId || b.id} value={b.brandId || b.id}>
-                  {b.brandName || b.name}
-                </MenuItem>
-              ))}
+              {brands
+                .filter((b) => String(b.deviceTypeId) === String(formData.deviceTypeId))
+                .map((b) => (
+                  <MenuItem key={b.brandId || b.id} value={b.brandId || b.id}>
+                    {b.brandName || b.name}
+                  </MenuItem>
+                ))}
               {/* Fallback option if list is empty or fails to load but we need one */}
               {brands.length === 0 && (
                  <MenuItem value={formData.brandId} sx={{ display: formData.brandId ? 'block' : 'none' }}>
@@ -287,9 +308,9 @@ export default function DeviceModelManagementPage() {
         </DialogContent>
         <Divider />
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={handleCloseModal} variant="outlined" disabled={submitLoading} sx={{ px: 3 }}>Cancel</Button>
-          <Button type="submit" form="model-form" variant="contained" disabled={submitLoading} sx={{ px: 3, minWidth: 100 }}>
-            {submitLoading ? <CircularProgress size={24} color="inherit" /> : (modalMode === 'create' ? 'Save Model' : 'Update Model')}
+          <Button onClick={handleCloseModal} variant="outlined" disabled={submitMutation.isPending} sx={{ px: 3 }}>Cancel</Button>
+          <Button type="submit" form="model-form" variant="contained" disabled={submitMutation.isPending} sx={{ px: 3, minWidth: 100 }}>
+            {submitMutation.isPending ? <CircularProgress size={24} color="inherit" /> : (modalMode === 'create' ? 'Save Model' : 'Update Model')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -305,9 +326,9 @@ export default function DeviceModelManagementPage() {
         </DialogContent>
         <Divider />
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteLoading}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteLoading} sx={{ minWidth: 90 }}>
-             {deleteLoading ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
+          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteMutation.isPending}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteMutation.isPending} sx={{ minWidth: 90 }}>
+             {deleteMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, Button, Divider, Typography, MenuItem, Switch, FormControlLabel } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -13,7 +14,7 @@ export default function StatusManagementPage() {
   const theme = useTheme();
   const navigate = useNavigate();
 
-  const [statuses, setStatuses] = useState([]);
+  const queryClient = useQueryClient();
   
   const [selectedIds, setSelectedIds] = useState([]);
   const [clearSelectionKey, setClearSelectionKey] = useState(0);
@@ -21,33 +22,27 @@ export default function StatusManagementPage() {
   // Modal & Form State
   const [openModal, setOpenModal] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' | 'update'
-  const [submitLoading, setSubmitLoading] = useState(false);
   
   // Delete Confirmation State
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const initialFormState = {
     statusId: '', statusName: '', statusFlg: 1, statusDescription: '', statusType: '',
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const fetchStatuses = useCallback(async () => {
-    try {
+  const { data: statuses = [] } = useQuery({
+    queryKey: ['statuses'],
+    queryFn: async () => {
       const response = await api.get('/statuses');
       const data = response.data?.data || response.data || [];
-      setStatuses(data.map((s, index) => ({
+      return data.map((s, index) => ({
         ...s,
         id: s.statusId || `fallback-id-${index}`,
-      })));
-    } catch (error) {
-      console.error('Failed to fetch statuses:', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchStatuses();
-  }, [fetchStatuses]);
+      }));
+    },
+    staleTime: 1000 * 60 * 60,
+  });
 
   const handleOpenCreateModal = () => {
     setModalMode('create');
@@ -84,47 +79,52 @@ export default function StatusManagementPage() {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitLoading(true);
-    try {
-      const payload = {
-        statusName: formData.statusName,
-        statusFlg: formData.statusFlg,
-        statusDescription: formData.statusDescription,
-        statusType: formData.statusType,
-      };
-
+  const submitMutation = useMutation({
+    mutationFn: async (payload) => {
       if (modalMode === 'create') {
-        await api.post('/statuses', payload);
+        return api.post('/statuses', payload);
       } else {
-        await api.put(`/statuses/${formData.statusId}`, payload);
+        return api.put(`/statuses/${formData.statusId}`, payload);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['statuses'] });
+      if (modalMode !== 'create') {
         setSelectedIds([]); 
         setClearSelectionKey(prev => prev + 1);
       }
       handleCloseModal();
-      fetchStatuses();
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error(`Failed to ${modalMode} status:`, error);
-    } finally {
-      setSubmitLoading(false);
     }
-  };
+  });
 
-  const handleDeleteConfirm = async () => {
-    setDeleteLoading(true);
-    try {
-      const sId = selectedIds[0];
-      await api.delete(`/statuses/${sId}`);
+  const deleteMutation = useMutation({
+    mutationFn: async (sId) => api.delete(`/statuses/${sId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['statuses'] });
       setOpenDeleteConfirm(false);
       setSelectedIds([]);
       setClearSelectionKey(prev => prev + 1);
-      fetchStatuses();
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Failed to delete status:', error);
-    } finally {
-      setDeleteLoading(false);
     }
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    submitMutation.mutate({
+      statusName: formData.statusName,
+      statusFlg: formData.statusFlg,
+      statusDescription: formData.statusDescription,
+      statusType: formData.statusType,
+    });
+  };
+
+  const handleDeleteConfirm = () => {
+    deleteMutation.mutate(selectedIds[0]);
   };
 
   const config = useMemo(() => ({
@@ -171,23 +171,6 @@ export default function StatusManagementPage() {
 
   return (
     <Box sx={{ p: 2 }}>
-      {/* Breadcrumb / Back */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => navigate('/maintenance')}
-          sx={{ fontSize: '12px', color: theme.palette.text.secondary }}>
-          Maintenance
-        </Button>
-      </Box>
-
-      <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>
-          Status Management
-        </Typography>
-        <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
-          Define ticket lifecycles and application states.
-        </Typography>
-      </Box>
-
       <List 
         config={config} 
         rowSelectionModel={selectedIds}
@@ -278,9 +261,9 @@ export default function StatusManagementPage() {
         </DialogContent>
         <Divider />
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={handleCloseModal} variant="outlined" disabled={submitLoading} sx={{ px: 3 }}>Cancel</Button>
-          <Button type="submit" form="status-form" variant="contained" disabled={submitLoading} sx={{ px: 3, minWidth: 100 }}>
-            {submitLoading ? <CircularProgress size={24} color="inherit" /> : (modalMode === 'create' ? 'Save Status' : 'Update Status')}
+          <Button onClick={handleCloseModal} variant="outlined" disabled={submitMutation.isPending} sx={{ px: 3 }}>Cancel</Button>
+          <Button type="submit" form="status-form" variant="contained" disabled={submitMutation.isPending} sx={{ px: 3, minWidth: 100 }}>
+            {submitMutation.isPending ? <CircularProgress size={24} color="inherit" /> : (modalMode === 'create' ? 'Save Status' : 'Update Status')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -296,9 +279,9 @@ export default function StatusManagementPage() {
         </DialogContent>
         <Divider />
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteLoading}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteLoading} sx={{ minWidth: 90 }}>
-             {deleteLoading ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
+          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteMutation.isPending}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteMutation.isPending} sx={{ minWidth: 90 }}>
+             {deleteMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

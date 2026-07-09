@@ -18,7 +18,6 @@ const CONFIG_ITEMS = [
   { key: 'brand', label: 'Brand', desc: 'Configure manufacturer list (Apple, Dell, etc.)', icon: <CategoryOutlinedIcon />, path: '/maintenance/brands' },
   { key: 'charge-type', label: 'Charge Type', desc: 'Define billing and service charge types.', icon: <PaidOutlinedIcon />, path: '/maintenance/charge-type' },
   { key: 'department', label: 'Department', desc: 'Hardware, Software, and Logistics units.', icon: <ApartmentOutlinedIcon />, path: '/maintenance/department' },
-  { key: 'device', label: 'Device', desc: 'Specific hardware registry and assets.', icon: <DevicesOutlinedIcon />, path: '/maintenance/device' },
   { key: 'device-models', label: 'Device Models', desc: 'Detailed model numbers and specifications.', icon: <PhonelinkOutlinedIcon />, path: '/maintenance/device-models' },
   { key: 'device-type', label: 'Device Type', desc: 'Categorize by Laptop, Phone, Server, etc.', icon: <DevicesOtherOutlinedIcon />, path: '/maintenance/device-type' },
   { key: 'payment-mode', label: 'Payment Mode', desc: 'Manage payment methods and terms.', icon: <PaidOutlinedIcon />, path: '/maintenance/payment-mode' },
@@ -33,15 +32,7 @@ export default function MaintenancePage() {
 
   return (
     <Box>
-      <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>
-          Configuration Management
-        </Typography>
-        <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
-          System-wide settings and hardware definitions.
-        </Typography>
-      </Box>
-
+    
       <Box
         sx={{
           display: 'grid',

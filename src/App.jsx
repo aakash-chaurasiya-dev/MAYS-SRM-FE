@@ -19,7 +19,7 @@ import BrandManagementPage from './pages/Maintenance/Brand/BrandManagementPage';
 import BranchManagementPage from './pages/Maintenance/Branch/BranchManagementPage';
 import ChargeTypeManagementPage from './pages/Maintenance/ChargeType/ChargeTypeManagementPage';
 import DepartmentManagementPage from './pages/Maintenance/Department/DepartmentManagementPage';
-import DeviceManagementPage from './pages/Maintenance/Device/DeviceManagementPage';
+import DeviceManagementPage from './pages/Reports/Device/DeviceManagementPage';
 import DeviceModelManagementPage from './pages/Maintenance/DeviceModels/DeviceModelManagementPage';
 import DeviceTypeManagementPage from './pages/Maintenance/DeviceType/DeviceTypeManagementPage';
 import PaymentModeManagementPage from './pages/Maintenance/PaymentMode/PaymentModeManagementPage';
@@ -29,6 +29,7 @@ import TicketTypeManagementPage from './pages/Maintenance/TicketType/TicketTypeM
 import AccessoryManagementPage from './pages/Maintenance/Accessory/AccessoryManagementPage';
 import BillingDetailsPage from './pages/Billing/BillingDetailsPage';
 import CreateInvoicePage from './pages/Billing/CreateInvoicePage';
+import ReportsPage from './pages/Reports/ReportsPage';
 import OrderPartsPage from './pages/Inventory/OrderPartsPage';
 import EmployeeDetailsPage from './pages/EmployeeDetails/EmployeeDetails';
 import UserDetailsPage from './pages/UserDetails/UserDetailsPage';
@@ -50,7 +51,7 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
 
-            {/* Authenticated Routes with Sidebar & TopBar & Tabbar*/}
+            {/* Authenticated Routes with Sidebar & TabBar */}
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -76,7 +77,6 @@ function App() {
                   <Route path="/maintenance/branch" element={<BranchManagementPage />} />
                   <Route path="/maintenance/charge-type" element={<ChargeTypeManagementPage />} />
                   <Route path="/maintenance/department" element={<DepartmentManagementPage />} />
-                  <Route path="/maintenance/device" element={<DeviceManagementPage />} />
                   <Route path="/maintenance/device-models" element={<DeviceModelManagementPage />} />
                   <Route path="/maintenance/device-type" element={<DeviceTypeManagementPage />} />
                   <Route path="/maintenance/payment-mode" element={<PaymentModeManagementPage />} />
@@ -90,9 +90,9 @@ function App() {
                   <Route path="/billing/billing-details" element={<BillingDetailsPage />} />
                   <Route path="/billing/create" element={<CreateInvoicePage />} />
 
-                  {/* Placeholder routes for navigation items */}
                   <Route path="/maintenance/:section" element={<Box sx={{ p: 3 }}>Maintenance Section (WIP)</Box>} />
-                  <Route path="/reports" element={<Box sx={{ p: 3 }}>Reports Page (WIP)</Box>} />
+                  <Route path="/reports" element={<ReportsPage />} />
+                  <Route path="/reports/device" element={<DeviceManagementPage />} />
                   <Route path="/employees" element={<EmployeeDetailsPage />} />
                   <Route path="/users" element={<UserDetailsPage />} />
                   <Route path="/customers" element={<Box sx={{ p: 3 }}>Customers Page (WIP)</Box>} />
