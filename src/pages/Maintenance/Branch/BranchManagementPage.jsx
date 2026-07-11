@@ -31,18 +31,21 @@ export default function BranchManagementPage() {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const { data: branches = [] } = useQuery({
+  const { data: rawBranches = [] } = useQuery({
     queryKey: ['branches'],
     queryFn: async () => {
       const response = await api.get('/branches');
-      const data = response.data?.data || response.data || [];
-      return data.map((branch, index) => ({
-        ...branch,
-        id: branch.branchId || `fallback-id-${index}`,
-      }));
+      return response.data?.data || response.data || [];
     },
     staleTime: 1000 * 60 * 60, // 1 hour
   });
+
+  const branches = useMemo(() => {
+    return rawBranches.map((branch, index) => ({
+      ...branch,
+      id: branch.branchId || `fallback-id-${index}`,
+    }));
+  }, [rawBranches]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');

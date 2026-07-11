@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, Button, Divider, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -12,42 +13,38 @@ import { useNavigate } from 'react-router-dom';
 export default function PaymentModeManagementPage() {
   const theme = useTheme();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const [paymentModes, setPaymentModes] = useState([]);
-  
   const [selectedIds, setSelectedIds] = useState([]);
   const [clearSelectionKey, setClearSelectionKey] = useState(0);
 
   // Modal & Form State
   const [openModal, setOpenModal] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' | 'update'
-  const [submitLoading, setSubmitLoading] = useState(false);
   
   // Delete Confirmation State
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const initialFormState = {
     payModeId: '', paymentMode: '', description: '',
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const fetchPaymentModes = useCallback(async () => {
-    try {
+  const { data: rawPaymentModes = [] } = useQuery({
+    queryKey: ['paymentModes'],
+    queryFn: async () => {
       const response = await api.get('/payment-modes');
-      const data = response.data?.data || response.data || [];
-      setPaymentModes(data.map((pm, index) => ({
-        ...pm,
-        id: pm.payModeId || `fallback-id-${index}`,
-      })));
-    } catch (error) {
-      console.error('Failed to fetch payment modes:', error);
-    }
-  }, []);
+      return response.data?.data || response.data || [];
+    },
+    staleTime: 1000 * 60 * 60,
+  });
 
-  useEffect(() => {
-    fetchPaymentModes();
-  }, [fetchPaymentModes]);
+  const paymentModes = useMemo(() => {
+    return rawPaymentModes.map((pm, index) => ({
+      ...pm,
+      id: pm.payModeId || `fallback-id-${index}`,
+    }));
+  }, [rawPaymentModes]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');
@@ -82,45 +79,50 @@ export default function PaymentModeManagementPage() {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitLoading(true);
-    try {
-      const payload = {
-        paymentMode: formData.paymentMode,
-        description: formData.description,
-      };
-
+  const submitMutation = useMutation({
+    mutationFn: async (payload) => {
       if (modalMode === 'create') {
-        await api.post('/payment-modes', payload);
+        return api.post('/payment-modes', payload);
       } else {
-        await api.put(`/payment-modes/${formData.payModeId}`, payload);
+        return api.put(`/payment-modes/${formData.payModeId}`, payload);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paymentModes'] });
+      if (modalMode !== 'create') {
         setSelectedIds([]); 
         setClearSelectionKey(prev => prev + 1);
       }
       handleCloseModal();
-      fetchPaymentModes();
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error(`Failed to ${modalMode} payment mode:`, error);
-    } finally {
-      setSubmitLoading(false);
     }
-  };
+  });
 
-  const handleDeleteConfirm = async () => {
-    setDeleteLoading(true);
-    try {
-      const pmId = selectedIds[0];
-      await api.delete(`/payment-modes/${pmId}`);
+  const deleteMutation = useMutation({
+    mutationFn: async (pmId) => api.delete(`/payment-modes/${pmId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paymentModes'] });
       setOpenDeleteConfirm(false);
       setSelectedIds([]);
       setClearSelectionKey(prev => prev + 1);
-      fetchPaymentModes();
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Failed to delete payment mode:', error);
-    } finally {
-      setDeleteLoading(false);
     }
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    submitMutation.mutate({
+      paymentMode: formData.paymentMode,
+      description: formData.description,
+    });
+  };
+
+  const handleDeleteConfirm = () => {
+    deleteMutation.mutate(selectedIds[0]);
   };
 
   const config = useMemo(() => ({
@@ -227,9 +229,9 @@ export default function PaymentModeManagementPage() {
         </DialogContent>
         <Divider />
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={handleCloseModal} variant="outlined" disabled={submitLoading} sx={{ px: 3 }}>Cancel</Button>
-          <Button type="submit" form="paymentmode-form" variant="contained" disabled={submitLoading} sx={{ px: 3, minWidth: 100 }}>
-            {submitLoading ? <CircularProgress size={24} color="inherit" /> : (modalMode === 'create' ? 'Save Mode' : 'Update Mode')}
+          <Button onClick={handleCloseModal} variant="outlined" disabled={submitMutation.isPending} sx={{ px: 3 }}>Cancel</Button>
+          <Button type="submit" form="paymentmode-form" variant="contained" disabled={submitMutation.isPending} sx={{ px: 3, minWidth: 100 }}>
+            {submitMutation.isPending ? <CircularProgress size={24} color="inherit" /> : (modalMode === 'create' ? 'Save Mode' : 'Update Mode')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -245,9 +247,9 @@ export default function PaymentModeManagementPage() {
         </DialogContent>
         <Divider />
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteLoading}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteLoading} sx={{ minWidth: 90 }}>
-             {deleteLoading ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
+          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteMutation.isPending}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteMutation.isPending}>
+            {deleteMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

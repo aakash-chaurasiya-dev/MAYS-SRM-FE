@@ -31,44 +31,53 @@ export default function DeviceModelManagementPage() {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const { data: deviceModels = [] } = useQuery({
+  const { data: rawDeviceModels = [] } = useQuery({
     queryKey: ['deviceModels'],
     queryFn: async () => {
       const response = await api.get('/devicemodels');
-      const data = response.data?.data || response.data || [];
-      return data.map((model, index) => ({
-        ...model,
-        id: model.modelId || `fallback-id-${index}`,
-      }));
+      return response.data?.data || response.data || [];
     },
     staleTime: 1000 * 60 * 60,
   });
 
-  const { data: brands = [] } = useQuery({
+  const { data: rawBrands = [] } = useQuery({
     queryKey: ['brands'],
     queryFn: async () => {
       const response = await api.get('/brands');
-      const data = response.data?.data || response.data || [];
-      return data.map((brand, index) => ({
-        ...brand,
-        id: brand.brandId || `fallback-id-${index}`,
-      }));
+      return response.data?.data || response.data || [];
     },
     staleTime: 1000 * 60 * 60,
   });
 
-  const { data: deviceTypes = [] } = useQuery({
+  const { data: rawDeviceTypes = [] } = useQuery({
     queryKey: ['deviceTypes'],
     queryFn: async () => {
       const response = await api.get('/devicetypes');
-      const data = response.data?.data || response.data || [];
-      return data.map((type, index) => ({
-        ...type,
-        id: type.deviceTypeId || `fallback-id-${index}`,
-      }));
+      return response.data?.data || response.data || [];
     },
     staleTime: 1000 * 60 * 60,
   });
+
+  const deviceModels = useMemo(() => {
+    return rawDeviceModels.map((model, index) => ({
+      ...model,
+      id: model.modelId || `fallback-id-${index}`,
+    }));
+  }, [rawDeviceModels]);
+
+  const brands = useMemo(() => {
+    return rawBrands.map((brand, index) => ({
+      ...brand,
+      id: brand.brandId || `fallback-id-${index}`,
+    }));
+  }, [rawBrands]);
+
+  const deviceTypes = useMemo(() => {
+    return rawDeviceTypes.map((type, index) => ({
+      ...type,
+      id: type.deviceTypeId || `fallback-id-${index}`,
+    }));
+  }, [rawDeviceTypes]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');

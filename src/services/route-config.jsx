@@ -33,4 +33,5 @@ export const ROUTE_CONFIG = {
   '/billing/create': { title: (params) => params.ticketId ? `Create Invoice #${params.ticketId}` : 'Create Invoice', icon: <ReceiptLongOutlinedIcon fontSize="small" />, isClosable: true },
   '/billing/:id': { title: (params) => `Billing #${params.id}`, icon: <ReceiptLongOutlinedIcon fontSize="small" />, isClosable: true },
   '/users': { title: 'Users', icon: <BadgeOutlinedIcon fontSize="small" />, isClosable: true },
+  '/users/:id': { title: (params) => `User Profile #${params.id}`, icon: <BadgeOutlinedIcon fontSize="small" />, isClosable: true },
 };

@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, Button, Divider, Typography, MenuItem } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AddIcon from '@mui/icons-material/Add';
@@ -11,6 +12,7 @@ import { useTheme } from '@mui/material/styles';
 export default function UserDetailsPage() {
   const theme = useTheme();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: usersData, isLoading: loadingUsers } = useQuery({
     queryKey: ['users'],
@@ -200,7 +202,8 @@ export default function UserDetailsPage() {
     actions: [
       { label: 'Add User', icon: <AddIcon />, variant: 'contained', color: 'primary', onClick: handleOpenCreateModal },
     ],
-  }), [users, clearSelectionKey, theme, loadingUsers, loadingBranches]);
+    onRowClick: (params) => navigate(`/users/${params.row.id}`),
+  }), [users, clearSelectionKey, theme, loadingUsers, loadingBranches, navigate]);
 
   const lbl = {
     fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary,

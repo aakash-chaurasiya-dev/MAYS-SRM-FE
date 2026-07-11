@@ -16,6 +16,7 @@ import TicketTimeline from './TicketDetailComponents/TicketTimeline';
 import TicketInternalUpdate from './TicketDetailComponents/TicketInternalUpdate';
 import TicketAccessories from './TicketDetailComponents/TicketAccessories';
 import TicketProgress from './TicketDetailComponents/TicketProgress';
+import TicketTimeTracker from './TicketDetailComponents/TicketTimeTracker';
 
 /**
  * Helper to safely format timestamp strings.
@@ -268,6 +269,7 @@ export default function TicketDetailPage() {
               ticketId={id}
               timeline={timeline}
             />
+            <TicketTimeTracker ticketId={id} />
           </Box>
         )}
       </Stack>

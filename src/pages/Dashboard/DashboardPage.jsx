@@ -22,6 +22,7 @@ const TICKET_COLUMNS = [
   { field: 'serialNo', headerName: 'Serial No', width: 150 },
   { field: 'branch', headerName: 'Branch', width: 150 },
   { field: 'department', headerName: 'Department', width: 150 },
+  { field: 'employee', headerName: 'Employee', width: 150 },
   {
     field: 'status', headerName: 'Status', width: 130, renderType: 'chip',
     chipColorMap: {
@@ -104,7 +105,7 @@ export default function DashboardPage() {
       return res.data;
     },
     enabled: !isNormalUser,
-    refetchInterval: 60000, // Poll every 60 seconds
+    refetchInterval: 6000000, // Poll every 60 seconds
   });
 
   // 2. Fetch Initial Tickets (Admin)
@@ -232,6 +233,7 @@ export default function DashboardPage() {
 
     const cDate = t.createdDate ? new Date(t.createdDate).toLocaleString() : 'N/A';
     const targetDate = t.targetDate ? new Date(t.targetDate).toLocaleString() : 'N/A';
+    const employee = t.employeeName || 'Unassigned';
 
     return {
       id: `TK-${tId}`,
@@ -240,6 +242,7 @@ export default function DashboardPage() {
       branch: branch,
       status: status,
       department: dept,
+      employee: employee,
       createdDate: cDate,
       targetDate: targetDate,
       rawId: tId,
