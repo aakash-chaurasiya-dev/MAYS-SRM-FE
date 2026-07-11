@@ -1,6 +1,5 @@
 import React from 'react';
 import { Box, Typography, Chip, IconButton, Button } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import { useTheme } from '@mui/material/styles';
@@ -17,7 +16,6 @@ export default function TicketHeader({
   error,
   isNormalUser,
   isEditMode,
-  onNavigateBack,
   onNavigateBilling,
   onEditClick,
   onCancelEdit,
@@ -32,7 +30,7 @@ export default function TicketHeader({
   const ticketTitle = deviceName !== 'Not available' ? `${deviceName}` : 'Ticket details';
 
   const statusDisplay = ticket?.ticketStatusName || ticket?.status || 'Open';
-  
+
   // Determine color for the status chip
   let statusChipColor = 'default';
   if (['CLOSED', 'RESOLVED'].includes(statusDisplay.toUpperCase())) statusChipColor = 'success';

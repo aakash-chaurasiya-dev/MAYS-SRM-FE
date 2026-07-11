@@ -15,6 +15,7 @@ import TicketOperations from './TicketDetailComponents/TicketOperations';
 import TicketTimeline from './TicketDetailComponents/TicketTimeline';
 import TicketInternalUpdate from './TicketDetailComponents/TicketInternalUpdate';
 import TicketAccessories from './TicketDetailComponents/TicketAccessories';
+import TicketProgress from './TicketDetailComponents/TicketProgress';
 
 /**
  * Helper to safely format timestamp strings.
@@ -87,6 +88,7 @@ export default function TicketDetailPage() {
   const operationsRef = useRef(null);
   const internalNoteRef = useRef(null);
   const accessoriesRef = useRef(null);
+  const progressRef = useRef(null);
 
   // 1. Fetch Ticket Data
   const {
@@ -167,6 +169,7 @@ export default function TicketDetailPage() {
     const operationsData = operationsRef.current?.getFormData() || {};
     const noteData = internalNoteRef.current?.getFormData() || {};
     const accessoriesData = accessoriesRef.current?.getFormData() || {};
+    const progressData = progressRef.current?.getFormData() || {};
 
     const payload = {
       ...ticket,
@@ -176,6 +179,7 @@ export default function TicketDetailPage() {
       ...deviceData,
       ...operationsData,
       ...accessoriesData,
+      ...progressData,
     };
 
     // Only add remarks if they exist to avoid overwriting with null unnecessarily
@@ -209,6 +213,8 @@ export default function TicketDetailPage() {
 
         {/* Left Column */}
         <Box sx={{ flex: isNormalUser ? 1 : 0.7 }}>
+          <TicketProgress ref={progressRef} ticket={ticket} isEditMode={isEditMode} />
+          
           <TicketIssue
             ref={issueRef}
             ticket={ticket}

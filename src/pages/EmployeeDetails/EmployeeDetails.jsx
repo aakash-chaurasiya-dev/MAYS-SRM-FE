@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, FormControlLabel, Checkbox, MenuItem, CircularProgress, Button, Divider } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
@@ -7,6 +8,7 @@ import { List } from '../../stereotype/AbstractList';
 import api from '../../services/api';
 
 export default function EmployeeDetails() {
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
   
@@ -160,7 +162,8 @@ export default function EmployeeDetails() {
     actions: [
       { label: 'Add Employee', icon: <AddIcon />, variant: 'contained', color: 'primary', onClick: handleOpenCreateModal },
     ],
-  }), [employees, clearSelectionKey]);
+    onRowClick: (params) => navigate(`/employees/${params.row.id}`),
+  }), [employees, clearSelectionKey, navigate]);
 
   return (
     <Box sx={{ p: 2 }}>

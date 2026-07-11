@@ -1,5 +1,6 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, Button, Divider, Typography, MenuItem } from '@mui/material';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
@@ -9,10 +10,36 @@ import { useTheme } from '@mui/material/styles';
 
 export default function UserDetailsPage() {
   const theme = useTheme();
+  const queryClient = useQueryClient();
 
-  const [users, setUsers] = useState([]);
-  const [branches, setBranches] = useState([]);
-  
+  const { data: usersData, isLoading: loadingUsers } = useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const response = await api.get('/users');
+      return response.data?.data || response.data || [];
+    },
+    staleTime: 60 * 60 * 1000, // 1 hour
+  });
+
+  const { data: branchesData, isLoading: loadingBranches } = useQuery({
+    queryKey: ['branches'],
+    queryFn: async () => {
+      const response = await api.get('/branches');
+      return response.data?.data || response.data || [];
+    },
+    staleTime: 60 * 60 * 1000, // 1 hour
+  });
+
+  const users = useMemo(() => {
+    if (!usersData) return [];
+    return usersData.map((u, index) => ({
+      ...u,
+      id: u.userId || `fallback-id-${index}`,
+    }));
+  }, [usersData]);
+
+  const branches = branchesData || [];
+
   const [selectedIds, setSelectedIds] = useState([]);
   const [clearSelectionKey, setClearSelectionKey] = useState(0);
 
@@ -29,34 +56,6 @@ export default function UserDetailsPage() {
     userId: '', mobileNo: '', firstName: '', lastName: '', emailId: '', password: '', address: '', branchId: '', isActive: true,
   };
   const [formData, setFormData] = useState(initialFormState);
-
-  const fetchUsers = useCallback(async () => {
-    try {
-      const response = await api.get('/users');
-      const data = response.data?.data || response.data || [];
-      setUsers(data.map((u, index) => ({
-        ...u,
-        id: u.userId || `fallback-id-${index}`,
-      })));
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
-    }
-  }, []);
-
-  const fetchBranches = useCallback(async () => {
-    try {
-      const response = await api.get('/branches');
-      const data = response.data?.data || response.data || [];
-      setBranches(data);
-    } catch (error) {
-      console.error('Failed to fetch branches:', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchUsers();
-    fetchBranches();
-  }, [fetchUsers, fetchBranches]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');
@@ -136,7 +135,7 @@ export default function UserDetailsPage() {
         setClearSelectionKey(prev => prev + 1);
       }
       handleCloseModal();
-      fetchUsers();
+      queryClient.invalidateQueries({ queryKey: ['users'] });
     } catch (error) {
       console.error(`Failed to ${modalMode} user:`, error);
     } finally {
@@ -152,7 +151,7 @@ export default function UserDetailsPage() {
       setOpenDeleteConfirm(false);
       setSelectedIds([]);
       setClearSelectionKey(prev => prev + 1);
-      fetchUsers();
+      queryClient.invalidateQueries({ queryKey: ['users'] });
     } catch (error) {
       console.error('Failed to delete user:', error);
     } finally {
@@ -163,6 +162,7 @@ export default function UserDetailsPage() {
   const config = useMemo(() => ({
     title: 'User Details',
     subtitle: `${users.length} users registered`,
+    loading: loadingUsers || loadingBranches,
     rows: users,
     columns: [
       { field: 'id', headerName: 'ID', width: 70 },
@@ -200,7 +200,7 @@ export default function UserDetailsPage() {
     actions: [
       { label: 'Add User', icon: <AddIcon />, variant: 'contained', color: 'primary', onClick: handleOpenCreateModal },
     ],
-  }), [users, clearSelectionKey, theme]);
+  }), [users, clearSelectionKey, theme, loadingUsers, loadingBranches]);
 
   const lbl = {
     fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary,
@@ -208,17 +208,8 @@ export default function UserDetailsPage() {
   };
 
   return (
-    <Box sx={{ p: 2, pt: 3 }}>
-      <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontSize: '24px', fontWeight: 600, letterSpacing: '-0.01em', color: theme.palette.text.primary }}>
-          User Details
-        </Typography>
-        <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
-          Manage user accounts, roles, and branch assignments.
-        </Typography>
-      </Box>
-
-      <List 
+    <Box>
+     <List 
         config={config} 
         rowSelectionModel={selectedIds}
         onRowSelectionModelChange={setSelectedIds}

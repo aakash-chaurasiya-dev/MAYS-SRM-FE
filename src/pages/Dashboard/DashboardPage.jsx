@@ -28,7 +28,8 @@ const TICKET_COLUMNS = [
       'OPEN': 'error', 'IN PROGRESS': 'warning', 'RESOLVED': 'success', 'CLOSED': 'success',
     },
   },
-  { field: 'createdDate', headerName: 'Created Date', flex: 1 },
+  { field: 'createdDate', headerName: 'Created Date', width: 170 },
+  { field: 'targetDate', headerName: 'Target Date', flex: 1 },
 ];
 
 /* ── Stat Card Component ── */
@@ -78,7 +79,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { showLoading, hideLoading } = useGlobalLoading();
-  
+
   const handleNewTicketClick = () => {
     showLoading('Loading New Ticket...');
     setTimeout(() => {
@@ -86,7 +87,7 @@ export default function DashboardPage() {
       navigate('/tickets/new');
     }, 800);
   };
-  
+
   const [tickets, setTickets] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [fetchedPages, setFetchedPages] = useState(new Set());
@@ -110,15 +111,15 @@ export default function DashboardPage() {
   const { data: adminTicketsInitial, isLoading: loadingAdminTickets } = useQuery({
     queryKey: ['dashboard-ticket-list', selectedDept],
     queryFn: async () => {
-      const baseEndpoint = selectedDept === 'All' 
-         ? '/tickets/dashboard' 
-         : `/tickets/dashboard/department/${selectedDept}`;
+      const baseEndpoint = selectedDept === 'All'
+        ? '/tickets/dashboard'
+        : `/tickets/dashboard/department/${selectedDept}`;
 
       const [res0, res1] = await Promise.all([
         api.get(`${baseEndpoint}?offset=0&limit=10`),
         api.get(`${baseEndpoint}?offset=1&limit=10`)
       ]);
-      
+
       const combined = [...(res0.data.content || []), ...(res1.data.content || [])];
       return Array.from(new Map(combined.map(item => [item.ticketId, item])).values());
     },
@@ -151,26 +152,26 @@ export default function DashboardPage() {
   // Prefetch logic triggered by grid navigation
   const handlePaginationChange = useCallback(async (newModel) => {
     if (isNormalUser) return;
-    
+
     const currentPage = newModel.page;
     const nextPage = currentPage + 1; // Always prefetch the next contiguous page
-    
+
     if (!fetchedPages.has(nextPage)) {
       try {
-        const baseEndpoint = selectedDept === 'All' 
-             ? '/tickets/dashboard' 
-             : `/tickets/dashboard/department/${selectedDept}`;
+        const baseEndpoint = selectedDept === 'All'
+          ? '/tickets/dashboard'
+          : `/tickets/dashboard/department/${selectedDept}`;
 
         const res = await api.get(`${baseEndpoint}?offset=${nextPage}&limit=${newModel.pageSize}`);
         const newTickets = res.data.content || [];
-        
+
         if (newTickets.length > 0) {
           setTickets(prev => {
             const combined = [...prev, ...newTickets];
             return Array.from(new Map(combined.map(item => [item.ticketId, item])).values());
           });
         }
-        
+
         setFetchedPages(prev => {
           const nextSet = new Set(prev);
           nextSet.add(nextPage);
@@ -206,7 +207,7 @@ export default function DashboardPage() {
       iconColor: '#006c47', iconBg: '#006c4714',
     },
     {
-      id: 'MANAGER', title: 'Manager Tickets', value: getDeptCount('MANAGER'),
+      id: 'Management', title: 'Manager Tickets', value: getDeptCount('Management'),
       icon: <ManageAccountsOutlinedIcon />,
       iconColor: '#B95000', iconBg: '#B9500014',
     },
@@ -223,13 +224,14 @@ export default function DashboardPage() {
     const fName = t.userFirstName || t.userMaster?.firstName || '';
     const lName = t.userLastName || t.userMaster?.lastName || '';
     const customerName = `${fName} ${lName}`.trim() || 'Unknown Customer';
-    
+
     const serial = t.deviceSerialNo || t.device?.serialNo || 'N/A';
     const branch = t.branchName || t.ticketBranch?.branchName || 'Unknown Branch';
     const status = t.ticketStatusName || t.ticketStatus?.statusName || 'UNKNOWN';
     const dept = t.departmentName || t.employee?.department?.departmentName || 'Unassigned';
-    
+
     const cDate = t.createdDate ? new Date(t.createdDate).toLocaleString() : 'N/A';
+    const targetDate = t.targetDate ? new Date(t.targetDate).toLocaleString() : 'N/A';
 
     return {
       id: `TK-${tId}`,
@@ -239,6 +241,7 @@ export default function DashboardPage() {
       status: status,
       department: dept,
       createdDate: cDate,
+      targetDate: targetDate,
       rawId: tId,
     };
   });
@@ -336,13 +339,12 @@ export default function DashboardPage() {
                 sx={{
                   p: 2.5,
                   borderRadius: '4px',
-                  borderLeft: `4px solid ${
-                    ticket.status === 'RESOLVED' || ticket.status === 'CLOSED'
+                  borderLeft: `4px solid ${ticket.status === 'RESOLVED' || ticket.status === 'CLOSED'
                       ? theme.palette.success.main
                       : ticket.status === 'IN PROGRESS'
-                      ? theme.palette.warning.main
-                      : theme.palette.error.main
-                  }`,
+                        ? theme.palette.warning.main
+                        : theme.palette.error.main
+                    }`,
                   cursor: 'pointer',
                   transition: 'box-shadow 0.2s, transform 0.2s',
                   '&:hover': {
@@ -362,8 +364,8 @@ export default function DashboardPage() {
                       ticket.status === 'RESOLVED' || ticket.status === 'CLOSED'
                         ? 'success'
                         : ticket.status === 'IN PROGRESS'
-                        ? 'warning'
-                        : 'error'
+                          ? 'warning'
+                          : 'error'
                     }
                     sx={{ fontWeight: 600, borderRadius: '3px', height: 20, fontSize: '11px' }}
                   />
@@ -397,9 +399,9 @@ export default function DashboardPage() {
         }}
       >
         {STATS.map((stat) => (
-          <StatCard 
-            key={stat.title} 
-            {...stat} 
+          <StatCard
+            key={stat.title}
+            {...stat}
             selected={selectedDept === stat.id}
             onClick={() => setSelectedDept(stat.id)}
           />

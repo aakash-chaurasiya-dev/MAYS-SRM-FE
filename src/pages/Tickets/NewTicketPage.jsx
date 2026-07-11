@@ -15,6 +15,7 @@ import ChargeDetails from '../Billing/components/ChargeDetails';
 import CustomerDetails from './NEWTicketCOmponents/CustomerDetails';
 import DeviceInformation from './NEWTicketCOmponents/DeviceInformation';
 import IssueDescription from './NEWTicketCOmponents/IssueDescription';
+import TicketAssignment from './NEWTicketCOmponents/TicketAssignment';
 import UploadAttachments from './NEWTicketCOmponents/UploadAttachments';
 import TicketAccessoriesChecklist from './NEWTicketCOmponents/TicketAccessoriesChecklist';
 const PRIORITIES = ['Low', 'Normal', 'High', 'Critical'];
@@ -55,6 +56,10 @@ export default function NewTicketPage() {
     warrantyType: '',
     issueTitle: '',
     issueDescription: '',
+    departmentId: '',
+    employeeId: '',
+    ticketStatusId: 1, // Defaulting to Open or initial status
+    targetDate: '',
   });
 
   const [selectedAccessories, setSelectedAccessories] = useState([]);
@@ -256,7 +261,9 @@ export default function NewTicketPage() {
         deviceModelId: form.modelId || null,
         customModelName: form.customModelName || null,
         brandId: form.brandId || null,
-        ticketStatusId: 1, // Defaulting to 1 for initial status
+        ticketStatusId: form.ticketStatusId || 1, // Use selected status or default
+        employeeId: form.employeeId || null,
+        targetDate: form.targetDate ? form.targetDate + ':00' : null, // Backend usually expects complete ISO time
       };
 
       const ticketRes = await api.post('/tickets', payload);
@@ -310,14 +317,14 @@ export default function NewTicketPage() {
 
   return (
     <Box>
-      <Box sx={{ mb: 3 }}>
+      {/* <Box sx={{ mb: 3 }}>
         <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>
           {isNormalUser ? 'Submit New Support Request' : 'Intake New Repair Ticket'}
         </Typography>
         <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
           {isNormalUser ? 'Provide details about your device and description of the issue.' : 'Fill in the details below to initialize a service request for a new device.'}
         </Typography>
-      </Box>
+      </Box> */}
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2.5}>
         <Box sx={{ flex: 1 }}>
@@ -343,6 +350,8 @@ export default function NewTicketPage() {
             secHdr={secHdr} 
           />
 
+          <UploadAttachments secHdr={secHdr} />
+
           {/* Ticket Accessories */}
           {form.deviceTypeId && (
             <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
@@ -366,8 +375,15 @@ export default function NewTicketPage() {
             secHdr={secHdr} 
           />
 
-          <UploadAttachments secHdr={secHdr} />
-
+          {!isNormalUser && (
+            <TicketAssignment 
+              form={form} 
+              setForm={setForm} 
+              handleChange={handleChange} 
+              lbl={lbl} 
+              secHdr={secHdr} 
+            />
+          )}
         </Box>
       </Stack>
       
