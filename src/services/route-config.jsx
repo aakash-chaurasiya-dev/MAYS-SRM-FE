@@ -26,6 +26,7 @@ export const ROUTE_CONFIG = {
   '/reports': { title: 'Reports', icon: <AnalyticsOutlinedIcon fontSize="small" />, isClosable: true },
   '/reports/:section': { title: (params) => `Reports: ${params.section}`, icon: <AnalyticsOutlinedIcon fontSize="small" />, isClosable: true },
   '/employees': { title: 'Employees', icon: <BadgeOutlinedIcon fontSize="small" />, isClosable: true },
+  '/employees/:id': { title: (params) => `Employee Profile #${params.id}`, icon: <BadgeOutlinedIcon fontSize="small" />, isClosable: true },
   '/customers': { title: 'Customers', icon: <SupportAgentOutlinedIcon fontSize="small" />, isClosable: true },
   '/settings': { title: 'Settings', icon: <SettingsOutlinedIcon fontSize="small" />, isClosable: true },
   '/support': { title: 'Support Desk', icon: <SupportAgentOutlinedIcon fontSize="small" />, isClosable: true },

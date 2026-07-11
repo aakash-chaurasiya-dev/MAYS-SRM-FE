@@ -32,6 +32,7 @@ import CreateInvoicePage from './pages/Billing/CreateInvoicePage';
 import ReportsPage from './pages/Reports/ReportsPage';
 import OrderPartsPage from './pages/Inventory/OrderPartsPage';
 import EmployeeDetailsPage from './pages/EmployeeDetails/EmployeeDetails';
+import EmployeeProfilePage from './pages/EmployeeDetails/EmployeeProfilePage';
 import UserDetailsPage from './pages/UserDetails/UserDetailsPage';
 import ProfilePage from './pages/Profile/ProfilePage';
 import EnquiriesPage from './pages/Enquiries/EnquiriesPage';
@@ -94,6 +95,7 @@ function App() {
                   <Route path="/reports" element={<ReportsPage />} />
                   <Route path="/reports/device" element={<DeviceManagementPage />} />
                   <Route path="/employees" element={<EmployeeDetailsPage />} />
+                  <Route path="/employees/:id" element={<EmployeeProfilePage />} />
                   <Route path="/users" element={<UserDetailsPage />} />
                   <Route path="/customers" element={<Box sx={{ p: 3 }}>Customers Page (WIP)</Box>} />
                   <Route path="/settings" element={<Box sx={{ p: 3 }}>Settings Page (WIP)</Box>} />

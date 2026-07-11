@@ -32,12 +32,13 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
     },
   });
 
-  const { data: statuses = [] } = useQuery({
-    queryKey: ['ticket-statuses'],
+ const { data: statuses = [] } = useQuery({
+    queryKey: ['statuses'],
     queryFn: async () => {
-      const res = await api.get('/statuses/type/Ticket');
-      return Array.isArray(res.data) ? res.data : [];
+      const res = await api.get('/statuses');
+      return res.data?.data || res.data || [];
     },
+    select: (data) => data.filter(s => s.statusType === 'Ticket' || s.statusType === 'TICKET')
   });
 
   // 2. Dependent Query: Only fetch employees when departmentId is set

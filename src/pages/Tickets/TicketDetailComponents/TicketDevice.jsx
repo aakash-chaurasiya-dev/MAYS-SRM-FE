@@ -57,13 +57,9 @@ const TicketDevice = forwardRef(({ ticket, isEditMode }, ref) => {
   // When edit mode triggers (or data loads), initialize the form
   useEffect(() => {
     if (isEditMode) {
-      const initialDeviceType = deviceTypes.find(dt => dt.deviceTypeName === ticket?.deviceTypeName);
-      const initialBrand = brands.find(b => b.brandName === ticket?.deviceBrandName);
-      const initialModel = models.find(m => m.modelName === ticket?.deviceModelName);
-
-      const deviceTypeId = initialDeviceType ? initialDeviceType.deviceTypeId : '';
-      const brandId = initialBrand ? initialBrand.brandId : '';
-      const modelId = initialModel ? initialModel.modelId : '';
+      const deviceTypeId = ticket?.deviceTypeId || '';
+      const brandId = ticket?.deviceBrandId || '';
+      const modelId = ticket?.deviceModelId || '';
       const currentSerialNo = ticket?.deviceSerialNo || '';
       const currentWarrantyType = ticket?.warrantyType || '';
 
@@ -79,8 +75,8 @@ const TicketDevice = forwardRef(({ ticket, isEditMode }, ref) => {
       // Populate cascades
       if (deviceTypeId) {
         const dType = deviceTypes.find(dt => dt.deviceTypeId === deviceTypeId);
-        window.dispatchEvent(new CustomEvent('ticketDeviceTypeChanged', { detail: dType?.deviceTypeName || '' }));
-        const filtered = brands.filter(b => b.deviceTypeName === dType?.deviceTypeName);
+        window.dispatchEvent(new CustomEvent('ticketDeviceTypeChanged', { detail: dType?.deviceTypeName || ticket?.deviceTypeName || '' }));
+        const filtered = brands.filter(b => b.deviceTypeName === (dType?.deviceTypeName || ticket?.deviceTypeName));
         setFilteredBrands(filtered.length > 0 ? filtered : brands);
       } else {
         window.dispatchEvent(new CustomEvent('ticketDeviceTypeChanged', { detail: '' }));
@@ -89,7 +85,7 @@ const TicketDevice = forwardRef(({ ticket, isEditMode }, ref) => {
 
       if (brandId) {
         const sBrand = brands.find(b => b.brandId === brandId);
-        const filtered = models.filter(m => m.brandName === sBrand?.brandName);
+        const filtered = models.filter(m => m.brandName === (sBrand?.brandName || ticket?.deviceBrandName));
         setFilteredModels(filtered.length > 0 ? filtered : models);
       } else {
         setFilteredModels([]);
@@ -112,6 +108,7 @@ const TicketDevice = forwardRef(({ ticket, isEditMode }, ref) => {
     return String(value);
   };
 
+  const deviceType = valueOrNA(ticket?.deviceTypeName);
   const brand = valueOrNA(ticket?.deviceBrandName);
   const model = valueOrNA(ticket?.deviceModelName);
   const ticketType = valueOrNA(ticket?.ticketTypeName);
@@ -229,6 +226,7 @@ const TicketDevice = forwardRef(({ ticket, isEditMode }, ref) => {
         ) : (
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 2 }}>
             {[
+              { label: 'Device Type', value: deviceType, mono: false },
               { label: 'Brand', value: brand, mono: false },
               { label: 'Model', value: model, mono: false },
               { label: 'Serial No.', value: serialNo, mono: true },

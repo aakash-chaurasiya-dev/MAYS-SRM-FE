@@ -15,14 +15,14 @@ export default function StatusManagementPage() {
   const navigate = useNavigate();
 
   const queryClient = useQueryClient();
-  
+
   const [selectedIds, setSelectedIds] = useState([]);
   const [clearSelectionKey, setClearSelectionKey] = useState(0);
 
   // Modal & Form State
   const [openModal, setOpenModal] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' | 'update'
-  
+
   // Delete Confirmation State
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
 
@@ -31,18 +31,21 @@ export default function StatusManagementPage() {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const { data: statuses = [] } = useQuery({
+  const { data: rawStatuses = [] } = useQuery({
     queryKey: ['statuses'],
     queryFn: async () => {
       const response = await api.get('/statuses');
-      const data = response.data?.data || response.data || [];
-      return data.map((s, index) => ({
-        ...s,
-        id: s.statusId || `fallback-id-${index}`,
-      }));
+      return response.data?.data || response.data || [];
     },
     staleTime: 1000 * 60 * 60,
   });
+
+  const statuses = useMemo(() => {
+    return rawStatuses.map((s, index) => ({
+      ...s,
+      id: s.statusId || `fallback-id-${index}`,
+    }));
+  }, [rawStatuses]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');
@@ -90,7 +93,7 @@ export default function StatusManagementPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['statuses'] });
       if (modalMode !== 'create') {
-        setSelectedIds([]); 
+        setSelectedIds([]);
         setClearSelectionKey(prev => prev + 1);
       }
       handleCloseModal();
@@ -136,9 +139,9 @@ export default function StatusManagementPage() {
       { field: 'statusName', headerName: 'Status Name', flex: 1.5, renderType: 'link' },
       { field: 'statusType', headerName: 'Type', flex: 1 },
       { field: 'statusDescription', headerName: 'Description', flex: 2 },
-      { 
-        field: 'statusFlg', 
-        headerName: 'Status', 
+      {
+        field: 'statusFlg',
+        headerName: 'Status',
         width: 120,
         renderType: 'chip',
         chipColorMap: { '1': 'success', '0': 'error' },
@@ -171,8 +174,8 @@ export default function StatusManagementPage() {
 
   return (
     <Box sx={{ p: 2 }}>
-      <List 
-        config={config} 
+      <List
+        config={config}
         rowSelectionModel={selectedIds}
         onRowSelectionModelChange={setSelectedIds}
       />
@@ -200,10 +203,10 @@ export default function StatusManagementPage() {
       </Box>
 
       {/* ── Modal (Create/Update) ── */}
-      <Dialog 
-        open={openModal} 
-        onClose={handleCloseModal} 
-        maxWidth="sm" 
+      <Dialog
+        open={openModal}
+        onClose={handleCloseModal}
+        maxWidth="sm"
         fullWidth
         PaperProps={{
           sx: {
@@ -247,10 +250,10 @@ export default function StatusManagementPage() {
             <Typography sx={{ ...lbl, mt: 1 }}>Active Status</Typography>
             <FormControlLabel
               control={
-                <Switch 
-                  checked={formData.statusFlg === 1} 
-                  onChange={handleFormChange} 
-                  name="statusFlg" 
+                <Switch
+                  checked={formData.statusFlg === 1}
+                  onChange={handleFormChange}
+                  name="statusFlg"
                   color="primary"
                 />
               }
@@ -281,7 +284,7 @@ export default function StatusManagementPage() {
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteMutation.isPending}>Cancel</Button>
           <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteMutation.isPending} sx={{ minWidth: 90 }}>
-             {deleteMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
+            {deleteMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>
