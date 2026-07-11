@@ -31,31 +31,37 @@ export default function ServiceChargesManagementPage() {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const { data: serviceCharges = [] } = useQuery({
+  const { data: rawServiceCharges = [] } = useQuery({
     queryKey: ['serviceCharges'],
     queryFn: async () => {
       const response = await api.get('/service-charges');
-      const data = response.data?.data || response.data || [];
-      return data.map((charge, index) => ({
-        ...charge,
-        id: charge.chargeId || `fallback-id-${index}`,
-      }));
+      return response.data?.data || response.data || [];
     },
     staleTime: 1000 * 60 * 60,
   });
 
-  const { data: brands = [] } = useQuery({
+  const { data: rawBrands = [] } = useQuery({
     queryKey: ['brands'],
     queryFn: async () => {
       const response = await api.get('/brands');
-      const data = response.data?.data || response.data || [];
-      return data.map((brand, index) => ({
-        ...brand,
-        id: brand.brandId || `fallback-id-${index}`,
-      }));
+      return response.data?.data || response.data || [];
     },
     staleTime: 1000 * 60 * 60,
   });
+
+  const serviceCharges = useMemo(() => {
+    return rawServiceCharges.map((charge, index) => ({
+      ...charge,
+      id: charge.chargeId || `fallback-id-${index}`,
+    }));
+  }, [rawServiceCharges]);
+
+  const brands = useMemo(() => {
+    return rawBrands.map((brand, index) => ({
+      ...brand,
+      id: brand.brandId || `fallback-id-${index}`,
+    }));
+  }, [rawBrands]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');

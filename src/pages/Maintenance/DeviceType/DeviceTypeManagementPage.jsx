@@ -31,18 +31,21 @@ export default function DeviceTypeManagementPage() {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const { data: deviceTypes = [] } = useQuery({
+  const { data: rawDeviceTypes = [] } = useQuery({
     queryKey: ['deviceTypes'],
     queryFn: async () => {
       const response = await api.get('/devicetypes');
-      const data = response.data?.data || response.data || [];
-      return data.map((type, index) => ({
-        ...type,
-        id: type.deviceTypeId || `fallback-id-${index}`,
-      }));
+      return response.data?.data || response.data || [];
     },
     staleTime: 1000 * 60 * 60,
   });
+
+  const deviceTypes = useMemo(() => {
+    return rawDeviceTypes.map((type, index) => ({
+      ...type,
+      id: type.deviceTypeId || `fallback-id-${index}`,
+    }));
+  }, [rawDeviceTypes]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');

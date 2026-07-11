@@ -31,18 +31,21 @@ export default function TicketTypeManagementPage() {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const { data: ticketTypes = [] } = useQuery({
+  const { data: rawTicketTypes = [] } = useQuery({
     queryKey: ['ticketTypes'],
     queryFn: async () => {
       const response = await api.get('/ticket-types');
-      const data = response.data?.data || response.data || [];
-      return data.map((tt, index) => ({
-        ...tt,
-        id: tt.ticketTypeId || `fallback-id-${index}`,
-      }));
+      return response.data?.data || response.data || [];
     },
     staleTime: 1000 * 60 * 60,
   });
+
+  const ticketTypes = useMemo(() => {
+    return rawTicketTypes.map((tt, index) => ({
+      ...tt,
+      id: tt.ticketTypeId || `fallback-id-${index}`,
+    }));
+  }, [rawTicketTypes]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');

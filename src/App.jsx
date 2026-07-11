@@ -34,6 +34,7 @@ import OrderPartsPage from './pages/Inventory/OrderPartsPage';
 import EmployeeDetailsPage from './pages/EmployeeDetails/EmployeeDetails';
 import EmployeeProfilePage from './pages/EmployeeDetails/EmployeeProfilePage';
 import UserDetailsPage from './pages/UserDetails/UserDetailsPage';
+import UserProfilePage from './pages/UserDetails/UserProfilePage';
 import ProfilePage from './pages/Profile/ProfilePage';
 import EnquiriesPage from './pages/Enquiries/EnquiriesPage';
 
@@ -97,6 +98,7 @@ function App() {
                   <Route path="/employees" element={<EmployeeDetailsPage />} />
                   <Route path="/employees/:id" element={<EmployeeProfilePage />} />
                   <Route path="/users" element={<UserDetailsPage />} />
+                  <Route path="/users/:id" element={<UserProfilePage />} />
                   <Route path="/customers" element={<Box sx={{ p: 3 }}>Customers Page (WIP)</Box>} />
                   <Route path="/settings" element={<Box sx={{ p: 3 }}>Settings Page (WIP)</Box>} />
                   <Route path="/support" element={<Box sx={{ p: 3 }}>Support Desk (WIP)</Box>} />
