@@ -35,6 +35,18 @@ export default function LoginPage() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Pre-flight validation
+    const mobileRegex = /^\d{10}$/;
+    if (!mobileRegex.test(mobileNo)) {
+      setError('Mobile number must be exactly 10 digits.');
+      return;
+    }
+    // if (password.length < 8) {
+    //   setError('Password must be at least 8 characters long.');
+    //   return;
+    // }
+
     setIsLoading(true);
 
     // Call the login function from AuthContext
@@ -229,7 +241,9 @@ export default function LoginPage() {
                 Password
               </Typography>
               <Link
-                href="#"
+                component="button"
+                variant="body2"
+                onClick={() => navigate('/forgot-password')}
                 underline="hover"
                 sx={{ fontSize: '12px', fontWeight: 600, color: theme.palette.primary.main }}
               >

@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect, useContext } from 'react';
 import { jwtDecode } from 'jwt-decode';
+import { useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 
 const AuthContext = createContext(null);
@@ -8,6 +9,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   // Initialize auth state from local storage on load
   useEffect(() => {
@@ -64,6 +66,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.clear();
     setUser(null);
     setIsAuthenticated(false);
+    queryClient.clear(); // Clear all cached data (like profiles) on logout
   };
 
   if (loading) {
