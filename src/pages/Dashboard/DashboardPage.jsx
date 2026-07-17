@@ -132,7 +132,7 @@ export default function DashboardPage() {
     queryKey: ['dashboard-ticket-list-user', user?.userId],
     queryFn: async () => {
       // Using user.userId from AuthContext instead of fetching /auth/me again
-      const ticketsResponse = await api.get(`/tickets/user/${user.userId}`);
+      const ticketsResponse = await api.get(`/tickets/user/dashboard/${user.userId}`);
       return ticketsResponse.data || [];
     },
     enabled: isNormalUser && !!user?.userId,
@@ -289,14 +289,14 @@ export default function DashboardPage() {
               Track the progress of your repair requests
             </Typography>
           </Box>
-          <Button
+          {/* <Button
             variant="contained"
             startIcon={<AddOutlinedIcon />}
             onClick={handleNewTicketClick}
             sx={{ fontWeight: 600, textTransform: 'none', py: 0.9 }}
           >
             New Support Request
-          </Button>
+          </Button> */}
         </Box>
 
         {/* Search Input */}
@@ -321,7 +321,7 @@ export default function DashboardPage() {
             <Typography sx={{ fontSize: '14px', fontWeight: 600, color: theme.palette.text.secondary }}>
               {searchQuery ? 'No tickets match your search.' : 'You have not submitted any repair tickets.'}
             </Typography>
-            {!searchQuery && (
+            {!searchQuery && !isNormalUser && (
               <Button
                 variant="outlined"
                 startIcon={<AddOutlinedIcon />}

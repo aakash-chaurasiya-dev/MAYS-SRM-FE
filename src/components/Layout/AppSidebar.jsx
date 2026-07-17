@@ -309,18 +309,20 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
         )}
 
         {/* ── + New Ticket Button ── */}
-        <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
-          <Button variant="contained" fullWidth
-            startIcon={desktopOpen ? <AddIcon /> : undefined}
-            onClick={handleNewTicketClick}
-            sx={{
-              borderRadius: '6px', py: 0.9, fontSize: '13px', fontWeight: 600,
-              textTransform: 'none', minWidth: desktopOpen ? 'auto' : 40,
-              px: desktopOpen ? 2 : 0, justifyContent: 'center'
-            }}>
-            {desktopOpen ? 'New Ticket' : <AddIcon fontSize="small" />}
-          </Button>
-        </Box>
+        {!isNormalUser && (
+          <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
+            <Button variant="contained" fullWidth
+              startIcon={desktopOpen ? <AddIcon /> : undefined}
+              onClick={handleNewTicketClick}
+              sx={{
+                borderRadius: '6px', py: 0.9, fontSize: '13px', fontWeight: 600,
+                textTransform: 'none', minWidth: desktopOpen ? 'auto' : 40,
+                px: desktopOpen ? 2 : 0, justifyContent: 'center'
+              }}>
+              {desktopOpen ? 'New Ticket' : <AddIcon fontSize="small" />}
+            </Button>
+          </Box>
+        )}
       </MuiList>
 
 

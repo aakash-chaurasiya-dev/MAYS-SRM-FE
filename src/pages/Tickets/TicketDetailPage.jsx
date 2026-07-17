@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Box, Stack } from '@mui/material';
+import { Box, Stack, Typography, Button, CircularProgress } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
@@ -91,6 +91,10 @@ export default function TicketDetailPage() {
   const accessoriesRef = useRef(null);
   const progressRef = useRef(null);
 
+  // 0. Cache-first Access Check for Normal Users
+  const userTicketsCache = queryClient.getQueryData(['dashboard-ticket-list-user', user?.userId]);
+  const hasCacheAndIsDenied = isNormalUser && userTicketsCache && !userTicketsCache.some(t => String(t.ticketId) === String(id));
+
   // 1. Fetch Ticket Data
   const {
     data: ticket,
@@ -103,6 +107,7 @@ export default function TicketDetailPage() {
       const res = await api.get(`/tickets/${id}`);
       return res.data;
     },
+    enabled: !hasCacheAndIsDenied,
   });
 
   // 2. Fetch Attachments
@@ -194,6 +199,30 @@ export default function TicketDetailPage() {
   const loading = isTicketLoading;
   const error = ticketError ? (ticketError.response?.data?.message || ticketError.message || 'Unable to load ticket details') : '';
 
+  // Show loading spinner while fetching data to prevent flashing the layout before access check
+  if (loading) {
+    return (
+      <Box sx={{ p: 4, textAlign: 'center', mt: 10 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Frontend Restriction: Prevent a normal user from viewing someone else's ticket via direct URL
+  if (hasCacheAndIsDenied || (ticket && isNormalUser && String(ticket.userId) !== String(user?.userId))) {
+    return (
+      <Box sx={{ p: 4, textAlign: 'center', mt: 10 }}>
+        <Typography variant="h5" color="error" fontWeight="bold">Access Denied</Typography>
+        <Typography variant="body1" sx={{ mt: 2, color: 'text.secondary' }}>
+          You do not have permission to view this ticket.
+        </Typography>
+        <Button sx={{ mt: 4 }} variant="contained" onClick={() => navigate('/dashboard')}>
+          Back to Dashboard
+        </Button>
+      </Box>
+    );
+  }
+
   return (
     <Box>
       <TicketHeader
@@ -222,13 +251,15 @@ export default function TicketDetailPage() {
             isEditMode={isEditMode}
           />
 
-          <TicketInternalUpdate
-            ref={internalNoteRef}
-            ticket={ticket}
-            ticketId={id}
-            isEditMode={isEditMode}
-            latestRemark={latestRemark}
-          />
+          {!isNormalUser && (
+            <TicketInternalUpdate
+              ref={internalNoteRef}
+              ticket={ticket}
+              ticketId={id}
+              isEditMode={isEditMode}
+              latestRemark={latestRemark}
+            />
+          )}
 
           <Stack direction="row" spacing={2.5} flexWrap="wrap" useFlexGap>
             <TicketCustomer
@@ -241,6 +272,7 @@ export default function TicketDetailPage() {
               ref={deviceRef}
               ticket={ticket}
               isEditMode={isEditMode}
+              isNormalUser={isNormalUser}
             />
           </Stack>
 
@@ -249,6 +281,7 @@ export default function TicketDetailPage() {
             ticket={ticket}
             ticketId={id}
             isEditMode={isEditMode}
+            isNormalUser={isNormalUser}
           />
 
           <TicketAttachments

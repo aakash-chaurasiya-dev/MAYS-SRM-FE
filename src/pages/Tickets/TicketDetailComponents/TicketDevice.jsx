@@ -12,7 +12,7 @@ import api from '../../../services/api';
  * It handles the complex logic of cascading dropdowns (Device Types -> Brands -> Models)
  * as well as custom models, serial numbers, and warranty types.
  */
-const TicketDevice = forwardRef(({ ticket, isEditMode }, ref) => {
+const TicketDevice = forwardRef(({ ticket, isEditMode, isNormalUser }, ref) => {
   const theme = useTheme();
 
   // 1. Fetch Lookups globally cached via React Query
@@ -22,6 +22,7 @@ const TicketDevice = forwardRef(({ ticket, isEditMode }, ref) => {
       const res = await api.get('/devicetypes');
       return res.data;
     },
+    enabled: !isNormalUser,
     // The global staleTime handles caching, so it won't fetch twice.
   });
 
@@ -31,6 +32,7 @@ const TicketDevice = forwardRef(({ ticket, isEditMode }, ref) => {
       const res = await api.get('/brands');
       return res.data;
     },
+    enabled: !isNormalUser,
   });
 
   const { data: models = [] } = useQuery({
@@ -39,6 +41,7 @@ const TicketDevice = forwardRef(({ ticket, isEditMode }, ref) => {
       const res = await api.get('/devicemodels');
       return res.data;
     },
+    enabled: !isNormalUser,
   });
 
   const [filteredBrands, setFilteredBrands] = useState([]);

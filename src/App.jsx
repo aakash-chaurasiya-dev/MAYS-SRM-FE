@@ -9,6 +9,7 @@ import AppLayout from './components/Layout/AppLayout';
 // Pages
 import LoginPage from './pages/Login/LoginPage';
 import RegisterPage from './pages/Register/RegisterPage';
+import ForgotPasswordPage from './pages/Auth/ForgotPasswordPage';
 import DashboardPage from './pages/Dashboard/DashboardPage';
 import DiagnosisPage from './pages/EngineerDiagnosis/DiagnosisPage';
 import InventoryPage from './pages/Inventory/InventoryPage';
@@ -52,6 +53,7 @@ function App() {
             {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
             {/* Authenticated Routes with Sidebar & TabBar */}
             <Route element={<ProtectedRoute />}>
@@ -59,7 +61,7 @@ function App() {
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
-                
+
                 {/* Ticket Routes (Accessible by both customers and employees) */}
                 <Route path="/tickets/new" element={<NewTicketPage />} />
                 <Route path="/tickets/:id" element={<TicketDetailPage />} />

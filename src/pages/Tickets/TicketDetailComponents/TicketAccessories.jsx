@@ -5,7 +5,7 @@ import { useTheme } from '@mui/material/styles';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../../services/api';
 
-const TicketAccessories = forwardRef(({ ticketId, ticket, isEditMode }, ref) => {
+const TicketAccessories = forwardRef(({ ticketId, ticket, isEditMode, isNormalUser }, ref) => {
   const theme = useTheme();
 
   // Fetch ticket accessories
@@ -25,6 +25,7 @@ const TicketAccessories = forwardRef(({ ticketId, ticket, isEditMode }, ref) => 
       const res = await api.get('/device-accessories');
       return res.data || [];
     },
+    enabled: !isNormalUser
   });
 
   const [selectedIds, setSelectedIds] = useState([]);
