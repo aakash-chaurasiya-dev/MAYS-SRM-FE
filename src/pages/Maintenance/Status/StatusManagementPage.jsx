@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, Button, Divider, Typography, MenuItem, Switch, FormControlLabel } from '@mui/material';
+import { Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, Button, Divider, Typography, MenuItem, Switch, FormControlLabel, Checkbox, ListItemText, FormControl, Select } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
@@ -28,7 +28,7 @@ export default function StatusManagementPage() {
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
 
   const initialFormState = {
-    statusId: '', statusName: '', statusFlg: 1, statusDescription: '', statusType: '',
+    statusId: '', statusName: '', statusFlg: 1, statusDescription: '', statusType: '', allowedDepartmentIds: []
   };
   const [formData, setFormData] = useState(initialFormState);
 
@@ -36,6 +36,15 @@ export default function StatusManagementPage() {
     queryKey: ['statuses'],
     queryFn: async () => {
       const response = await api.get('/statuses');
+      return response.data?.data || response.data || [];
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+
+  const { data: departments = [] } = useQuery({
+    queryKey: ['departments'],
+    queryFn: async () => {
+      const response = await api.get('/departments');
       return response.data?.data || response.data || [];
     },
     staleTime: 1000 * 60 * 60,
@@ -65,6 +74,7 @@ export default function StatusManagementPage() {
         statusFlg: sToUpdate.statusFlg !== undefined ? sToUpdate.statusFlg : 1,
         statusDescription: sToUpdate.statusDescription || '',
         statusType: sToUpdate.statusType || '',
+        allowedDepartmentIds: sToUpdate.allowedDepartmentIds ? sToUpdate.allowedDepartmentIds.split(',').filter(v => v.trim() !== '').map(v => Number(v.trim())) : [],
       });
       setOpenModal(true);
     }
@@ -77,9 +87,17 @@ export default function StatusManagementPage() {
 
   const handleFormChange = (e) => {
     const { name, value, checked, type } = e.target;
+    let newValue = value;
+    if (type === 'checkbox') {
+        newValue = checked ? 1 : 0;
+    } else if (name === 'allowedDepartmentIds') {
+        // On autofill we get a stringified value.
+        newValue = typeof value === 'string' ? value.split(',') : value;
+    }
+    
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? (checked ? 1 : 0) : value,
+      [name]: newValue,
     }));
   };
 
@@ -124,6 +142,7 @@ export default function StatusManagementPage() {
       statusFlg: formData.statusFlg,
       statusDescription: formData.statusDescription,
       statusType: formData.statusType,
+      allowedDepartmentIds: formData.allowedDepartmentIds.length > 0 ? formData.allowedDepartmentIds.join(',') : null,
     });
   };
 
@@ -141,6 +160,7 @@ export default function StatusManagementPage() {
       { field: 'statusName', headerName: 'Status Name', flex: 1.5, renderType: 'link' },
       { field: 'statusType', headerName: 'Type', flex: 1 },
       { field: 'statusDescription', headerName: 'Description', flex: 2 },
+      { field: 'allowedRoles', headerName: 'Allowed Roles', flex: 1 },
       {
         field: 'statusFlg',
         headerName: 'Status',
@@ -255,6 +275,33 @@ export default function StatusManagementPage() {
               multiline rows={2}
               sx={{ mb: 2 }}
             />
+            
+            <Typography sx={{ ...lbl, mt: 1 }}>Allowed Departments (Optional)</Typography>
+            <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+              <Select
+                multiple
+                displayEmpty
+                name="allowedDepartmentIds"
+                value={formData.allowedDepartmentIds || []}
+                onChange={handleFormChange}
+                renderValue={(selected) => {
+                  if (selected.length === 0) {
+                    return <Typography color="text.secondary">None (Available to all)</Typography>;
+                  }
+                  return selected.map(id => {
+                    const dept = departments.find(d => d.departmentId === id);
+                    return dept ? dept.departmentName : id;
+                  }).join(', ');
+                }}
+              >
+                {departments.map((dept) => (
+                  <MenuItem key={dept.departmentId} value={dept.departmentId}>
+                    <Checkbox checked={(formData.allowedDepartmentIds || []).indexOf(dept.departmentId) > -1} />
+                    <ListItemText primary={dept.departmentName} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
             <Typography sx={{ ...lbl, mt: 1 }}>Active Status</Typography>
             <FormControlLabel
