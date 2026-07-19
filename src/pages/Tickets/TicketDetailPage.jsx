@@ -271,7 +271,8 @@ export default function TicketDetailPage() {
             <TicketDevice
               ref={deviceRef}
               ticket={ticket}
-              isEditMode={isEditMode}
+              // isEditMode={isEditMode}
+              isEditMode={false} // Kept read-only
               isNormalUser={isNormalUser}
             />
           </Stack>

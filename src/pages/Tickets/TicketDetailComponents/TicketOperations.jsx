@@ -3,6 +3,7 @@ import { Box, Typography, Paper, Divider, Stack, TextField, MenuItem } from '@mu
 import { useTheme } from '@mui/material/styles';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../../services/api';
+import { useAuth } from '../../../contexts/AuthContext';
 
 /**
  * TicketOperations
@@ -12,6 +13,8 @@ import api from '../../../services/api';
  */
 const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
   const theme = useTheme();
+  const { user } = useAuth();
+  const userRole = user?.roles?.[0]?.authority || user?.role?.[0]?.authority;
 
   const [initialLoad, setInitialLoad] = useState(false);
   const [originalEmployeeId, setOriginalEmployeeId] = useState('');
@@ -32,13 +35,17 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
     },
   });
 
- const { data: statuses = [] } = useQuery({
+  const { data: statuses = [] } = useQuery({
     queryKey: ['statuses'],
     queryFn: async () => {
       const res = await api.get('/statuses');
       return res.data?.data || res.data || [];
     },
-    select: (data) => data.filter(s => s.statusType === 'Ticket' || s.statusType === 'TICKET')
+    select: (data) => data.filter(s => {
+      if (s.statusType !== 'Ticket' && s.statusType !== 'TICKET') return false;
+      if (s.allowedRoles && !s.allowedRoles.includes(userRole)) return false;
+      return true;
+    })
   });
 
   // 2. Dependent Query: Only fetch employees when departmentId is set

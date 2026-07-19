@@ -44,7 +44,10 @@ export const AuthProvider = ({ children }) => {
       
       // TODO: Adjust 'response.data.token' based on your API's response structure
       const { token } = response.data; 
+      const theme = localStorage.getItem('app-theme-mode');
       localStorage.clear();
+      if (theme) localStorage.setItem('app-theme-mode', theme);
+      
       localStorage.setItem('token', token);
       
       const decoded = jwtDecode(token);
@@ -64,7 +67,10 @@ export const AuthProvider = ({ children }) => {
 
   // Logout function
   const logout = () => {
+    const theme = localStorage.getItem('app-theme-mode');
     localStorage.clear();
+    if (theme) localStorage.setItem('app-theme-mode', theme);
+    
     setUser(null);
     setIsAuthenticated(false);
     queryClient.clear(); // Clear all cached data (like profiles) on logout

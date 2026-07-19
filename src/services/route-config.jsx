@@ -8,6 +8,7 @@ import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import AddIcon from '@mui/icons-material/Add';
 import ConfirmationNumberOutlinedIcon from '@mui/icons-material/ConfirmationNumberOutlined';
+import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 
 /**
  * Centralized configuration for routes that can be opened as tabs.
@@ -17,6 +18,7 @@ import ConfirmationNumberOutlinedIcon from '@mui/icons-material/ConfirmationNumb
  */
 export const ROUTE_CONFIG = {
   '/dashboard': { title: 'Dashboard', icon: <DashboardOutlinedIcon fontSize="small" />, isClosable: false },
+  '/profile': { title: 'My Profile', icon: <PersonOutlinedIcon fontSize="small" />, isClosable: true },
   '/diagnosis': { title: 'Diagnosis', icon: <BuildOutlinedIcon fontSize="small" />, isClosable: true },
   '/inventory': { title: 'Inventory', icon: <Inventory2OutlinedIcon fontSize="small" />, isClosable: true },
   '/inventory/parts': { title: 'Order Parts', icon: <Inventory2OutlinedIcon fontSize="small" />, isClosable: true },
