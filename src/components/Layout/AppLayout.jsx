@@ -3,7 +3,9 @@ import { Box, useMediaQuery } from '@mui/material';
 import { Outlet } from 'react-router-dom';
 import AppSidebar from './AppSidebar';
 import TabBar from './TabBar';
+import UserEntryModal from '../UserEntryModal';
 import { useTheme } from '@mui/material/styles';
+import { useAuth } from '../../contexts/AuthContext';
 
 /**
  * AppLayout — Shared shell for all authenticated pages.
@@ -14,6 +16,22 @@ export default function AppLayout() {
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopOpen, setDesktopOpen] = useState(true);
+  const [showEntryModal, setShowEntryModal] = useState(false);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    // Only proceed if user is fully loaded
+    if (!user) return;
+
+    const hasAnswered = sessionStorage.getItem('hasAnsweredHereFor');
+    
+    // Safely extract the role handling different possible token structures
+    const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
+    
+    if (!hasAnswered && rawRole === 'ROLE_USER') {
+      setShowEntryModal(true);
+    }
+  }, [user]);
 
   const handleDrawerToggle = () => {
     if (isDesktop) {
@@ -95,6 +113,11 @@ export default function AppLayout() {
           <Outlet />
         </Box>
       </Box>
+      
+      <UserEntryModal 
+        open={showEntryModal} 
+        onClose={() => setShowEntryModal(false)} 
+      />
     </Box>
   );
 }

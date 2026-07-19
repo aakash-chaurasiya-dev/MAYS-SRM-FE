@@ -51,6 +51,8 @@ const MAINTENANCE_SUBS = [
 const REPORTS_SUBS = [
   { label: 'Overview', path: '/reports' },
   { label: 'Device Management', path: '/reports/device' },
+  { label: 'User Entry Report', path: '/reports/user-entry' },
+
 ];
 
 const SECTION2 = [

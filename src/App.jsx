@@ -31,6 +31,7 @@ import AccessoryManagementPage from './pages/Maintenance/Accessory/AccessoryMana
 import BillingDetailsPage from './pages/Billing/BillingDetailsPage';
 import CreateInvoicePage from './pages/Billing/CreateInvoicePage';
 import ReportsPage from './pages/Reports/ReportsPage';
+import UserEntryReportPage from './pages/Reports/UserEntryReportPage';
 import OrderPartsPage from './pages/Inventory/OrderPartsPage';
 import EmployeeDetailsPage from './pages/EmployeeDetails/EmployeeDetails';
 import EmployeeProfilePage from './pages/EmployeeDetails/EmployeeProfilePage';
@@ -96,6 +97,7 @@ function App() {
 
                   <Route path="/maintenance/:section" element={<Box sx={{ p: 3 }}>Maintenance Section (WIP)</Box>} />
                   <Route path="/reports" element={<ReportsPage />} />
+                  <Route path="/reports/user-entry" element={<UserEntryReportPage />} />
                   <Route path="/reports/device" element={<DeviceManagementPage />} />
                   <Route path="/employees" element={<EmployeeDetailsPage />} />
                   <Route path="/employees/:id" element={<EmployeeProfilePage />} />

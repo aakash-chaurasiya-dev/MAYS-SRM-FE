@@ -165,10 +165,13 @@ export default function BrandManagementPage() {
     subtitle: `${brands.length} brands configured`,
     rows: brands,
     columns: [
+
       { field: 'id', headerName: 'Brand ID', width: 90 },
       { field: 'brandName', headerName: 'Brand Name', flex: 1.2, renderType: 'link' },
       { field: 'brandDescription', headerName: 'Description', flex: 2 },
       { field: 'deviceTypeName', headerName: 'Device Type', flex: 1.5 },
+      { field: 'insertDate', headerName: 'Created At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
+      { field: 'lastUpdateDate', headerName: 'Updated At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
     ],
     checkboxSelection: true,
     searchable: true,
@@ -176,6 +179,7 @@ export default function BrandManagementPage() {
     pagination: { pageSize: 10, pageSizeOptions: [5, 10, 25] },
     height: 480,
     gridKey: clearSelectionKey,
+    getRowClassName: (params) => params.row?.isLocked ? 'locked-row' : '',
     actions: [
       { label: 'Add Brand', icon: <AddIcon />, variant: 'contained', color: 'primary', onClick: handleOpenCreateModal },
     ],
@@ -185,6 +189,10 @@ export default function BrandManagementPage() {
     fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary,
     textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.8, mt: 2,
   };
+  const selectedRowsAreLocked = selectedIds.some(id => {
+    const row = brands.find(b => String(b.id) === String(id));
+    return row?.isLocked;
+  });
 
   return (
     <Box sx={{ p: 2 }}>
@@ -201,7 +209,7 @@ export default function BrandManagementPage() {
           variant="outlined"
           color="primary"
           startIcon={<EditOutlinedIcon />}
-          disabled={selectedIds.length !== 1}
+          disabled={selectedIds.length !== 1 || selectedRowsAreLocked}
           onClick={handleOpenUpdateModal}
         >
           Update
@@ -210,7 +218,7 @@ export default function BrandManagementPage() {
           variant="outlined"
           color="error"
           startIcon={<DeleteOutlinedIcon />}
-          disabled={selectedIds.length === 0}
+          disabled={selectedIds.length === 0 || selectedRowsAreLocked}
           onClick={() => setOpenDeleteConfirm(true)}
         >
           Delete
