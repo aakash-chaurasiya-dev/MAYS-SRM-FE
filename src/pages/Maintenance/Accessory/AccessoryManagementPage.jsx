@@ -9,6 +9,7 @@ import { List } from '../../../stereotype/AbstractList';
 import api from '../../../services/api';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import DeleteConfirmDialog from '../../../components/DeleteConfirmDialog';
 
 export default function AccessoryManagementPage() {
   const theme = useTheme();
@@ -276,22 +277,15 @@ export default function AccessoryManagementPage() {
       </Dialog>
 
       {/* ── Delete Confirmation Dialog ── */}
-      <Dialog open={openDeleteConfirm} onClose={() => setOpenDeleteConfirm(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 600, color: 'error.main' }}>Confirm Deletion</DialogTitle>
-        <Divider />
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete {selectedIds.length === 1 ? 'this accessory' : `these ${selectedIds.length} accessories`}? This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <Divider />
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteMutation.isPending}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteMutation.isPending} sx={{ minWidth: 90 }}>
-             {deleteMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={openDeleteConfirm}
+        onClose={() => setOpenDeleteConfirm(false)}
+        onConfirm={handleDeleteConfirm}
+        itemType="accessory"
+        itemTypePlural="accessories"
+        count={selectedIds.length}
+        isLoading={deleteMutation.isPending}
+      />
     </Box>
   );
 }

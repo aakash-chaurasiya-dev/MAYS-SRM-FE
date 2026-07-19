@@ -1,9 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { Box, Typography, Button, Paper, Divider, Stack, Dialog, DialogContent } from '@mui/material';
+import { Box, Typography, Button, Paper, Divider, Stack, Dialog, DialogContent, IconButton } from '@mui/material';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import CloseIcon from '@mui/icons-material/Close';
 import { useTheme } from '@mui/material/styles';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../services/api';
+import DeleteConfirmDialog from '../../../components/DeleteConfirmDialog';
 
 /**
  * Helper to format date strings.
@@ -34,6 +36,9 @@ export default function TicketAttachments({ ticketId, attachments = [] }) {
   const [error, setError] = useState('');
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImg, setLightboxImg] = useState(null);
+  
+  const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
+  const [attachmentToDelete, setAttachmentToDelete] = useState(null);
 
   const uploadMutation = useMutation({
     mutationFn: async (selectedFile) => {
@@ -75,6 +80,36 @@ export default function TicketAttachments({ ticketId, attachments = [] }) {
       }, 5000);
     }
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (attachmentId) => {
+      await api.delete(`/tickets/${ticketId}/attachments/${attachmentId}`);
+    },
+    onSuccess: () => {
+      setUploadMessage('Attachment removed successfully');
+      queryClient.invalidateQueries({ queryKey: ['ticket-attachments', ticketId] });
+      setOpenDeleteConfirm(false);
+      setAttachmentToDelete(null);
+      setTimeout(() => {
+        setUploadMessage('');
+      }, 5000);
+    },
+    onError: (err) => {
+      console.error('Failed to delete attachment:', err);
+      setError(err.message || 'Unable to remove attachment');
+      setOpenDeleteConfirm(false);
+      setAttachmentToDelete(null);
+      setTimeout(() => {
+        setError('');
+      }, 5000);
+    }
+  });
+
+  const handleDeleteConfirm = () => {
+    if (attachmentToDelete) {
+      deleteMutation.mutate(attachmentToDelete.attachmentId);
+    }
+  };
 
   const handleAttachmentUpload = (event) => {
     const selectedFile = event.target.files?.[0];
@@ -133,6 +168,7 @@ export default function TicketAttachments({ ticketId, attachments = [] }) {
                     target={!isImage ? '_blank' : undefined}
                     rel={!isImage ? 'noreferrer' : undefined}
                     sx={{
+                      position: 'relative',
                       width: 150, minHeight: 140, borderRadius: '6px',
                       bgcolor: theme.palette.background.default, border: `1.5px solid ${theme.palette.divider}`,
                       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -140,9 +176,43 @@ export default function TicketAttachments({ ticketId, attachments = [] }) {
                       textDecoration: 'none', px: 1.5, py: 1.5,
                       boxShadow: '0 1px 4px 0 rgba(0,0,0,0.04)', transition: 'box-shadow 0.18s, border-color 0.18s',
                       '&:hover': attachment.fileUrl ? { borderColor: theme.palette.primary.main, boxShadow: '0 4px 16px 0 rgba(0,82,204,0.10)' } : undefined,
+                      '&:hover .delete-btn': {
+                        opacity: 1,
+                      },
                     }}
                     onClick={isImage && attachment.fileUrl ? () => { setLightboxImg({ url: attachment.fileUrl, name: attachment.fileName }); setLightboxOpen(true); } : undefined}
                   >
+                    <IconButton
+                      className="delete-btn"
+                      size="small"
+                      disabled={deleteMutation.isPending}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setAttachmentToDelete(attachment);
+                        setOpenDeleteConfirm(true);
+                      }}
+                      sx={{
+                        position: 'absolute',
+                        top: 5,
+                        right: 5,
+                        opacity: { xs: 1, md: 0 },
+                        transition: 'opacity 0.2s',
+                        bgcolor: 'rgba(255, 255, 255, 0.9)',
+                        color: 'text.secondary',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
+                        width: 22,
+                        height: 22,
+                        zIndex: 10,
+                        p: 0,
+                        '&:hover': {
+                          bgcolor: 'error.main',
+                          color: 'white',
+                        },
+                      }}
+                    >
+                      <CloseIcon sx={{ fontSize: 13 }} />
+                    </IconButton>
                     {isImage && attachment.fileUrl ? (
                       <Box component="img" src={attachment.fileUrl} alt={attachment.fileName || 'Attachment'}
                         sx={{ width: 90, height: 90, objectFit: 'cover', borderRadius: '4px', mb: 1, background: theme.palette.background.paper, border: `1px solid ${theme.palette.divider}`, boxShadow: '0 1px 6px 0 rgba(0,0,0,0.08)' }}
@@ -179,6 +249,19 @@ export default function TicketAttachments({ ticketId, attachments = [] }) {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={openDeleteConfirm}
+        onClose={() => {
+          setOpenDeleteConfirm(false);
+          setAttachmentToDelete(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        title="Remove Attachment"
+        message={attachmentToDelete ? `Are you sure you want to remove "${attachmentToDelete.fileName || 'this attachment'}"? This action cannot be undone.` : ''}
+        isLoading={deleteMutation.isPending}
+      />
     </>
   );
 }
