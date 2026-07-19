@@ -51,6 +51,7 @@ export const AuthProvider = ({ children }) => {
       setUser(decoded);
       setIsAuthenticated(true);
       console.log('Login successful, user:', decoded);
+      console.log(user?.role[0].authority)
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);

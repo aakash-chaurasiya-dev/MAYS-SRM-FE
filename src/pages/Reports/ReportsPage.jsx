@@ -4,8 +4,11 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 
+import LoginIcon from '@mui/icons-material/Login';
+
 const REPORT_ITEMS = [
   { key: 'device', label: 'Device Management', desc: 'View physically registered devices across the system.', icon: <Inventory2OutlinedIcon />, path: '/reports/device' },
+  { key: 'user-entry', label: 'User Entry Reports', desc: 'View daily user login entry reasons and track statistics.', icon: <LoginIcon />, path: '/reports/user-entry' },
 ];
 
 export default function ReportsPage() {
