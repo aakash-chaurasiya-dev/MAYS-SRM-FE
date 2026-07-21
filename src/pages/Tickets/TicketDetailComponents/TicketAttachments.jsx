@@ -157,7 +157,7 @@ export default function TicketAttachments({ ticketId, attachments = [] }) {
               No attachments available for this ticket.
             </Typography>
           ) : (
-            <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+            <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap' }} useFlexGap>
               {attachments.map((attachment) => {
                 const isImage = /\.(jpe?g|png|gif|bmp|webp)$/i.test(attachment.fileName || '');
                 return (
