@@ -36,7 +36,7 @@ export default function ChargeDetails({
       rolesString = rolesData.toLowerCase();
     }
 
-    return rolesString.includes('manager');
+    return rolesString.includes('manager') || rolesString.includes('executive');
   };
 
   const isRowDisabled = (item) => {

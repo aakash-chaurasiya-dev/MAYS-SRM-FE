@@ -59,6 +59,7 @@ function App() {
             {/* Authenticated Routes with Sidebar & TabBar */}
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
+                {/* Common Authenticated Routes (Accessible by all roles) */}
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
@@ -67,15 +68,25 @@ function App() {
                 <Route path="/tickets/new" element={<NewTicketPage />} />
                 <Route path="/tickets/:id" element={<TicketDetailPage />} />
 
-                {/* Enquiry Routes */}
-                <Route path="/enquiries" element={<EnquiriesPage />} />
+                {/* New Ticket & Enquiry Routes (Accessible by Manager, Admin, and Customer/ROLE_USER) */}
+                <Route element={<ProtectedRoute allowedRoles={['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN', 'ROLE_USER']} />}>
+                  <Route path="/tickets/new" element={<NewTicketPage />} />
+                  <Route path="/enquiries" element={<EnquiriesPage />} />
+                </Route>
 
-                {/* Restricted Employee/Admin Routes */}
-                <Route element={<ProtectedRoute allowedRoles={['ROLE_MANAGER', 'ROLE_PURCHASE', 'ROLE_ENGINEER', 'ROLE_ADMIN']} />}>
-                  <Route path="/diagnosis" element={<DiagnosisPage />} />
+                {/* Inventory Routes (Accessible by Manager and Purchase) */}
+                <Route element={<ProtectedRoute allowedRoles={['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_PURCHASE']} />}>
                   <Route path="/inventory" element={<InventoryPage />} />
                   <Route path="/inventory/parts" element={<OrderPartsPage />} />
+                </Route>
 
+                {/* Diagnosis Routes (Accessible by Manager and Engineer) */}
+                <Route element={<ProtectedRoute allowedRoles={['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ENGINEER']} />}>
+                  <Route path="/diagnosis" element={<DiagnosisPage />} />
+                </Route>
+
+                {/* Manager-Only Restricted Routes */}
+                <Route element={<ProtectedRoute allowedRoles={['ROLE_MANAGER', 'ROLE_EXECUTIVE']} />}>
                   {/* Maintenance Routes */}
                   <Route path="/maintenance" element={<MaintenancePage />} />
                   <Route path="/maintenance/brands" element={<BrandManagementPage />} />

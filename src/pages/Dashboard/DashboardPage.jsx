@@ -96,19 +96,22 @@ export default function DashboardPage() {
 
   const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
   const isNormalUser = rawRole === 'ROLE_USER';
+  const isEngineer = rawRole === 'ROLE_ENGINEER';
+  const isPurchase = rawRole === 'ROLE_PURCHASE';
+  const isEmployeeWithSelfTickets = isEngineer || isPurchase;
 
-  // 1. Fetch Stats (Admin only) - Automatically refreshes every 60 seconds
+  // 1. Fetch Stats (Admin/Manager only) - Automatically refreshes every 60 seconds
   const { data: stats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       const res = await api.get('/tickets/dashboard/stats');
       return res.data;
     },
-    enabled: !isNormalUser,
+    enabled: !isNormalUser && !isEmployeeWithSelfTickets,
     refetchInterval: 6000000, // Poll every 60 seconds
   });
 
-  // 2. Fetch Initial Tickets (Admin)
+  // 2. Fetch Initial Tickets (Admin/Manager)
   const { data: adminTicketsInitial, isLoading: loadingAdminTickets } = useQuery({
     queryKey: ['dashboard-ticket-list', selectedDept],
     queryFn: async () => {
@@ -124,7 +127,7 @@ export default function DashboardPage() {
       const combined = [...(res0.data.content || []), ...(res1.data.content || [])];
       return Array.from(new Map(combined.map(item => [item.ticketId, item])).values());
     },
-    enabled: !isNormalUser,
+    enabled: !isNormalUser && !isEmployeeWithSelfTickets,
   });
 
   // 3. Fetch Tickets (Normal User)
@@ -138,21 +141,39 @@ export default function DashboardPage() {
     enabled: isNormalUser && !!user?.userId,
   });
 
-  // Sync React Query data to local state for rendering & custom pagination append logic
+  // 4. Fetch Tickets (Engineer & Purchase)
+  const { data: employeeTickets, isLoading: loadingEmployeeTickets } = useQuery({
+    queryKey: ['dashboard-ticket-list-employee', user?.userId],
+    queryFn: async () => {
+      const ticketsResponse = await api.get(`/tickets/employee/${user.userId}`);
+      return ticketsResponse.data || [];
+    },
+    enabled: isEmployeeWithSelfTickets && !!user?.userId,
+  });
+
+  // Sync React Query data to local state only for Admin/Manager (for pagination append logic)
   useEffect(() => {
-    if (isNormalUser && userTickets) {
-      setTickets(userTickets);
-    } else if (!isNormalUser && adminTicketsInitial) {
+    if (!isNormalUser && !isEmployeeWithSelfTickets && adminTicketsInitial) {
       setTickets(adminTicketsInitial);
       setFetchedPages(new Set([0, 1]));
     }
-  }, [isNormalUser, userTickets, adminTicketsInitial]);
+  }, [isNormalUser, isEmployeeWithSelfTickets, adminTicketsInitial]);
 
-  const loading = isNormalUser ? loadingUserTickets : loadingAdminTickets;
+  const loading = isNormalUser 
+    ? loadingUserTickets 
+    : isEmployeeWithSelfTickets 
+      ? loadingEmployeeTickets 
+      : loadingAdminTickets;
+
+  const displayTickets = isNormalUser 
+    ? (userTickets || [])
+    : isEmployeeWithSelfTickets
+      ? (employeeTickets || [])
+      : tickets;
 
   // Prefetch logic triggered by grid navigation
   const handlePaginationChange = useCallback(async (newModel) => {
-    if (isNormalUser) return;
+    if (isNormalUser || isEmployeeWithSelfTickets) return;
 
     const currentPage = newModel.page;
     const nextPage = currentPage + 1; // Always prefetch the next contiguous page
@@ -220,7 +241,7 @@ export default function DashboardPage() {
   ];
 
   // Map raw API data to grid rows gracefully handling DTO fields
-  const mappedRows = tickets.map(t => {
+  const mappedRows = displayTickets.map(t => {
     const tId = t.ticketId || t.id;
     const fName = t.userFirstName || t.userMaster?.firstName || '';
     const lName = t.userLastName || t.userMaster?.lastName || '';
@@ -260,11 +281,11 @@ export default function DashboardPage() {
   });
 
   const listConfig = {
-    title: selectedDept === 'All' ? 'Tickets' : `${selectedDept} Tickets`,
+    title: isEmployeeWithSelfTickets ? 'My Tickets' : (selectedDept === 'All' ? 'Tickets' : `${selectedDept} Tickets`),
     rows: mappedRows, // List handles its own internal search/filtering
     columns: TICKET_COLUMNS,
     loading: loading,
-    actions: [
+    actions: isEmployeeWithSelfTickets ? [] : [
       { label: 'New Ticket', icon: <AddOutlinedIcon />, onClick: handleNewTicketClick },
     ],
     pagination: { pageSize: 10 },
@@ -387,29 +408,30 @@ export default function DashboardPage() {
   /* ── Employee-Specific Command Center ── */
   return (
     <Box>
-
       {/* ── Stat Cards Row ── */}
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: {
-            xs: '1fr',
-            sm: 'repeat(2, 1fr)',
-            md: 'repeat(3, 1fr)',
-            lg: 'repeat(5, 1fr)',
-          },
-          gap: 2, mb: 3,
-        }}
-      >
-        {STATS.map((stat) => (
-          <StatCard
-            key={stat.title}
-            {...stat}
-            selected={selectedDept === stat.id}
-            onClick={() => setSelectedDept(stat.id)}
-          />
-        ))}
-      </Box>
+      {!isEmployeeWithSelfTickets && (
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: '1fr',
+              sm: 'repeat(2, 1fr)',
+              md: 'repeat(3, 1fr)',
+              lg: 'repeat(5, 1fr)',
+            },
+            gap: 2, mb: 3,
+          }}
+        >
+          {STATS.map((stat) => (
+            <StatCard
+              key={stat.title}
+              {...stat}
+              selected={selectedDept === stat.id}
+              onClick={() => setSelectedDept(stat.id)}
+            />
+          ))}
+        </Box>
+      )}
 
       {/* ── Tickets DataGrid ── */}
       <List key={selectedDept} config={listConfig} />

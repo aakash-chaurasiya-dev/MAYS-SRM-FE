@@ -157,7 +157,7 @@ const TicketDevice = forwardRef(({ ticket, isEditMode, isNormalUser }, ref) => {
   };
 
   return (
-    <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5, width: { xs: '100%', md: '50%' } }}>
+    <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5, width: { xs: '100%', md: 'calc(50% - 10px)' } }}>
       <Box sx={{ px: 2.5, py: 1.8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <LaptopMacIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
@@ -227,7 +227,7 @@ const TicketDevice = forwardRef(({ ticket, isEditMode, isNormalUser }, ref) => {
             </Box>
           </Stack>
         ) : (
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 2 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
             {[
               { label: 'Device Type', value: deviceType, mono: false },
               { label: 'Brand', value: brand, mono: false },
