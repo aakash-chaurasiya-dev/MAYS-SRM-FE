@@ -230,7 +230,7 @@ export default function TicketDetailPage() {
             latestRemark={latestRemark}
           />
 
-          <Stack direction="row" spacing={2.5} flexWrap="wrap" useFlexGap>
+          <Stack direction="row" spacing={2.5} sx={{ flexWrap: 'wrap' }} useFlexGap>
             <TicketCustomer
               ref={customerRef}
               ticket={ticket}

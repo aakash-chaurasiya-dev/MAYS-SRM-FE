@@ -73,7 +73,24 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
   const [billingOpen, setBillingOpen] = useState(location.pathname.startsWith('/billing'));
 
   const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
+  const isManager = rawRole === 'ROLE_MANAGER' || rawRole === 'ROLE_EXECUTIVE';
+  const isAdmin = rawRole === 'ROLE_ADMIN';
+  const isEngineer = rawRole === 'ROLE_ENGINEER';
+  const isPurchase = rawRole === 'ROLE_PURCHASE';
   const isNormalUser = rawRole === 'ROLE_USER';
+
+  // Visibility flags
+  const showDashboard = true;
+  const showEnquiries = isManager || isAdmin || isNormalUser;
+  const showInventory = isManager || isPurchase;
+  const showMaintenance = isManager;
+  const showBilling = isManager;
+  const showReports = isManager;
+  const showEmployeeManagement = isManager;
+  const showUserDetails = isManager;
+  const showNewTicketButton = isManager || isAdmin || isNormalUser;
+
+  const dashboardLabel = (isNormalUser || isEngineer || isPurchase) ? "My Tickets" : "Dashboard";
 
   const isActive = (path) => location.pathname === path;
   const isMaintActive = location.pathname.startsWith('/maintenance');
@@ -161,56 +178,59 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
         '&:hover::-webkit-scrollbar-thumb': { background: theme.palette.divider }
       }}>
         {/* Dashboard / My Tickets */}
-        <ListItemButton onClick={() => handleNav('/dashboard')} sx={navBtnSx(isActive('/dashboard'))}>
-          <ListItemIcon sx={iconSx(isActive('/dashboard'))}><DashboardOutlinedIcon /></ListItemIcon>
-          <ListItemText primary={isNormalUser ? "My Tickets" : "Dashboard"} sx={textSx} primaryTypographyProps={textProps(isActive('/dashboard'))} />
-        </ListItemButton>
+        {showDashboard && (
+          <ListItemButton onClick={() => handleNav('/dashboard')} sx={navBtnSx(isActive('/dashboard'))}>
+            <ListItemIcon sx={iconSx(isActive('/dashboard'))}><DashboardOutlinedIcon /></ListItemIcon>
+            <ListItemText primary={dashboardLabel} sx={textSx} primaryTypographyProps={textProps(isActive('/dashboard'))} />
+          </ListItemButton>
+        )}
 
         {/* Enquiry Link */}
-        <ListItemButton onClick={() => handleNav('/enquiries')} sx={navBtnSx(isActive('/enquiries'))}>
-          <ListItemIcon sx={iconSx(isActive('/enquiries'))}><SupportAgentOutlinedIcon /></ListItemIcon>
-          <ListItemText primary={isNormalUser ? "My Enquiries" : "Enquiry Management"} sx={textSx} primaryTypographyProps={textProps(isActive('/enquiries'))} />
-        </ListItemButton>
+        {showEnquiries && (
+          <ListItemButton onClick={() => handleNav('/enquiries')} sx={navBtnSx(isActive('/enquiries'))}>
+            <ListItemIcon sx={iconSx(isActive('/enquiries'))}><SupportAgentOutlinedIcon /></ListItemIcon>
+            <ListItemText primary={isNormalUser ? "My Enquiries" : "Enquiry Management"} sx={textSx} primaryTypographyProps={textProps(isActive('/enquiries'))} />
+          </ListItemButton>
+        )}
 
-        {/* Render other employee/admin items ONLY if NOT a normal user */}
-        {!isNormalUser && (
+        {/* ── Inventory (collapsible) ── */}
+        {showInventory && (() => {
+          const isInventoryActive = location.pathname.startsWith('/inventory');
+          return (
+            <>
+              <ListItemButton
+                onClick={() => { setInventoryOpen(!inventoryOpen); if (!isInventoryActive) handleNav('/inventory'); }}
+                sx={navBtnSx(isInventoryActive)}
+              >
+                <ListItemIcon sx={iconSx(isInventoryActive)}><Inventory2OutlinedIcon /></ListItemIcon>
+                <ListItemText primary="Inventory" sx={textSx} primaryTypographyProps={textProps(isInventoryActive)} />
+                {desktopOpen && (inventoryOpen ? <ExpandLessIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} /> : <ExpandMoreIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />)}
+              </ListItemButton>
+              <Collapse in={inventoryOpen && desktopOpen} timeout="auto" unmountOnExit>
+                <MuiList disablePadding sx={{ pl: 2 }}>
+                  {INVENTORY_SUBS.map((sub) => (
+                    <ListItemButton key={sub.path} onClick={() => handleNav(sub.path)}
+                      sx={{
+                        borderRadius: '6px', mb: 0.2, py: 0.4, px: 1.5,
+                        bgcolor: isActive(sub.path) ? `${theme.palette.secondary.main}14` : 'transparent',
+                        '&:hover': { bgcolor: `${theme.palette.primary.main}06` },
+                      }}>
+                      <ListItemText primary={sub.label}
+                        primaryTypographyProps={{
+                          fontSize: '12px', fontWeight: isActive(sub.path) ? 600 : 400,
+                          color: isActive(sub.path) ? theme.palette.secondary.main : theme.palette.text.secondary
+                        }} />
+                    </ListItemButton>
+                  ))}
+                </MuiList>
+              </Collapse>
+            </>
+          );
+        })()}
+
+        {/* ── Maintenance (collapsible) ── */}
+        {showMaintenance && (
           <>
-            {/* ── Inventory (collapsible) ── */}
-            {(() => {
-              const isInventoryActive = location.pathname.startsWith('/inventory');
-              return (
-                <>
-                  <ListItemButton
-                    onClick={() => { setInventoryOpen(!inventoryOpen); if (!isInventoryActive) handleNav('/inventory'); }}
-                    sx={navBtnSx(isInventoryActive)}
-                  >
-                    <ListItemIcon sx={iconSx(isInventoryActive)}><Inventory2OutlinedIcon /></ListItemIcon>
-                    <ListItemText primary="Inventory" sx={textSx} primaryTypographyProps={textProps(isInventoryActive)} />
-                    {desktopOpen && (inventoryOpen ? <ExpandLessIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} /> : <ExpandMoreIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />)}
-                  </ListItemButton>
-                  <Collapse in={inventoryOpen && desktopOpen} timeout="auto" unmountOnExit>
-                    <MuiList disablePadding sx={{ pl: 2 }}>
-                      {INVENTORY_SUBS.map((sub) => (
-                        <ListItemButton key={sub.path} onClick={() => handleNav(sub.path)}
-                          sx={{
-                            borderRadius: '6px', mb: 0.2, py: 0.4, px: 1.5,
-                            bgcolor: isActive(sub.path) ? `${theme.palette.secondary.main}14` : 'transparent',
-                            '&:hover': { bgcolor: `${theme.palette.primary.main}06` },
-                          }}>
-                          <ListItemText primary={sub.label}
-                            primaryTypographyProps={{
-                              fontSize: '12px', fontWeight: isActive(sub.path) ? 600 : 400,
-                              color: isActive(sub.path) ? theme.palette.secondary.main : theme.palette.text.secondary
-                            }} />
-                        </ListItemButton>
-                      ))}
-                    </MuiList>
-                  </Collapse>
-                </>
-              );
-            })()}
-
-            {/* ── Maintenance (collapsible) ── */}
             <ListItemButton
               onClick={() => {
                 if (location.pathname !== '/maintenance') {
@@ -245,22 +265,26 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
                 ))}
               </MuiList>
             </Collapse>
+          </>
+        )}
 
-            {/* ── Billing ── */}
-            {(() => {
-              const isBillingActive = location.pathname.startsWith('/billing');
-              return (
-                <ListItemButton
-                  onClick={() => handleNav('/billing/billing-details')}
-                  sx={navBtnSx(isBillingActive)}
-                >
-                  <ListItemIcon sx={iconSx(isBillingActive)}><ReceiptLongOutlinedIcon /></ListItemIcon>
-                  <ListItemText primary="Billing" sx={textSx} primaryTypographyProps={textProps(isBillingActive)} />
-                </ListItemButton>
-              );
-            })()}
+        {/* ── Billing ── */}
+        {showBilling && (() => {
+          const isBillingActive = location.pathname.startsWith('/billing');
+          return (
+            <ListItemButton
+              onClick={() => handleNav('/billing/billing-details')}
+              sx={navBtnSx(isBillingActive)}
+            >
+              <ListItemIcon sx={iconSx(isBillingActive)}><ReceiptLongOutlinedIcon /></ListItemIcon>
+              <ListItemText primary="Billing" sx={textSx} primaryTypographyProps={textProps(isBillingActive)} />
+            </ListItemButton>
+          );
+        })()}
 
-            {/* ── Reports (collapsible) ── */}
+        {/* ── Reports (collapsible) ── */}
+        {showReports && (
+          <>
             <ListItemButton
               onClick={() => {
                 if (location.pathname !== '/reports') {
@@ -295,32 +319,39 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
                 ))}
               </MuiList>
             </Collapse>
-
-            {/* ── Section 2: Employee Mgmt, Users ── */}
-            {SECTION2.map((item) => (
-              <ListItemButton key={item.path} onClick={() => handleNav(item.path)} sx={navBtnSx(isActive(item.path))}>
-                <ListItemIcon sx={iconSx(isActive(item.path))}>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.label} sx={textSx} primaryTypographyProps={textProps(isActive(item.path))} />
-              </ListItemButton>
-            ))}
-
-
           </>
         )}
 
+        {/* ── Section 2: Employee Mgmt, Users ── */}
+        {showEmployeeManagement && (
+          <ListItemButton onClick={() => handleNav('/employees')} sx={navBtnSx(isActive('/employees'))}>
+            <ListItemIcon sx={iconSx(isActive('/employees'))}><BadgeOutlinedIcon /></ListItemIcon>
+            <ListItemText primary="Employee Management" sx={textSx} primaryTypographyProps={textProps(isActive('/employees'))} />
+          </ListItemButton>
+        )}
+
+        {showUserDetails && (
+          <ListItemButton onClick={() => handleNav('/users')} sx={navBtnSx(isActive('/users'))}>
+            <ListItemIcon sx={iconSx(isActive('/users'))}><BadgeOutlinedIcon /></ListItemIcon>
+            <ListItemText primary="User Details" sx={textSx} primaryTypographyProps={textProps(isActive('/users'))} />
+          </ListItemButton>
+        )}
+
         {/* ── + New Ticket Button ── */}
-        <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
-          <Button variant="contained" fullWidth
-            startIcon={desktopOpen ? <AddIcon /> : undefined}
-            onClick={handleNewTicketClick}
-            sx={{
-              borderRadius: '6px', py: 0.9, fontSize: '13px', fontWeight: 600,
-              textTransform: 'none', minWidth: desktopOpen ? 'auto' : 40,
-              px: desktopOpen ? 2 : 0, justifyContent: 'center'
-            }}>
-            {desktopOpen ? 'New Ticket' : <AddIcon fontSize="small" />}
-          </Button>
-        </Box>
+        {showNewTicketButton && (
+          <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
+            <Button variant="contained" fullWidth
+              startIcon={desktopOpen ? <AddIcon /> : undefined}
+              onClick={handleNewTicketClick}
+              sx={{
+                borderRadius: '6px', py: 0.9, fontSize: '13px', fontWeight: 600,
+                textTransform: 'none', minWidth: desktopOpen ? 'auto' : 40,
+                px: desktopOpen ? 2 : 0, justifyContent: 'center'
+              }}>
+              {desktopOpen ? 'New Ticket' : <AddIcon fontSize="small" />}
+            </Button>
+          </Box>
+        )}
       </MuiList>
 
 
