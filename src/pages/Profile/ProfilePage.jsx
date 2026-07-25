@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Card, 
-  CardContent, 
-  Typography, 
-  Avatar, 
-  Grid, 
-  Divider, 
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Avatar,
+  Grid,
+  Divider,
   CircularProgress,
   Alert,
   TextField,
@@ -40,9 +40,9 @@ export default function ProfilePage() {
   const theme = useTheme();
   const { user, logout } = useAuth();
   const [error, setError] = useState('');
-  
+
   const queryClient = useQueryClient();
-  
+
   const { data: profileData, isLoading: loading, error: queryError } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => {
@@ -50,7 +50,7 @@ export default function ProfilePage() {
       return response.data;
     }
   });
-  
+
   const navigate = useNavigate();
   const { mode, toggleTheme } = useAppThemeContext();
   const [settingsAnchorEl, setSettingsAnchorEl] = useState(null);
@@ -118,7 +118,7 @@ export default function ProfilePage() {
 
       queryClient.setQueryData(['profile'], updatedData);
       setIsEditMode(false);
-      
+
       window.dispatchEvent(new CustomEvent('app-notification', {
         detail: { message: 'Profile updated successfully!', severity: 'success' }
       }));
@@ -131,7 +131,7 @@ export default function ProfilePage() {
 
   const handleSave = () => {
     setError('');
-    
+
     const payload = isEmployee ? {
       employeeName: form.employeeName,
       mobileNo: form.mobileNo,
@@ -169,7 +169,7 @@ export default function ProfilePage() {
 
   const name = isEmployee ? profileData.employeeName : `${profileData.firstName || ''} ${profileData.lastName || ''}`.trim();
   const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'U';
-  
+
   // Sourced from Auth context. Non-employees are always 'USER'
   const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
   const role = isEmployee ? rawRole.replace('ROLE_', '') : 'USER';
@@ -242,7 +242,7 @@ export default function ProfilePage() {
           )}
         </Box>
       </Box>
-      
+
       <Card sx={{ borderRadius: 2, boxShadow: theme.shadows[2] }}>
         <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
           {isEditMode ? (
@@ -250,7 +250,7 @@ export default function ProfilePage() {
               <Typography variant="h6" fontWeight={600}>
                 Edit Personal Information
               </Typography>
-              
+
               {isEmployee ? (
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
@@ -376,12 +376,12 @@ export default function ProfilePage() {
           ) : (
             <>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 4, gap: 3, flexWrap: 'wrap' }}>
-                <Avatar 
-                  sx={{ 
-                    width: 100, 
-                    height: 100, 
-                    fontSize: '2.5rem', 
-                    bgcolor: theme.palette.primary.main 
+                <Avatar
+                  sx={{
+                    width: 100,
+                    height: 100,
+                    fontSize: '2.5rem',
+                    bgcolor: theme.palette.primary.main
                   }}
                 >
                   {initials}
@@ -414,7 +414,7 @@ export default function ProfilePage() {
                   <Typography variant="body2" color="text.secondary">Email Address</Typography>
                   <Typography variant="body1" fontWeight={500}>{profileData.email || profileData.emailId || 'N/A'}</Typography>
                 </Grid>
-                
+
                 <Grid item xs={12}>
                   <Typography variant="body2" color="text.secondary">Address</Typography>
                   <Typography variant="body1" fontWeight={500}>{profileData.address || 'N/A'}</Typography>

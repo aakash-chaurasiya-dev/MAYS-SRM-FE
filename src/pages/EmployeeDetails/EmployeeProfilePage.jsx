@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { 
     Box, Typography, Card, CardContent, Divider, Grid, CircularProgress, 
-    Button, Avatar, Paper, useTheme
+    Button, Avatar, Paper, useTheme, Chip
 } from '@mui/material';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ConfirmationNumberOutlinedIcon from '@mui/icons-material/ConfirmationNumberOutlined';
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
@@ -180,7 +181,8 @@ export default function EmployeeProfilePage() {
                                 cursor: 'pointer', 
                                 '&:hover': { boxShadow: 4, transform: 'translateY(-2px)' },
                                 transition: 'all 0.2s',
-                                p: 2
+                                p: 2,
+                                borderLeft: item.isCrossedTAT ? '4px solid #d32f2f' : 'none'
                             }}
                             onClick={() => navigate(`/tickets/${item.ticketId}`)}
                         >
@@ -192,6 +194,18 @@ export default function EmployeeProfilePage() {
                                     Created: {item.createdDate ? new Date(item.createdDate).toLocaleDateString() : 'N/A'}
                                 </Typography>
                             </Box>
+                            
+                            {item.isCrossedTAT && (
+                                <Box mb={1.5}>
+                                    <Chip 
+                                        icon={<WarningAmberIcon />} 
+                                        label={`TAT Exceeded (Target: ${item.targetHours}h)`} 
+                                        color="error" 
+                                        size="small" 
+                                        variant="outlined" 
+                                    />
+                                </Box>
+                            )}
                             
                             <Grid container spacing={1} sx={{ mb: 1 }}>
                                 <Grid item xs={6}>

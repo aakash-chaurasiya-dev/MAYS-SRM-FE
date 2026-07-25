@@ -9,6 +9,7 @@ import { List } from '../../../stereotype/AbstractList';
 import api from '../../../services/api';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import DeleteConfirmDialog from '../../../components/DeleteConfirmDialog';
 
 export default function BranchManagementPage() {
   const theme = useTheme();
@@ -131,9 +132,12 @@ export default function BranchManagementPage() {
     subtitle: `${branches.length} branches configured`,
     rows: branches,
     columns: [
+
       { field: 'id', headerName: 'Branch ID', width: 100 },
       { field: 'branchName', headerName: 'Branch Name', flex: 1.2, renderType: 'link' },
       { field: 'branchDescription', headerName: 'Description', flex: 2 },
+      { field: 'insertDate', headerName: 'Created At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
+      { field: 'lastUpdateDate', headerName: 'Updated At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
     ],
     checkboxSelection: true,
     searchable: true,
@@ -141,6 +145,7 @@ export default function BranchManagementPage() {
     pagination: { pageSize: 10, pageSizeOptions: [5, 10, 25] },
     height: 480,
     gridKey: clearSelectionKey,
+    getRowClassName: (params) => params.row?.isLocked ? 'locked-row' : '',
     actions: [
       { label: 'Add Branch', icon: <AddIcon />, variant: 'contained', color: 'primary', onClick: handleOpenCreateModal },
     ],
@@ -150,6 +155,10 @@ export default function BranchManagementPage() {
     fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary,
     textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.8, mt: 2,
   };
+  const selectedRowsAreLocked = selectedIds.some(id => {
+    const row = branches.find(b => String(b.id) === String(id));
+    return row?.isLocked;
+  });
 
   return (
     <Box sx={{ p: 2 }}>
@@ -165,7 +174,7 @@ export default function BranchManagementPage() {
           variant="outlined"
           color="primary"
           startIcon={<EditOutlinedIcon />}
-          disabled={selectedIds.length !== 1}
+          disabled={selectedIds.length !== 1 || selectedRowsAreLocked}
           onClick={handleOpenUpdateModal}
         >
           Update
@@ -174,7 +183,7 @@ export default function BranchManagementPage() {
           variant="outlined"
           color="error"
           startIcon={<DeleteOutlinedIcon />}
-          disabled={selectedIds.length === 0}
+          disabled={selectedIds.length === 0 || selectedRowsAreLocked}
           onClick={() => setOpenDeleteConfirm(true)}
         >
           Delete
@@ -230,22 +239,15 @@ export default function BranchManagementPage() {
       </Dialog>
 
       {/* ── Delete Confirmation Dialog ── */}
-      <Dialog open={openDeleteConfirm} onClose={() => setOpenDeleteConfirm(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 600, color: 'error.main' }}>Confirm Deletion</DialogTitle>
-        <Divider />
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete {selectedIds.length === 1 ? 'this branch' : `these ${selectedIds.length} branches`}? This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <Divider />
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteMutation.isPending}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteMutation.isPending} sx={{ minWidth: 90 }}>
-             {deleteMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={openDeleteConfirm}
+        onClose={() => setOpenDeleteConfirm(false)}
+        onConfirm={handleDeleteConfirm}
+        itemType="branch"
+        itemTypePlural="branches"
+        count={selectedIds.length}
+        isLoading={deleteMutation.isPending}
+      />
     </Box>
   );
 }

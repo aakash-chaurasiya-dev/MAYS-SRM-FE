@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, Button, Divider, Typography, MenuItem, Switch, FormControlLabel } from '@mui/material';
+import { Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, Button, Divider, Typography, MenuItem, Switch, FormControlLabel, Checkbox, ListItemText, FormControl, Select } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
@@ -9,6 +9,7 @@ import { List } from '../../../stereotype/AbstractList';
 import api from '../../../services/api';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import DeleteConfirmDialog from '../../../components/DeleteConfirmDialog';
 
 export default function StatusManagementPage() {
   const theme = useTheme();
@@ -27,7 +28,7 @@ export default function StatusManagementPage() {
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
 
   const initialFormState = {
-    statusId: '', statusName: '', statusFlg: 1, statusDescription: '', statusType: '',
+    statusId: '', statusName: '', statusFlg: 1, statusDescription: '', statusType: '', allowedDepartmentIds: []
   };
   const [formData, setFormData] = useState(initialFormState);
 
@@ -35,6 +36,15 @@ export default function StatusManagementPage() {
     queryKey: ['statuses'],
     queryFn: async () => {
       const response = await api.get('/statuses');
+      return response.data?.data || response.data || [];
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+
+  const { data: departments = [] } = useQuery({
+    queryKey: ['departments'],
+    queryFn: async () => {
+      const response = await api.get('/departments');
       return response.data?.data || response.data || [];
     },
     staleTime: 1000 * 60 * 60,
@@ -64,6 +74,7 @@ export default function StatusManagementPage() {
         statusFlg: sToUpdate.statusFlg !== undefined ? sToUpdate.statusFlg : 1,
         statusDescription: sToUpdate.statusDescription || '',
         statusType: sToUpdate.statusType || '',
+        allowedDepartmentIds: sToUpdate.allowedDepartmentIds ? sToUpdate.allowedDepartmentIds.split(',').filter(v => v.trim() !== '').map(v => Number(v.trim())) : [],
       });
       setOpenModal(true);
     }
@@ -76,9 +87,17 @@ export default function StatusManagementPage() {
 
   const handleFormChange = (e) => {
     const { name, value, checked, type } = e.target;
+    let newValue = value;
+    if (type === 'checkbox') {
+        newValue = checked ? 1 : 0;
+    } else if (name === 'allowedDepartmentIds') {
+        // On autofill we get a stringified value.
+        newValue = typeof value === 'string' ? value.split(',') : value;
+    }
+    
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? (checked ? 1 : 0) : value,
+      [name]: newValue,
     }));
   };
 
@@ -123,6 +142,7 @@ export default function StatusManagementPage() {
       statusFlg: formData.statusFlg,
       statusDescription: formData.statusDescription,
       statusType: formData.statusType,
+      allowedDepartmentIds: formData.allowedDepartmentIds.length > 0 ? formData.allowedDepartmentIds.join(',') : null,
     });
   };
 
@@ -135,10 +155,12 @@ export default function StatusManagementPage() {
     subtitle: `${statuses.length} status codes configured`,
     rows: statuses,
     columns: [
+
       { field: 'id', headerName: 'Status ID', width: 110 },
       { field: 'statusName', headerName: 'Status Name', flex: 1.5, renderType: 'link' },
       { field: 'statusType', headerName: 'Type', flex: 1 },
       { field: 'statusDescription', headerName: 'Description', flex: 2 },
+      { field: 'allowedRoles', headerName: 'Allowed Roles', flex: 1 },
       {
         field: 'statusFlg',
         headerName: 'Status',
@@ -155,6 +177,8 @@ export default function StatusManagementPage() {
           </Box>;
         }
       },
+      { field: 'insertDate', headerName: 'Created At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
+      { field: 'lastUpdateDate', headerName: 'Updated At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
     ],
     checkboxSelection: true,
     searchable: true,
@@ -162,6 +186,7 @@ export default function StatusManagementPage() {
     pagination: { pageSize: 10, pageSizeOptions: [5, 10, 25] },
     height: 480,
     gridKey: clearSelectionKey,
+    getRowClassName: (params) => params.row?.isLocked ? 'locked-row' : '',
     actions: [
       { label: 'Add Status', icon: <AddIcon />, variant: 'contained', color: 'primary', onClick: handleOpenCreateModal },
     ],
@@ -171,6 +196,10 @@ export default function StatusManagementPage() {
     fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary,
     textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.8, mt: 2,
   };
+  const selectedRowsAreLocked = selectedIds.some(id => {
+    const row = statuses.find(b => String(b.id) === String(id));
+    return row?.isLocked;
+  });
 
   return (
     <Box sx={{ p: 2 }}>
@@ -186,7 +215,7 @@ export default function StatusManagementPage() {
           variant="outlined"
           color="primary"
           startIcon={<EditOutlinedIcon />}
-          disabled={selectedIds.length !== 1}
+          disabled={selectedIds.length !== 1 || selectedRowsAreLocked}
           onClick={handleOpenUpdateModal}
         >
           Update
@@ -195,7 +224,7 @@ export default function StatusManagementPage() {
           variant="outlined"
           color="error"
           startIcon={<DeleteOutlinedIcon />}
-          disabled={selectedIds.length === 0}
+          disabled={selectedIds.length === 0 || selectedRowsAreLocked}
           onClick={() => setOpenDeleteConfirm(true)}
         >
           Delete
@@ -246,6 +275,33 @@ export default function StatusManagementPage() {
               multiline rows={2}
               sx={{ mb: 2 }}
             />
+            
+            <Typography sx={{ ...lbl, mt: 1 }}>Allowed Departments (Optional)</Typography>
+            <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+              <Select
+                multiple
+                displayEmpty
+                name="allowedDepartmentIds"
+                value={formData.allowedDepartmentIds || []}
+                onChange={handleFormChange}
+                renderValue={(selected) => {
+                  if (selected.length === 0) {
+                    return <Typography color="text.secondary">None (Available to all)</Typography>;
+                  }
+                  return selected.map(id => {
+                    const dept = departments.find(d => d.departmentId === id);
+                    return dept ? dept.departmentName : id;
+                  }).join(', ');
+                }}
+              >
+                {departments.map((dept) => (
+                  <MenuItem key={dept.departmentId} value={dept.departmentId}>
+                    <Checkbox checked={(formData.allowedDepartmentIds || []).indexOf(dept.departmentId) > -1} />
+                    <ListItemText primary={dept.departmentName} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
             <Typography sx={{ ...lbl, mt: 1 }}>Active Status</Typography>
             <FormControlLabel
@@ -272,22 +328,15 @@ export default function StatusManagementPage() {
       </Dialog>
 
       {/* ── Delete Confirmation Dialog ── */}
-      <Dialog open={openDeleteConfirm} onClose={() => setOpenDeleteConfirm(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 600, color: 'error.main' }}>Confirm Deletion</DialogTitle>
-        <Divider />
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete {selectedIds.length === 1 ? 'this status' : `these ${selectedIds.length} statuses`}? This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <Divider />
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteMutation.isPending}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteMutation.isPending} sx={{ minWidth: 90 }}>
-            {deleteMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={openDeleteConfirm}
+        onClose={() => setOpenDeleteConfirm(false)}
+        onConfirm={handleDeleteConfirm}
+        itemType="status"
+        itemTypePlural="statuses"
+        count={selectedIds.length}
+        isLoading={deleteMutation.isPending}
+      />
     </Box>
   );
 }

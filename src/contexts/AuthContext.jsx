@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect, useContext } from 'react';
 import { jwtDecode } from 'jwt-decode';
+import { useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 
 const AuthContext = createContext(null);
@@ -8,6 +9,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   // Initialize auth state from local storage on load
   useEffect(() => {
@@ -42,28 +44,36 @@ export const AuthProvider = ({ children }) => {
       
       // TODO: Adjust 'response.data.token' based on your API's response structure
       const { token } = response.data; 
+      const theme = localStorage.getItem('app-theme-mode');
       localStorage.clear();
+      if (theme) localStorage.setItem('app-theme-mode', theme);
+      
       localStorage.setItem('token', token);
       
       const decoded = jwtDecode(token);
       setUser(decoded);
       setIsAuthenticated(true);
       console.log('Login successful, user:', decoded);
+      console.log(user?.role[0].authority)
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
       return { 
         success: false, 
-        error: error.response?.data?.message || 'Login failed' 
+        error: error.response?.data?.error || error.response?.data?.message || 'Login failed' 
       };
     }
   };
 
   // Logout function
   const logout = () => {
+    const theme = localStorage.getItem('app-theme-mode');
     localStorage.clear();
+    if (theme) localStorage.setItem('app-theme-mode', theme);
+    
     setUser(null);
     setIsAuthenticated(false);
+    queryClient.clear(); // Clear all cached data (like profiles) on logout
   };
 
   if (loading) {

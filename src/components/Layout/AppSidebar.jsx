@@ -51,6 +51,8 @@ const MAINTENANCE_SUBS = [
 const REPORTS_SUBS = [
   { label: 'Overview', path: '/reports' },
   { label: 'Device Management', path: '/reports/device' },
+  { label: 'User Entry Report', path: '/reports/user-entry' },
+
 ];
 
 const SECTION2 = [
@@ -339,6 +341,7 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
 
         {/* ── + New Ticket Button ── */}
         {showNewTicketButton && (
+        {!isNormalUser && (
           <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
             <Button variant="contained" fullWidth
               startIcon={desktopOpen ? <AddIcon /> : undefined}

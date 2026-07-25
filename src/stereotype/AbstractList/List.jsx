@@ -227,6 +227,7 @@ export default function List({ config, rowSelectionModel: directRowSelectionMode
     sx: sxOverrides = EMPTY_OBJECT,
     headerSlot,
     emptyMessage = 'No records to display',
+    getRowClassName,
   } = config;
 
   const actualRowSelectionModel = directRowSelectionModel !== undefined ? directRowSelectionModel : configRowSelectionModel;
@@ -421,12 +422,19 @@ export default function List({ config, rowSelectionModel: directRowSelectionMode
         '&:hover': {
           backgroundColor: `${theme.palette.primary.main}08`,
         },
+        '&.locked-row': {
+          backgroundColor: theme.palette.action.hover,
+          opacity: 0.65,
+        }
       },
       '& .MuiDataGrid-row.Mui-selected': {
         backgroundColor: `${theme.palette.primary.main}12`,
         '&:hover': {
           backgroundColor: `${theme.palette.primary.main}18`,
         },
+        '&.locked-row': {
+          backgroundColor: `${theme.palette.action.selected}`,
+        }
       },
       '& .MuiDataGrid-footerContainer': {
         borderTop: `1.5px solid ${theme.palette.divider}`,
@@ -672,6 +680,7 @@ export default function List({ config, rowSelectionModel: directRowSelectionMode
           }}
           pageSizeOptions={pagination.pageSizeOptions || DEFAULT_PAGE_SIZE_OPTIONS}
           getRowId={getRowId}
+          getRowClassName={getRowClassName}
           onRowClick={onRowClick}
           {...(actualOnRowSelectionModelChange ? { onRowSelectionModelChange: handleRowSelectionModelChange } : {})}
           {...(formattedSelectionModel !== undefined ? { rowSelectionModel: formattedSelectionModel } : {})}

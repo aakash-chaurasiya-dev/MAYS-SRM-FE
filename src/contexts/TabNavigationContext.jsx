@@ -3,6 +3,7 @@ import {
 } from 'react';
 import { useLocation, useNavigate, matchPath } from 'react-router-dom';
 import { ROUTE_CONFIG } from '../services/route-config.jsx';
+import { useAuth } from './AuthContext';
 
 const TabNavigationContext = createContext();
 
@@ -119,7 +120,36 @@ export function TabNavigationProvider({ children }) {
     }
   }, [tabs, activeTabId, navigate]);
 
-  const value = { tabs, activeTabId, removeTab };
+  const clearAllTabs = useCallback(() => {
+    const unclosableTabs = tabs.filter((tab) => !tab.isClosable);
+    setTabs(unclosableTabs);
+    
+    if (unclosableTabs.length > 0) {
+      setActiveTabId(unclosableTabs[0].id);
+      navigate(unclosableTabs[0].path);
+    } else {
+      setActiveTabId(null);
+      navigate('/dashboard');
+    }
+  }, [tabs, navigate]);
+
+  const value = { tabs, activeTabId, removeTab, clearAllTabs };
+
+  const { isAuthenticated } = useAuth();
+  useEffect(() => {
+    if (!isAuthenticated) {
+      // Use function form of setTabs to always get the latest state without adding it to dependency array
+      setTabs((currentTabs) => {
+        const unclosableTabs = currentTabs.filter((tab) => !tab.isClosable);
+        if (unclosableTabs.length > 0) {
+          setActiveTabId(unclosableTabs[0].id);
+        } else {
+          setActiveTabId(null);
+        }
+        return unclosableTabs;
+      });
+    }
+  }, [isAuthenticated]);
 
   return (
     <TabNavigationContext.Provider value={value}>

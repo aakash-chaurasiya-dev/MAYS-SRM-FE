@@ -9,6 +9,7 @@ import { List } from '../../../stereotype/AbstractList';
 import api from '../../../services/api';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import DeleteConfirmDialog from '../../../components/DeleteConfirmDialog';
 
 export default function ServiceChargesManagementPage() {
   const theme = useTheme();
@@ -164,6 +165,7 @@ export default function ServiceChargesManagementPage() {
     subtitle: `${serviceCharges.length} service charges configured`,
     rows: serviceCharges,
     columns: [
+
       { field: 'id', headerName: 'Charge ID', width: 110 },
       { field: 'brandName', headerName: 'Brand Name', width: 200, renderType: 'link' },
       { field: 'descr', headerName: 'Description', flex: 1 },
@@ -177,6 +179,8 @@ export default function ServiceChargesManagementPage() {
           return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value);
         }
       },
+      { field: 'insertDate', headerName: 'Created At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
+      { field: 'lastUpdateDate', headerName: 'Updated At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
     ],
     checkboxSelection: true,
     searchable: true,
@@ -184,6 +188,7 @@ export default function ServiceChargesManagementPage() {
     pagination: { pageSize: 10, pageSizeOptions: [5, 10, 25] },
     height: 480,
     gridKey: clearSelectionKey,
+    getRowClassName: (params) => params.row?.isLocked ? 'locked-row' : '',
     actions: [
       { label: 'Add Service Charge', icon: <AddIcon />, variant: 'contained', color: 'primary', onClick: handleOpenCreateModal },
     ],
@@ -193,6 +198,10 @@ export default function ServiceChargesManagementPage() {
     fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary,
     textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.8, mt: 2,
   };
+  const selectedRowsAreLocked = selectedIds.some(id => {
+    const row = serviceCharges.find(b => String(b.id) === String(id));
+    return row?.isLocked;
+  });
 
   return (
     <Box sx={{ p: 2 }}>
@@ -208,7 +217,7 @@ export default function ServiceChargesManagementPage() {
           variant="outlined"
           color="primary"
           startIcon={<EditOutlinedIcon />}
-          disabled={selectedIds.length !== 1}
+          disabled={selectedIds.length !== 1 || selectedRowsAreLocked}
           onClick={handleOpenUpdateModal}
         >
           Update
@@ -217,7 +226,7 @@ export default function ServiceChargesManagementPage() {
           variant="outlined"
           color="error"
           startIcon={<DeleteOutlinedIcon />}
-          disabled={selectedIds.length === 0}
+          disabled={selectedIds.length === 0 || selectedRowsAreLocked}
           onClick={() => setOpenDeleteConfirm(true)}
         >
           Delete
@@ -296,22 +305,14 @@ export default function ServiceChargesManagementPage() {
       </Dialog>
 
       {/* ── Delete Confirmation Dialog ── */}
-      <Dialog open={openDeleteConfirm} onClose={() => setOpenDeleteConfirm(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 600, color: 'error.main' }}>Confirm Deletion</DialogTitle>
-        <Divider />
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete {selectedIds.length === 1 ? 'this service charge' : `these ${selectedIds.length} service charges`}? This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <Divider />
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteMutation.isPending}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteMutation.isPending} sx={{ minWidth: 90 }}>
-             {deleteMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={openDeleteConfirm}
+        onClose={() => setOpenDeleteConfirm(false)}
+        onConfirm={handleDeleteConfirm}
+        itemType="service charge"
+        count={selectedIds.length}
+        isLoading={deleteMutation.isPending}
+      />
     </Box>
   );
 }

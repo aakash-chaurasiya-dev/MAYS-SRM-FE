@@ -315,6 +315,20 @@ export default function NewTicketPage() {
 
   const secHdr = { px: 2.5, py: 1.8, bgcolor: `${theme.palette.primary.main}06` };
 
+  if (isNormalUser) {
+    return (
+      <Box sx={{ p: 4, textAlign: 'center', mt: 10 }}>
+        <Typography variant="h5" color="error" fontWeight="bold">Access Denied</Typography>
+        <Typography variant="body1" sx={{ mt: 2, color: 'text.secondary' }}>
+          You do not have permission to create a new ticket.
+        </Typography>
+        <Button sx={{ mt: 4 }} variant="contained" onClick={() => navigate('/dashboard')}>
+          Back to Dashboard
+        </Button>
+      </Box>
+    );
+  }
+
   return (
     <Box>
       {/* <Box sx={{ mb: 3 }}>

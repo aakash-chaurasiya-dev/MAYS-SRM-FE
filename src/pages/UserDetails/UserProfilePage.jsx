@@ -5,7 +5,6 @@ import {
     Box, Typography, Card, CardContent, Divider, CircularProgress,
     Button, Avatar, useTheme, Chip, Stack
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import api from '../../services/api';
 
 export default function UserProfilePage() {

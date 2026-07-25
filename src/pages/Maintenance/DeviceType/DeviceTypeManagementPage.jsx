@@ -9,6 +9,7 @@ import { List } from '../../../stereotype/AbstractList';
 import api from '../../../services/api';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import DeleteConfirmDialog from '../../../components/DeleteConfirmDialog';
 
 export default function DeviceTypeManagementPage() {
   const theme = useTheme();
@@ -131,9 +132,12 @@ export default function DeviceTypeManagementPage() {
     subtitle: `${deviceTypes.length} device types configured`,
     rows: deviceTypes,
     columns: [
+
       { field: 'id', headerName: 'Type ID', width: 140 },
       { field: 'deviceTypeName', headerName: 'Type Name', flex: 1.2, renderType: 'link' },
       { field: 'deviceTypeDescription', headerName: 'Description', flex: 2 },
+      { field: 'insertDate', headerName: 'Created At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
+      { field: 'lastUpdateDate', headerName: 'Updated At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
     ],
     checkboxSelection: true,
     searchable: true,
@@ -141,6 +145,7 @@ export default function DeviceTypeManagementPage() {
     pagination: { pageSize: 10, pageSizeOptions: [5, 10, 25] },
     height: 480,
     gridKey: clearSelectionKey,
+    getRowClassName: (params) => params.row?.isLocked ? 'locked-row' : '',
     actions: [
       { label: 'Add Device Type', icon: <AddIcon />, variant: 'contained', color: 'primary', onClick: handleOpenCreateModal },
     ],
@@ -150,6 +155,10 @@ export default function DeviceTypeManagementPage() {
     fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary,
     textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.8, mt: 2,
   };
+  const selectedRowsAreLocked = selectedIds.some(id => {
+    const row = deviceTypes.find(b => String(b.id) === String(id));
+    return row?.isLocked;
+  });
 
   return (
     <Box sx={{ p: 2 }}>
@@ -165,7 +174,7 @@ export default function DeviceTypeManagementPage() {
           variant="outlined"
           color="primary"
           startIcon={<EditOutlinedIcon />}
-          disabled={selectedIds.length !== 1}
+          disabled={selectedIds.length !== 1 || selectedRowsAreLocked}
           onClick={handleOpenUpdateModal}
         >
           Update
@@ -174,7 +183,7 @@ export default function DeviceTypeManagementPage() {
           variant="outlined"
           color="error"
           startIcon={<DeleteOutlinedIcon />}
-          disabled={selectedIds.length === 0}
+          disabled={selectedIds.length === 0 || selectedRowsAreLocked}
           onClick={() => setOpenDeleteConfirm(true)}
         >
           Delete
@@ -230,22 +239,14 @@ export default function DeviceTypeManagementPage() {
       </Dialog>
 
       {/* ── Delete Confirmation Dialog ── */}
-      <Dialog open={openDeleteConfirm} onClose={() => setOpenDeleteConfirm(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 600, color: 'error.main' }}>Confirm Deletion</DialogTitle>
-        <Divider />
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete {selectedIds.length === 1 ? 'this device type' : `these ${selectedIds.length} device types`}? This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <Divider />
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit" disabled={deleteMutation.isPending}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={deleteMutation.isPending} sx={{ minWidth: 90 }}>
-             {deleteMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={openDeleteConfirm}
+        onClose={() => setOpenDeleteConfirm(false)}
+        onConfirm={handleDeleteConfirm}
+        itemType="device type"
+        count={selectedIds.length}
+        isLoading={deleteMutation.isPending}
+      />
     </Box>
   );
 }

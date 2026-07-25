@@ -1,11 +1,12 @@
-import { Box, Tabs, Tab, IconButton } from '@mui/material';
+import { Box, Tabs, Tab, IconButton, Tooltip, Button } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import ClearAllIcon from '@mui/icons-material/ClearAll';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTabNavigation } from '../../contexts/TabNavigationContext';
 
 export default function TabBar({ onMenuClick }) {
-  const { tabs, removeTab } = useTabNavigation();
+  const { tabs, removeTab, clearAllTabs } = useTabNavigation();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -25,6 +26,8 @@ export default function TabBar({ onMenuClick }) {
   // pass false to MUI Tabs to prevent the "invalid value" warning.
   const isTabValid = tabs.some(tab => tab.id === currentActiveTab);
   const tabsValue = isTabValid ? currentActiveTab : false;
+  
+  const hasClosableTabs = tabs.some(tab => tab.isClosable);
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
@@ -87,6 +90,19 @@ export default function TabBar({ onMenuClick }) {
           />
         ))}
       </Tabs>
+      
+      {hasClosableTabs && (
+        <Tooltip title="Clear all tabs">
+          <Button 
+            size="small" 
+            startIcon={<ClearAllIcon />}
+            onClick={clearAllTabs} 
+            sx={{ ml: 'auto', mr: 2, whiteSpace: 'nowrap', textTransform: 'none', color: 'text.secondary' }}
+          >
+            Clear All
+          </Button>
+        </Tooltip>
+      )}
     </Box>
   );
 }

@@ -9,6 +9,7 @@ import AppLayout from './components/Layout/AppLayout';
 // Pages
 import LoginPage from './pages/Login/LoginPage';
 import RegisterPage from './pages/Register/RegisterPage';
+import ForgotPasswordPage from './pages/Auth/ForgotPasswordPage';
 import DashboardPage from './pages/Dashboard/DashboardPage';
 import DiagnosisPage from './pages/EngineerDiagnosis/DiagnosisPage';
 import InventoryPage from './pages/Inventory/InventoryPage';
@@ -30,6 +31,7 @@ import AccessoryManagementPage from './pages/Maintenance/Accessory/AccessoryMana
 import BillingDetailsPage from './pages/Billing/BillingDetailsPage';
 import CreateInvoicePage from './pages/Billing/CreateInvoicePage';
 import ReportsPage from './pages/Reports/ReportsPage';
+import UserEntryReportPage from './pages/Reports/UserEntryReportPage';
 import OrderPartsPage from './pages/Inventory/OrderPartsPage';
 import EmployeeDetailsPage from './pages/EmployeeDetails/EmployeeDetails';
 import EmployeeProfilePage from './pages/EmployeeDetails/EmployeeProfilePage';
@@ -52,6 +54,7 @@ function App() {
             {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
             {/* Authenticated Routes with Sidebar & TabBar */}
             <Route element={<ProtectedRoute />}>
@@ -60,6 +63,9 @@ function App() {
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
+
+                {/* Ticket Routes (Accessible by both customers and employees) */}
+                <Route path="/tickets/new" element={<NewTicketPage />} />
                 <Route path="/tickets/:id" element={<TicketDetailPage />} />
 
                 {/* New Ticket & Enquiry Routes (Accessible by Manager, Admin, and Customer/ROLE_USER) */}
@@ -102,6 +108,7 @@ function App() {
 
                   <Route path="/maintenance/:section" element={<Box sx={{ p: 3 }}>Maintenance Section (WIP)</Box>} />
                   <Route path="/reports" element={<ReportsPage />} />
+                  <Route path="/reports/user-entry" element={<UserEntryReportPage />} />
                   <Route path="/reports/device" element={<DeviceManagementPage />} />
                   <Route path="/employees" element={<EmployeeDetailsPage />} />
                   <Route path="/employees/:id" element={<EmployeeProfilePage />} />
