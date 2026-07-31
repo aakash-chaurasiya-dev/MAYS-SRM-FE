@@ -1,9 +1,16 @@
 import { Box, Typography, Autocomplete, TextField, Paper, Divider } from '@mui/material';
 
 const PRIORITIES = ['Low', 'Normal', 'High', 'Critical'];
-const WARRANTY_TYPES = ['Warranty', 'RMA', 'Out-of-Warranty', 'Internal'];
 
-export default function IssueDescription({ form, handleChange, ticketTypes, lbl, secHdr }) {
+export default function IssueDescription({ 
+  form, 
+  handleChange, 
+  ticketTypes, 
+  referredCategories = [], 
+  warrantyTypes = [], 
+  lbl, 
+  secHdr 
+}) {
   return (
     <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
       <Box sx={secHdr}><Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Issue Description</Typography></Box>
@@ -22,15 +29,39 @@ export default function IssueDescription({ form, handleChange, ticketTypes, lbl,
           </Box>
           <Box sx={{ flex: 1 }}><Typography sx={lbl}>Warranty Type</Typography>
             <Autocomplete
-              options={WARRANTY_TYPES}
-              value={form.warrantyType}
-              onChange={(e, newValue) => handleChange('warrantyType')({ target: { value: newValue || '' } })}
+              options={warrantyTypes}
+              getOptionLabel={(option) => option.warrantyTypeName || ''}
+              value={warrantyTypes.find((w) => w.warrantyTypeId === form.warrantyTypeId) || null}
+              onChange={(e, newValue) => handleChange('warrantyTypeId')({ target: { value: newValue ? newValue.warrantyTypeId : '' } })}
               renderInput={(params) => (
-                <TextField {...params} placeholder="Select…" size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />
+                <TextField {...params} placeholder="Select warranty type…" size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />
               )}
             />
           </Box>
         </Box>
+
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+          <Box sx={{ flex: 1 }}><Typography sx={lbl}>Referred Category</Typography>
+            <Autocomplete
+              options={referredCategories}
+              getOptionLabel={(option) => option.referredCategoryName || ''}
+              value={referredCategories.find((r) => r.referredCategoryId === form.referredCategoryId) || null}
+              onChange={(e, newValue) => handleChange('referredCategoryId')({ target: { value: newValue ? newValue.referredCategoryId : '' } })}
+              renderInput={(params) => (
+                <TextField {...params} placeholder="Select category…" size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />
+              )}
+            />
+          </Box>
+          <Box sx={{ flex: 1 }}><Typography sx={lbl}>Referred Desc / Note</Typography>
+            <TextField
+              fullWidth size="small" placeholder="Referred description…"
+              value={form.referredCategoryDecriptionTicket || ''}
+              onChange={handleChange('referredCategoryDecriptionTicket')}
+              sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+            />
+          </Box>
+        </Box>
+
         <Typography sx={lbl}>Ticket Type</Typography>
         <Autocomplete
           options={ticketTypes}

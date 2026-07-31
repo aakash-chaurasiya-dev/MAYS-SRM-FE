@@ -27,6 +27,8 @@ import PaymentModeManagementPage from './pages/Maintenance/PaymentMode/PaymentMo
 import ServiceChargesManagementPage from './pages/Maintenance/ServiceCharges/ServiceChargesManagementPage';
 import StatusManagementPage from './pages/Maintenance/Status/StatusManagementPage';
 import TicketTypeManagementPage from './pages/Maintenance/TicketType/TicketTypeManagementPage';
+import ReferredCategoryManagementPage from './pages/Maintenance/ReferredCategory/ReferredCategoryManagementPage';
+import WarrantyTypeManagementPage from './pages/Maintenance/WarrantyType/WarrantyTypeManagementPage';
 import AccessoryManagementPage from './pages/Maintenance/Accessory/AccessoryManagementPage';
 import BillingDetailsPage from './pages/Billing/BillingDetailsPage';
 import CreateInvoicePage from './pages/Billing/CreateInvoicePage';
@@ -37,6 +39,8 @@ import EmployeeDetailsPage from './pages/EmployeeDetails/EmployeeDetails';
 import EmployeeProfilePage from './pages/EmployeeDetails/EmployeeProfilePage';
 import UserDetailsPage from './pages/UserDetails/UserDetailsPage';
 import UserProfilePage from './pages/UserDetails/UserProfilePage';
+import VendorDetailsPage from './pages/VendorDetails/VendorDetailsPage';
+import VendorProfilePage from './pages/VendorDetails/VendorProfilePage';
 import ProfilePage from './pages/Profile/ProfilePage';
 import EnquiriesPage from './pages/Enquiries/EnquiriesPage';
 
@@ -99,6 +103,8 @@ function App() {
                   <Route path="/maintenance/service-charges" element={<ServiceChargesManagementPage />} />
                   <Route path="/maintenance/status" element={<StatusManagementPage />} />
                   <Route path="/maintenance/ticket-type" element={<TicketTypeManagementPage />} />
+                  <Route path="/maintenance/referred-category" element={<ReferredCategoryManagementPage />} />
+                  <Route path="/maintenance/warranty-type" element={<WarrantyTypeManagementPage />} />
                   <Route path="/maintenance/accessories" element={<AccessoryManagementPage />} />
 
                   {/* Billing Routes */}
@@ -114,6 +120,8 @@ function App() {
                   <Route path="/employees/:id" element={<EmployeeProfilePage />} />
                   <Route path="/users" element={<UserDetailsPage />} />
                   <Route path="/users/:id" element={<UserProfilePage />} />
+                  <Route path="/vendors" element={<VendorDetailsPage />} />
+                  <Route path="/vendors/:id" element={<VendorProfilePage />} />
                   <Route path="/customers" element={<Box sx={{ p: 3 }}>Customers Page (WIP)</Box>} />
                   <Route path="/settings" element={<Box sx={{ p: 3 }}>Settings Page (WIP)</Box>} />
                   <Route path="/support" element={<Box sx={{ p: 3 }}>Support Desk (WIP)</Box>} />

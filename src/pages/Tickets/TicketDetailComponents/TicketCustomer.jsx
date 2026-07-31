@@ -94,13 +94,20 @@ const TicketCustomer = forwardRef(({ ticket, isNormalUser, isEditMode }, ref) =>
           </Box>
         {/* )} */}
         
-        <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-          {[['Email', customerEmail], 
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
+          {[
+            ['Ticket ID', ticket?.ticketId ? `TK-${ticket.ticketId}` : 'Not available'],
+            ['Email', customerEmail], 
             ['Phone', customerPhone], 
-            ['Branch', branch]].map(([label, value]) => (
+            ['Branch', branch],
+            ['Customer Address', valueOrNA(ticket?.customerAddress)],
+            ['Vendor Name', valueOrNA(ticket?.vendorName)],
+            ['Vendor User Name', valueOrNA(ticket?.vendorUserName)],
+            ['Vendor User Mobile No', valueOrNA(ticket?.vendorUserMobileNo)]
+          ].map(([label, value]) => (
             <Box key={label} sx={{ mb: 1.2 }}>
               <Typography sx={lbl}>{label}</Typography>
-              <Typography sx={{ fontSize: '13px' }}>{value}</Typography>
+              <Typography sx={{ fontSize: '13px', wordBreak: 'break-word' }}>{value}</Typography>
             </Box>
           ))}
         </Box>
