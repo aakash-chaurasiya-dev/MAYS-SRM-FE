@@ -45,7 +45,6 @@ export default function NewTicketPage() {
     customCustomerName: '',
     phone: '',
     email: '',
-    customerType: 'Walk-in',
     brandId: '',
     modelId: '',
     customModelName: '',
@@ -53,13 +52,18 @@ export default function NewTicketPage() {
     deviceTypeId: '',
     priority: 'Normal',
     ticketTypeId: '',
-    warrantyType: '',
+    referredCategoryId: '',
+    referredCategoryDecriptionTicket: '',
+    warrantyTypeId: '',
     issueTitle: '',
     issueDescription: '',
     departmentId: '',
     employeeId: '',
     ticketStatusId: 1, // Defaulting to Open or initial status
     targetDate: '',
+    vendorId: '',
+    vendorUserId: '',
+    customerAddress: '',
   });
 
   const [selectedAccessories, setSelectedAccessories] = useState([]);
@@ -82,6 +86,22 @@ export default function NewTicketPage() {
   const { data: ticketTypes = [] } = useQuery({
     queryKey: ['ticketTypes'],
     queryFn: async () => (await api.get('/ticket-types')).data,
+  });
+
+  const { data: referredCategories = [] } = useQuery({
+    queryKey: ['referredCategories'],
+    queryFn: async () => {
+      const res = await api.get('/referred-categories');
+      return res.data?.data || res.data || [];
+    },
+  });
+
+  const { data: warrantyTypes = [] } = useQuery({
+    queryKey: ['warrantyTypes'],
+    queryFn: async () => {
+      const res = await api.get('/warranty-types');
+      return res.data?.data || res.data || [];
+    },
   });
 
   const { data: customers = [] } = useQuery({
@@ -191,10 +211,16 @@ export default function NewTicketPage() {
     if (form.customerId && !isNormalUser && customers.length > 0) {
       const customer = customers.find((c) => String(c.userId) === String(form.customerId));
       if (customer) {
-        setForm((prev) => ({ ...prev, phone: customer.mobileNo || '', email: customer.emailId || '' }));
+        setForm((prev) => ({ 
+          ...prev, 
+          phone: customer.mobileNo || '', 
+          email: customer.emailId || '',
+          customerAddress: customer.address || '',
+          vendorId: customer.vendorId || ''
+        }));
       }
     } else if (!isNormalUser && !form.customCustomerName) {
-      setForm((prev) => ({ ...prev, phone: '', email: '' }));
+      setForm((prev) => ({ ...prev, phone: '', email: '', customerAddress: '', vendorId: '', vendorUserId: '' }));
     }
   }, [form.customerId, customers, isNormalUser, form.customCustomerName]);
 
@@ -244,7 +270,15 @@ export default function NewTicketPage() {
         const nameParts = form.customCustomerName.trim().split(' ');
         const firstName = nameParts[0] || 'Unknown';
         const lastName = nameParts.slice(1).join(' ') || '';
-        const newUserPayload = { firstName, lastName, mobileNo: form.phone, emailId: form.email, password: 'Mays123', isActive: true };
+        const newUserPayload = { 
+          firstName, 
+          lastName, 
+          mobileNo: form.phone, 
+          emailId: form.email, 
+          password: 'Mays123', 
+          isActive: true,
+          address: form.customerAddress || ''
+        };
         const userRes = await api.post('/users', newUserPayload);
         finalCustomerId = userRes.data.userId;
       }
@@ -255,7 +289,9 @@ export default function NewTicketPage() {
         emailId: form.email,
         deviceSerialNo: form.serialNumber,
         ticketDescription: `${form.issueTitle}: ${form.issueDescription}`,
-        warrantyType: form.warrantyType,
+        referredCategoryId: form.referredCategoryId ? Number(form.referredCategoryId) : null,
+        referredCategoryDecriptionTicket: form.referredCategoryDecriptionTicket || '',
+        warrantyTypeId: form.warrantyTypeId ? Number(form.warrantyTypeId) : null,
         priority: form.priority,
         remarks: `New ticket created for device S/N: ${form.serialNumber}`,
         deviceModelId: form.modelId || null,
@@ -264,6 +300,8 @@ export default function NewTicketPage() {
         ticketStatusId: form.ticketStatusId || 1, // Use selected status or default
         employeeId: form.employeeId || null,
         targetDate: form.targetDate ? form.targetDate + ':00' : null, // Backend usually expects complete ISO time
+        vendorId: form.vendorId ? Number(form.vendorId) : null,
+        vendorUserId: form.vendorUserId ? Number(form.vendorUserId) : null,
       };
 
       const ticketRes = await api.post('/tickets', payload);
@@ -385,6 +423,8 @@ export default function NewTicketPage() {
             form={form} 
             handleChange={handleChange} 
             ticketTypes={ticketTypes} 
+            referredCategories={referredCategories}
+            warrantyTypes={warrantyTypes}
             lbl={lbl} 
             secHdr={secHdr} 
           />

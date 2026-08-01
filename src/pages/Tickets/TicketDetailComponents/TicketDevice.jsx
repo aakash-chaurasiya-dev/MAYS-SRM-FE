@@ -23,7 +23,6 @@ const TicketDevice = forwardRef(({ ticket, isEditMode, isNormalUser }, ref) => {
       return res.data;
     },
     enabled: !isNormalUser,
-    // The global staleTime handles caching, so it won't fetch twice.
   });
 
   const { data: brands = [] } = useQuery({
@@ -44,6 +43,24 @@ const TicketDevice = forwardRef(({ ticket, isEditMode, isNormalUser }, ref) => {
     enabled: !isNormalUser,
   });
 
+  const { data: referredCategories = [] } = useQuery({
+    queryKey: ['referredCategories'],
+    queryFn: async () => {
+      const res = await api.get('/referred-categories');
+      return res.data?.data || res.data || [];
+    },
+    enabled: !isNormalUser,
+  });
+
+  const { data: warrantyTypes = [] } = useQuery({
+    queryKey: ['warrantyTypes'],
+    queryFn: async () => {
+      const res = await api.get('/warranty-types');
+      return res.data?.data || res.data || [];
+    },
+    enabled: !isNormalUser,
+  });
+
   const [filteredBrands, setFilteredBrands] = useState([]);
   const [filteredModels, setFilteredModels] = useState([]);
 
@@ -53,7 +70,9 @@ const TicketDevice = forwardRef(({ ticket, isEditMode, isNormalUser }, ref) => {
     brandId: '',
     modelId: '',
     serialNo: '',
-    warrantyType: '',
+    referredCategoryId: '',
+    referredCategoryDecriptionTicket: '',
+    warrantyTypeId: '',
     customModelName: '',
   });
 
@@ -64,14 +83,18 @@ const TicketDevice = forwardRef(({ ticket, isEditMode, isNormalUser }, ref) => {
       const brandId = ticket?.deviceBrandId || '';
       const modelId = ticket?.deviceModelId || '';
       const currentSerialNo = ticket?.deviceSerialNo || '';
-      const currentWarrantyType = ticket?.warrantyType || '';
+      const referredCategoryId = ticket?.referredCategoryId || '';
+      const referredCategoryDecriptionTicket = ticket?.referredCategoryDecriptionTicket || '';
+      const warrantyTypeId = ticket?.warrantyTypeId || '';
 
       setEditForm({
         deviceTypeId,
         brandId,
         modelId,
         serialNo: currentSerialNo,
-        warrantyType: currentWarrantyType,
+        referredCategoryId,
+        referredCategoryDecriptionTicket,
+        warrantyTypeId,
         customModelName: '',
       });
 
@@ -102,7 +125,9 @@ const TicketDevice = forwardRef(({ ticket, isEditMode, isNormalUser }, ref) => {
       deviceModelId: editForm.modelId || null,
       customModelName: editForm.customModelName || null,
       brandId: editForm.brandId || null,
-      warrantyType: editForm.warrantyType || null,
+      referredCategoryId: editForm.referredCategoryId || null,
+      referredCategoryDecriptionTicket: editForm.referredCategoryDecriptionTicket || '',
+      warrantyTypeId: editForm.warrantyTypeId || null,
     })
   }));
 
@@ -116,7 +141,9 @@ const TicketDevice = forwardRef(({ ticket, isEditMode, isNormalUser }, ref) => {
   const model = valueOrNA(ticket?.deviceModelName);
   const ticketType = valueOrNA(ticket?.ticketTypeName);
   const serialNo = valueOrNA(ticket?.deviceSerialNo);
-  const warranty = valueOrNA(ticket?.warrantyType);
+  const warranty = valueOrNA(ticket?.warrantyTypeName);
+  const referredCategory = valueOrNA(ticket?.referredCategoryName);
+  const referredCategoryDescription = valueOrNA(ticket?.referredCategoryDecriptionTicket);
 
   const handleDeviceTypeChange = (e) => {
     const deviceTypeId = e.target.value;
@@ -218,12 +245,36 @@ const TicketDevice = forwardRef(({ ticket, isEditMode, isNormalUser }, ref) => {
                 <TextField fullWidth size="small" placeholder="S/N" value={editForm.serialNo} onChange={handleFieldChange('serialNo')} sx={{ '& .MuiOutlinedInput-root': { fontFamily: '"JetBrains Mono", monospace', fontSize: '13px' } }} />
               </Box>
             </Box>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography sx={lbl}>Warranty Type</Typography>
+                <Autocomplete
+                  options={warrantyTypes}
+                  getOptionLabel={(option) => option.warrantyTypeName || ''}
+                  value={warrantyTypes.find((w) => w.warrantyTypeId === editForm.warrantyTypeId) || null}
+                  onChange={(e, newValue) => setEditForm(prev => ({ ...prev, warrantyTypeId: newValue ? newValue.warrantyTypeId : '' }))}
+                  renderInput={(params) => <TextField {...params} placeholder="Select warranty type…" size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />}
+                />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <Typography sx={lbl}>Referred Category</Typography>
+                <Autocomplete
+                  options={referredCategories}
+                  getOptionLabel={(option) => option.referredCategoryName || ''}
+                  value={referredCategories.find((r) => r.referredCategoryId === editForm.referredCategoryId) || null}
+                  onChange={(e, newValue) => setEditForm(prev => ({ ...prev, referredCategoryId: newValue ? newValue.referredCategoryId : '' }))}
+                  renderInput={(params) => <TextField {...params} placeholder="Select category…" size="small" sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }} />}
+                />
+              </Box>
+            </Box>
             <Box>
-              <Typography sx={lbl}>Warranty Type</Typography>
-              <TextField select fullWidth size="small" value={editForm.warrantyType} onChange={handleFieldChange('warrantyType')} displayEmpty sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}>
-                <MenuItem value="" disabled>Select…</MenuItem>
-                {['Warranty', 'RMA', 'Out-of-Warranty', 'Internal'].map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
-              </TextField>
+              <Typography sx={lbl}>Referred Description / Note</Typography>
+              <TextField
+                fullWidth size="small" placeholder="Referred description details…"
+                value={editForm.referredCategoryDecriptionTicket || ''}
+                onChange={handleFieldChange('referredCategoryDecriptionTicket')}
+                sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+              />
             </Box>
           </Stack>
         ) : (
@@ -234,6 +285,8 @@ const TicketDevice = forwardRef(({ ticket, isEditMode, isNormalUser }, ref) => {
               { label: 'Model', value: model, mono: false },
               { label: 'Serial No.', value: serialNo, mono: true },
               { label: 'Warranty', value: warranty, mono: false },
+              { label: 'Referred Category', value: referredCategory, mono: false },
+              { label: 'Referred Desc / Note', value: referredCategoryDescription, mono: false },
               { label: 'Type', value: ticketType, mono: false }
             ].map(({ label, value, mono }) => (
               <Box key={label} sx={{ display: 'flex', flexDirection: 'column' }}>

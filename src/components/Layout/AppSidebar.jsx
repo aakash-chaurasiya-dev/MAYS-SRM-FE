@@ -12,6 +12,7 @@ import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
+import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import AddIcon from '@mui/icons-material/Add';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -58,6 +59,7 @@ const REPORTS_SUBS = [
 const SECTION2 = [
   { label: 'Employee Management', icon: <BadgeOutlinedIcon />, path: '/employees' },
   { label: 'User Details', icon: <BadgeOutlinedIcon />, path: '/users' },
+  { label: 'Vendor Management', icon: <StorefrontOutlinedIcon />, path: '/vendors' },
 ];
 
 
@@ -341,7 +343,6 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
 
         {/* ── + New Ticket Button ── */}
         {showNewTicketButton && (
-        {!isNormalUser && (
           <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
             <Button variant="contained" fullWidth
               startIcon={desktopOpen ? <AddIcon /> : undefined}
@@ -352,7 +353,7 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
                 px: desktopOpen ? 2 : 0, justifyContent: 'center'
               }}>
               {desktopOpen ? 'New Ticket' : <AddIcon fontSize="small" />}
-            </Button>
+             </Button>
           </Box>
         )}
       </MuiList>
@@ -395,6 +396,7 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
       </Box>
     </Box>
   );
+
 
   return (
     <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 }, transition: isResizing ? 'none' : theme.transitions.create('width', { easing: theme.transitions.easing.sharp, duration: theme.transitions.duration.enteringScreen }) }}>

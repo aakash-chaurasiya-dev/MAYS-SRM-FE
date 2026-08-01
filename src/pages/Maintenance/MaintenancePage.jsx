@@ -24,6 +24,8 @@ const CONFIG_ITEMS = [
   { key: 'service-charges', label: 'Service Charges', desc: 'Standard labor rates and repair pricing.', icon: <PaidOutlinedIcon />, path: '/maintenance/service-charges' },
   { key: 'status', label: 'Status', desc: 'Define ticket lifecycle and repair states.', icon: <ToggleOnOutlinedIcon />, path: '/maintenance/status' },
   { key: 'ticket-type', label: 'Ticket Type', desc: 'Warranty, RMA, Out-of-warranty repairs.', icon: <ConfirmationNumberOutlinedIcon />, path: '/maintenance/ticket-type' },
+  { key: 'referred-category', label: 'Referred Category', desc: 'Manage reference categories for tickets.', icon: <CategoryOutlinedIcon />, path: '/maintenance/referred-category' },
+  { key: 'warranty-type', label: 'Warranty Type', desc: 'Manage restructured warranty categories.', icon: <ConfirmationNumberOutlinedIcon />, path: '/maintenance/warranty-type' },
 ];
 
 export default function MaintenancePage() {
