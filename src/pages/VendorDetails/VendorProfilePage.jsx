@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -16,8 +16,8 @@ function TabPanel({ children, value, index }) {
 }
 
 export default function VendorProfilePage() {
-  const { id } = useParams();
   const navigate = useNavigate();
+  const { id } = useParams();
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState(0);
 
@@ -52,7 +52,7 @@ export default function VendorProfilePage() {
   });
 
   // Sort tickets newest first
-  const tickets = React.useMemo(() => {
+  const tickets = useMemo(() => {
     return [...rawTickets].sort((a, b) => {
       if (!a.createdDate) return 1;
       if (!b.createdDate) return -1;

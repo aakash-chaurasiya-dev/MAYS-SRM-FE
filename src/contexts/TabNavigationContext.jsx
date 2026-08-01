@@ -31,6 +31,7 @@ const findRouteInfo = (pathname, search = '') => {
 };
 
 export function TabNavigationProvider({ children }) {
+  const navigate = useNavigate();
   const [tabs, setTabs] = useState(() => {
     try {
       const savedTabs = localStorage.getItem('openTabs');
@@ -65,7 +66,6 @@ export function TabNavigationProvider({ children }) {
   });
 
   const location = useLocation();
-  const navigate = useNavigate();
 
   // Save to localStorage whenever tabs or active tab changes
   useEffect(() => {

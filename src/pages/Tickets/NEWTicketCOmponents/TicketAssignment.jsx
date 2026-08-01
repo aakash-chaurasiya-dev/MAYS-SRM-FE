@@ -1,4 +1,4 @@
-import React from 'react';
+import { useEffect } from 'react';
 import { Box, Paper, Typography, TextField, MenuItem, Divider, Stack } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../../services/api';
@@ -35,7 +35,7 @@ export default function TicketAssignment({ form, setForm, handleChange, lbl, sec
   // Find the "Open" status and lock it
   const openStatus = statuses.find(s => (s.statusName || s.name)?.toLowerCase() === 'open');
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (openStatus && form.ticketStatusId !== openStatus.statusId) {
       setForm(prev => ({ ...prev, ticketStatusId: openStatus.statusId }));
     }

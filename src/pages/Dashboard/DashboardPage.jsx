@@ -9,12 +9,12 @@ import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlin
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import { useTheme } from '@mui/material/styles';
-import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import List from '../../stereotype/AbstractList/List';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useGlobalLoading } from '../../contexts/GlobalLoadingContext';
+import { useNavigate } from 'react-router-dom';
 
 const TICKET_COLUMNS = [
   { field: 'id', headerName: 'Ticket ID', width: 110, renderType: 'link' },
@@ -76,8 +76,8 @@ function StatCard({ title, value, icon, iconColor, iconBg, selected, onClick }) 
 
 /* ── Dashboard Page ── */
 export default function DashboardPage() {
-  const theme = useTheme();
   const navigate = useNavigate();
+  const theme = useTheme();
   const { user } = useAuth();
   const { showLoading, hideLoading } = useGlobalLoading();
 

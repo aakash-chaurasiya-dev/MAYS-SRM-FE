@@ -1,4 +1,3 @@
-import React from 'react';
 import { Box, TextField } from '@mui/material';
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import SectionCard from './SectionCard';

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -28,6 +28,7 @@ import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import { useTheme } from '@mui/material/styles';
+import { exportToExcel } from '../../utils/exportExcel';
 
 /**
  * ─────────────────────────────────────────────────────────────────
@@ -228,6 +229,10 @@ export default function List({ config, rowSelectionModel: directRowSelectionMode
     headerSlot,
     emptyMessage = 'No records to display',
     getRowClassName,
+    exportable = true,
+    exportFilename,
+    getExportRows,
+    onExport,
   } = config;
 
   const actualRowSelectionModel = directRowSelectionModel !== undefined ? directRowSelectionModel : configRowSelectionModel;
@@ -236,17 +241,30 @@ export default function List({ config, rowSelectionModel: directRowSelectionMode
   const [search, setSearch] = useState('');
   const [columnMenuAnchorEl, setColumnMenuAnchorEl] = useState(null);
   const [filterMenuAnchorEl, setFilterMenuAnchorEl] = useState(null);
-  const [visibleColumnFields, setVisibleColumnFields] = useState(() => columns.map((col) => col.field));
+  const columnFieldKey = useMemo(
+    () => columns.map((col) => col.field).join('\0'),
+    [columns]
+  );
+
+  const [visibleColumnFields, setVisibleColumnFields] = useState(() =>
+    columns.map((col) => col.field)
+  );
+  const [syncedColumnKey, setSyncedColumnKey] = useState(columnFieldKey);
+
+  if (syncedColumnKey !== columnFieldKey) {
+    setSyncedColumnKey(columnFieldKey);
+    setVisibleColumnFields(columns.map((col) => col.field));
+  }
+
   const [selectedColumnForFilter, setSelectedColumnForFilter] = useState('');
   const [selectedFilterValues, setSelectedFilterValues] = useState([]);
   const [activeFilters, setActiveFilters] = useState([]);
+  const [exporting, setExporting] = useState(false);
   const [paginationModel, setPaginationModel] = useState({
     pageSize: pagination.pageSize || 10,
     page: 0,
   });
 
-  // MUI v9 uses an object { type: 'include', ids: Set() } instead of an array.
-  // We wrap it here so the rest of the application can safely just use arrays.
   const formattedSelectionModel = useMemo(() => {
     if (actualRowSelectionModel === undefined) return undefined;
     if (Array.isArray(actualRowSelectionModel)) {
@@ -254,12 +272,6 @@ export default function List({ config, rowSelectionModel: directRowSelectionMode
     }
     return actualRowSelectionModel;
   }, [actualRowSelectionModel]);
-
-
-
-  useEffect(() => {
-    setVisibleColumnFields(columns.map((col) => col.field));
-  }, [columns]);
 
   const visibleColumns = useMemo(() =>
     resolveColumns(columns.filter((col) => visibleColumnFields.includes(col.field))),
@@ -395,6 +407,38 @@ export default function List({ config, rowSelectionModel: directRowSelectionMode
   const handleClearFilters = useCallback(() => {
     setActiveFilters([]);
   }, []);
+
+  const handleExport = useCallback(async () => {
+    if (!exportable) return;
+
+    try {
+      setExporting(true);
+
+      if (onExport) {
+        await onExport();
+        return;
+      }
+
+      const rowsToExport = getExportRows ? await getExportRows() : filteredRows;
+      const filename = exportFilename || `${title.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
+
+      exportToExcel({
+        rows: rowsToExport,
+        columns: visibleColumns,
+        filename,
+        sheetName: title.slice(0, 31) || 'Sheet1',
+      });
+    } catch (error) {
+      window.dispatchEvent(new CustomEvent('app-notification', {
+        detail: {
+          message: error.message || 'Failed to export data.',
+          severity: 'error',
+        },
+      }));
+    } finally {
+      setExporting(false);
+    }
+  }, [exportable, onExport, getExportRows, filteredRows, exportFilename, title, visibleColumns]);
 
   /* ── DataGrid sx ── */
   const dataGridSx = useMemo(
@@ -608,11 +652,20 @@ export default function List({ config, rowSelectionModel: directRowSelectionMode
             ))}
           </Box>
         </Menu>
-        <Tooltip title="Export">
-          <IconButton size="small" sx={{ color: 'text.secondary' }}>
-            <FileDownloadOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        {exportable && (
+          <Tooltip title="Export to Excel">
+            <span>
+              <IconButton
+                size="small"
+                sx={{ color: 'text.secondary' }}
+                onClick={handleExport}
+                disabled={exporting}
+              >
+                <FileDownloadOutlinedIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        )}
         <Tooltip title="Refresh">
           <IconButton size="small" sx={{ color: 'text.secondary' }}>
             <RefreshIcon fontSize="small" />
