@@ -20,7 +20,7 @@ export default function TicketAssignment({ form, setForm, handleChange, lbl, sec
       const res = await api.get('/statuses');
       return res.data?.data || res.data || [];
     },
-    select: (data) => data.filter(s => s.statusType === 'Ticket' || s.statusType === 'TICKET')
+    staleTime: 1000 * 60 * 60,
   });
 
   const { data: employees = [] } = useQuery({
@@ -32,14 +32,23 @@ export default function TicketAssignment({ form, setForm, handleChange, lbl, sec
     enabled: !!form.departmentId,
   });
 
-  // Find the "Open" status and lock it
-  const openStatus = statuses.find(s => (s.statusName || s.name)?.toLowerCase() === 'open');
-
-  React.useEffect(() => {
-    if (openStatus && form.ticketStatusId !== openStatus.statusId) {
-      setForm(prev => ({ ...prev, ticketStatusId: openStatus.statusId }));
-    }
-  }, [openStatus, form.ticketStatusId, setForm]);
+  // Filter statuses by selected department:
+  // Show statuses that are universal (no allowedDepartmentIds set) OR
+  // explicitly include the selected department.
+  const filteredStatuses = React.useMemo(() => {
+    // Step 1: keep only Ticket-type statuses (case-insensitive)
+    const ticketStatuses = statuses.filter(s =>
+      !s.statusType || s.statusType.toLowerCase() === 'ticket'
+    );
+    // Step 2: filter by department if one is selected
+    if (!form.departmentId) return ticketStatuses;
+    const deptIdStr = String(form.departmentId);
+    return ticketStatuses.filter(s => {
+      const allowed = s.allowedDepartmentIds;
+      if (!allowed || allowed.trim() === '') return true; // universal — show always
+      return allowed.split(',').map(d => d.trim()).includes(deptIdStr);
+    });
+  }, [statuses, form.departmentId]);
 
   return (
     <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
@@ -95,9 +104,9 @@ export default function TicketAssignment({ form, setForm, handleChange, lbl, sec
               value={form.ticketStatusId || ''}
               onChange={handleChange('ticketStatusId')}
               sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
-              disabled={true} // Unconditionally locked
             >
-              {statuses.map(s => (
+              <MenuItem value="">— Select Status —</MenuItem>
+              {filteredStatuses.map(s => (
                 <MenuItem key={s.statusId || s.id} value={s.statusId || s.id}>
                   {s.statusName || s.name}
                 </MenuItem>

@@ -177,8 +177,8 @@ export default function StatusManagementPage() {
           </Box>;
         }
       },
-      { field: 'insertDate', headerName: 'Created At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
-      { field: 'lastUpdateDate', headerName: 'Updated At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
+      { field: 'insertDate', headerName: 'Created At', width: 130, type: 'date', valueGetter: (value) => value ? new Date(value) : null },
+      { field: 'lastUpdateDate', headerName: 'Updated At', width: 130, type: 'date', valueGetter: (value) => value ? new Date(value) : null },
     ],
     checkboxSelection: true,
     searchable: true,

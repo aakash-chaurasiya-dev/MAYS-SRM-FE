@@ -47,6 +47,8 @@ const MAINTENANCE_SUBS = [
   { label: 'Service Charges', path: '/maintenance/service-charges' },
   { label: 'Status', path: '/maintenance/status' },
   { label: 'Ticket Type', path: '/maintenance/ticket-type' },
+  { label: 'Referred Category', path: '/maintenance/referred-category' },
+  { label: 'Warranty Type', path: '/maintenance/warranty-type' },
 ];
 
 const REPORTS_SUBS = [
@@ -91,6 +93,7 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
   const showBilling = isManager;
   const showReports = isManager;
   const showEmployeeManagement = isManager;
+  const showVendorManagement = isManager;
   const showUserDetails = isManager;
   const showNewTicketButton = isManager || isAdmin || isNormalUser;
 
@@ -170,9 +173,9 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
       )}
 
       {/* ── Main nav ── */}
-      <MuiList sx={{ 
-        px: 1, 
-        pt: 1, 
+      <MuiList sx={{
+        px: 1,
+        pt: 1,
         flex: 1,
         overflowY: 'auto',
         overflowX: 'hidden',
@@ -341,6 +344,14 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
           </ListItemButton>
         )}
 
+        {showVendorManagement && (
+          <ListItemButton onClick={() => handleNav('/vendors')} sx={navBtnSx(isActive('/vendors'))}>
+            <ListItemIcon sx={iconSx(isActive('/vendors'))}><BadgeOutlinedIcon /></ListItemIcon>
+            <ListItemText primary="Vendor Details" sx={textSx} primaryTypographyProps={textProps(isActive('/vendors'))} />
+          </ListItemButton>
+        )}
+
+
         {/* ── + New Ticket Button ── */}
         {showNewTicketButton && (
           <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
@@ -353,7 +364,7 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
                 px: desktopOpen ? 2 : 0, justifyContent: 'center'
               }}>
               {desktopOpen ? 'New Ticket' : <AddIcon fontSize="small" />}
-             </Button>
+            </Button>
           </Box>
         )}
       </MuiList>

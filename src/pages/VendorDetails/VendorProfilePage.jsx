@@ -3,13 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Box, Typography, Card, CardContent, Divider, CircularProgress,
-  Avatar, useTheme, Chip, Stack, Tabs, Tab, Table, TableBody,
-  TableCell, TableContainer, TableHead, TableRow, Paper
+  Avatar, useTheme, Chip, Stack, Tabs, Tab
 } from '@mui/material';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import ConfirmationNumberOutlinedIcon from '@mui/icons-material/ConfirmationNumberOutlined';
 import api from '../../services/api';
+import VendorTicketsTab from './VendorTicketsTab';
+import VendorUsersTab from './VendorUsersTab';
 
 function TabPanel({ children, value, index }) {
   return value === index ? <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>{children}</Box> : null;
@@ -167,97 +168,12 @@ export default function VendorProfilePage() {
 
           {/* ── Tab 0: Tickets ── */}
           <TabPanel value={activeTab} index={0}>
-            {loadingTickets ? (
-              <Box display="flex" justifyContent="center" pt={4}><CircularProgress /></Box>
-            ) : tickets.length === 0 ? (
-              <Typography color="text.secondary" align="center" mt={4}>No tickets found for this vendor.</Typography>
-            ) : (
-              <Stack spacing={2}>
-                {tickets.map(ticket => (
-                  <Card
-                    key={ticket.ticketId}
-                    variant="outlined"
-                    sx={{ p: 2, borderRadius: 2, cursor: 'pointer', transition: 'box-shadow 0.2s', '&:hover': { boxShadow: theme.shadows[3] } }}
-                    onClick={() => navigate(`/tickets/${ticket.ticketId}`)}
-                  >
-                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
-                      <Typography variant="subtitle1" fontWeight="bold" color="primary.main">
-                        {`TK-${ticket.ticketId}`} — {ticket.ticketDescription
-                          ? ticket.ticketDescription.substring(0, 45) + (ticket.ticketDescription.length > 45 ? '…' : '')
-                          : ticket.ticketTypeName || `Ticket #${ticket.ticketId}`}
-                      </Typography>
-                      <Chip
-                        label={ticket.ticketStatusName || 'OPEN'}
-                        size="small"
-                        sx={{
-                          fontWeight: 'bold', fontSize: '0.7rem',
-                          bgcolor: ticket.ticketStatusName === 'CLOSED' ? `${theme.palette.error.main}1A` : `${theme.palette.success.main}1A`,
-                          color: ticket.ticketStatusName === 'CLOSED' ? 'error.main' : 'success.main'
-                        }}
-                      />
-                    </Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                      <strong>Customer:</strong> {[ticket.userFirstName, ticket.userLastName].filter(Boolean).join(' ') || 'N/A'} &nbsp;|&nbsp;
-                      <strong>Type:</strong> {ticket.ticketTypeName || 'N/A'}
-                    </Typography>
-                    <Box display="flex" gap={4}>
-                      <Box>
-                        <Typography variant="caption" color="text.disabled" display="block">Created</Typography>
-                        <Typography variant="body2" fontWeight={500}>{formatDateTime(ticket.createdDate)}</Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="caption" color="text.disabled" display="block">Target Date</Typography>
-                        <Typography variant="body2" fontWeight={500}>{formatDateTime(ticket.targetDate)}</Typography>
-                      </Box>
-                    </Box>
-                  </Card>
-                ))}
-              </Stack>
-            )}
+            <VendorTicketsTab tickets={tickets} loading={loadingTickets} />
           </TabPanel>
 
           {/* ── Tab 1: Vendor Users ── */}
           <TabPanel value={activeTab} index={1}>
-            {loadingVendorUsers ? (
-              <Box display="flex" justifyContent="center" pt={4}><CircularProgress /></Box>
-            ) : vendorUsers.length === 0 ? (
-              <Typography color="text.secondary" align="center" mt={4}>No vendor users found.</Typography>
-            ) : (
-              <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow sx={{ bgcolor: `${theme.palette.primary.main}0A` }}>
-                      <TableCell sx={{ fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: theme.palette.text.secondary }}>ID</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: theme.palette.text.secondary }}>User Name</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: theme.palette.text.secondary }}>Contact No</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: theme.palette.text.secondary }}>Status</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {vendorUsers.map(vu => (
-                      <TableRow
-                        key={vu.id}
-                        sx={{ '&:hover': { bgcolor: `${theme.palette.primary.main}06` }, cursor: 'default' }}
-                      >
-                        <TableCell sx={{ fontSize: '13px', fontWeight: 500, color: theme.palette.text.secondary }}>{vu.id}</TableCell>
-                        <TableCell sx={{ fontSize: '13px', fontWeight: 600 }}>{vu.user || 'N/A'}</TableCell>
-                        <TableCell sx={{ fontSize: '13px' }}>{vu.contactNo || '—'}</TableCell>
-                        <TableCell>
-                          <Box sx={{
-                            display: 'inline-flex', px: 1, py: 0.2, borderRadius: 1,
-                            fontSize: '0.72rem', fontWeight: 700,
-                            bgcolor: vu.isActive !== false ? `${theme.palette.success.main}1A` : `${theme.palette.error.main}1A`,
-                            color: vu.isActive !== false ? 'success.main' : 'error.main'
-                          }}>
-                            {vu.isActive !== false ? 'Active' : 'Inactive'}
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
+            <VendorUsersTab vendorId={id} vendorUsers={vendorUsers} loading={loadingVendorUsers} />
           </TabPanel>
 
         </Card>

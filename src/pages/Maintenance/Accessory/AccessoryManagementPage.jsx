@@ -154,20 +154,8 @@ export default function AccessoryManagementPage() {
       { field: 'accessoryName', headerName: 'Name', flex: 1.5, renderType: 'link' },
       { field: 'deviceTypeName', headerName: 'Device Type', flex: 1.5 },
       { field: 'description', headerName: 'Description', flex: 2 },
-      { 
-        field: 'insertDate', 
-        headerName: 'Created At', 
-        width: 160,
-        valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString() : '' 
-      },
-      { 
-        field: 'lastUpdateDate', 
-        headerName: 'Updated At', 
-        width: 160,
-        valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString() : '' 
-      },
-      { field: 'insertDate', headerName: 'Created At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
-      { field: 'lastUpdateDate', headerName: 'Updated At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
+      { field: 'insertDate', headerName: 'Created At', width: 130, type: 'date', valueGetter: (value) => value ? new Date(value) : null },
+      { field: 'lastUpdateDate', headerName: 'Updated At', width: 130, type: 'date', valueGetter: (value) => value ? new Date(value) : null },
     ],
     checkboxSelection: true,
     searchable: true,
