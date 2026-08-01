@@ -1,14 +1,14 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Box, Typography, Tabs, Tab, TextField, Paper, CircularProgress, Stack, Button } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { useNavigate } from 'react-router-dom';
 import { List } from '../../stereotype/AbstractList';
 import api from '../../services/api';
 
 export default function UserEntryReportPage() {
-  const theme = useTheme();
   const navigate = useNavigate();
+  const theme = useTheme();
   const queryClient = useQueryClient();
 
   // States

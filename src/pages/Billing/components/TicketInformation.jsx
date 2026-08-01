@@ -1,4 +1,3 @@
-import React from 'react';
 import { Box, TextField} from '@mui/material';
 import ConfirmationNumberOutlinedIcon from '@mui/icons-material/ConfirmationNumberOutlined';
 import SectionCard from './SectionCard';

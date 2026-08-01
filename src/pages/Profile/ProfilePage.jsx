@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -30,13 +31,13 @@ import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { useTheme } from '@mui/material/styles';
-import { useNavigate } from 'react-router-dom';
 import { useAppThemeContext } from '../../theme/ThemeContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function ProfilePage() {
+  const navigate = useNavigate();
   const theme = useTheme();
   const { user, logout } = useAuth();
   const [error, setError] = useState('');
@@ -51,7 +52,6 @@ export default function ProfilePage() {
     }
   });
 
-  const navigate = useNavigate();
   const { mode, toggleTheme } = useAppThemeContext();
   const [settingsAnchorEl, setSettingsAnchorEl] = useState(null);
 

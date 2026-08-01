@@ -1,4 +1,3 @@
-import React from 'react';
 import { Box, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import ReceiptOutlinedIcon from '@mui/icons-material/ReceiptOutlined';
 import SectionCard from './SectionCard';

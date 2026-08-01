@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Box, Typography, Card, CardContent, CircularProgress, Link, Avatar, Divider, Stack } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';

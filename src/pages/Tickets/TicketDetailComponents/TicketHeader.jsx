@@ -1,4 +1,3 @@
-import React from 'react';
 import { Box, Typography, Chip, IconButton, Button } from '@mui/material';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';

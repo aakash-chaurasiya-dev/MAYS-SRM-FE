@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -241,7 +241,21 @@ export default function List({ config, rowSelectionModel: directRowSelectionMode
   const [search, setSearch] = useState('');
   const [columnMenuAnchorEl, setColumnMenuAnchorEl] = useState(null);
   const [filterMenuAnchorEl, setFilterMenuAnchorEl] = useState(null);
-  const [visibleColumnFields, setVisibleColumnFields] = useState(() => columns.map((col) => col.field));
+  const columnFieldKey = useMemo(
+    () => columns.map((col) => col.field).join('\0'),
+    [columns]
+  );
+
+  const [visibleColumnFields, setVisibleColumnFields] = useState(() =>
+    columns.map((col) => col.field)
+  );
+  const [syncedColumnKey, setSyncedColumnKey] = useState(columnFieldKey);
+
+  if (syncedColumnKey !== columnFieldKey) {
+    setSyncedColumnKey(columnFieldKey);
+    setVisibleColumnFields(columns.map((col) => col.field));
+  }
+
   const [selectedColumnForFilter, setSelectedColumnForFilter] = useState('');
   const [selectedFilterValues, setSelectedFilterValues] = useState([]);
   const [activeFilters, setActiveFilters] = useState([]);
@@ -251,8 +265,6 @@ export default function List({ config, rowSelectionModel: directRowSelectionMode
     page: 0,
   });
 
-  // MUI v9 uses an object { type: 'include', ids: Set() } instead of an array.
-  // We wrap it here so the rest of the application can safely just use arrays.
   const formattedSelectionModel = useMemo(() => {
     if (actualRowSelectionModel === undefined) return undefined;
     if (Array.isArray(actualRowSelectionModel)) {
@@ -260,12 +272,6 @@ export default function List({ config, rowSelectionModel: directRowSelectionMode
     }
     return actualRowSelectionModel;
   }, [actualRowSelectionModel]);
-
-
-
-  useEffect(() => {
-    setVisibleColumnFields(columns.map((col) => col.field));
-  }, [columns]);
 
   const visibleColumns = useMemo(() =>
     resolveColumns(columns.filter((col) => visibleColumnFields.includes(col.field))),

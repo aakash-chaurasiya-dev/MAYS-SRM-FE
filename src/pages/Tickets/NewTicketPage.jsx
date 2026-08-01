@@ -31,8 +31,8 @@ const defaultLineItem = () => ({
 });
 
 export default function NewTicketPage() {
-  const theme = useTheme();
   const navigate = useNavigate();
+  const theme = useTheme();
   const { user } = useAuth();
   const { showLoading, hideLoading } = useGlobalLoading();
 

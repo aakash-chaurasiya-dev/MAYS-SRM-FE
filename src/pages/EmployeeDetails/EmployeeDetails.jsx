@@ -1,11 +1,11 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, FormControlLabel, Checkbox, MenuItem, CircularProgress, Button, Divider } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import { List } from '../../stereotype/AbstractList';
 import api from '../../services/api';
+import { useNavigate } from 'react-router-dom';
 
 export default function EmployeeDetails() {
   const navigate = useNavigate();

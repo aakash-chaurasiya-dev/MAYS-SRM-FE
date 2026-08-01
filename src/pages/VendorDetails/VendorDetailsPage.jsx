@@ -1,9 +1,9 @@
 import { useState, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
   TextField, CircularProgress, Button, Divider, Typography, MenuItem
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -13,9 +13,9 @@ import api from '../../services/api';
 import { useTheme } from '@mui/material/styles';
 
 export default function VendorDetailsPage() {
+  const navigate = useNavigate();
   const theme = useTheme();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   // ── Data Fetching ──────────────────────────────────────────────
   const { data: vendorsData = [], isLoading } = useQuery({
