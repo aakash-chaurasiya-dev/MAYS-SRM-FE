@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Box, Typography, Tabs, Tab, TextField, Paper, CircularProgress, Stack, Button } from '@mui/material';
@@ -117,6 +117,29 @@ export default function UserEntryReportPage() {
     setIsCustomRange(false);
   };
 
+  const mapReportRows = useCallback((rows) => (
+    rows.map((r) => ({
+      ...r,
+      id: r.entryNo,
+      entryDate: r.entryDate ? new Date(r.entryDate).toLocaleString() : 'N/A',
+    }))
+  ), []);
+
+  const getExportRows = useCallback(async () => {
+    if (isCustomRange && dateRange.start && dateRange.end) {
+      const res = await api.get(
+        `/user-entry-reports/range?start=${dateRange.start}&end=${dateRange.end}&offset=0&limit=10000`
+      );
+      return mapReportRows(res.data?.content || []);
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const res = await api.get(
+      `/user-entry-reports/range?start=${today}&end=${today}&offset=0&limit=10000`
+    );
+    return mapReportRows(res.data?.content || []);
+  }, [isCustomRange, dateRange.start, dateRange.end, mapReportRows]);
+
   const config = useMemo(() => ({
     title: 'User Entry Reports',
     subtitle: isCustomRange ? `Showing reports from ${dateRange.start} to ${dateRange.end}` : "Showing today's reports",
@@ -151,7 +174,9 @@ export default function UserEntryReportPage() {
     checkboxSelection: false,
     pagination: { pageSize: 10, pageSizeOptions: [10, 20, 50] },
     onPaginationChange: handlePaginationChange,
-  }), [localRows, isCustomRange, dateRange]);
+    exportFilename: 'user_entry_report',
+    getExportRows,
+  }), [localRows, isCustomRange, dateRange, getExportRows]);
 
   return (
     <Box sx={{ p: 2 }}>
