@@ -126,6 +126,8 @@ function App() {
                   <Route path="/settings" element={<Box sx={{ p: 3 }}>Settings Page (WIP)</Box>} />
                   <Route path="/support" element={<Box sx={{ p: 3 }}>Support Desk (WIP)</Box>} />
                 </Route>
+
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Route>
             </Route>
           </Routes>

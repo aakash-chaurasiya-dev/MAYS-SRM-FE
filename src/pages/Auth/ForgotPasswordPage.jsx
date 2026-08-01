@@ -16,9 +16,24 @@ import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 
-export default function ForgotPasswordPage() {
+function InputIconAdornment({ icon: Icon }) {
   const theme = useTheme();
+  return (
+    <Box sx={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: 40,
+      color: theme.palette.text.secondary,
+    }}>
+      <Icon fontSize="small" />
+    </Box>
+  );
+}
+
+export default function ForgotPasswordPage() {
   const navigate = useNavigate();
+  const theme = useTheme();
 
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
@@ -130,18 +145,6 @@ export default function ForgotPasswordPage() {
     glassEffect.background = 'rgba(20, 20, 20, 0.7)';
     glassEffect.border = '1px solid rgba(255, 255, 255, 0.08)';
   }
-
-  const InputIconAdornment = ({ icon: Icon }) => (
-    <Box sx={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center',
-      width: 40,
-      color: theme.palette.text.secondary,
-    }}>
-      <Icon fontSize="small" />
-    </Box>
-  );
 
   return (
     <Box

@@ -34,8 +34,8 @@ const defaultLineItem = () => ({
 });
 
 export default function NewTicketPage() {
-  const theme = useTheme();
   const navigate = useNavigate();
+  const theme = useTheme();
   const { user } = useAuth();
   const { showLoading, hideLoading } = useGlobalLoading();
 
@@ -70,6 +70,7 @@ export default function NewTicketPage() {
   });
 
   const [selectedAccessories, setSelectedAccessories] = useState([]);
+  const [pendingFiles, setPendingFiles] = useState([]);
 
   const handleChange = (field) => (e) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -343,6 +344,18 @@ export default function NewTicketPage() {
         await api.post('/ticket-accessories/bulk', accPayload);
       }
 
+      if (newTicketId && pendingFiles.length > 0) {
+        await Promise.all(
+          pendingFiles.map((file) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            return api.post(`/tickets/${newTicketId}/attachments`, formData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+            });
+          })
+        );
+      }
+
       return newTicketId;
     },
     onSuccess: () => {
@@ -419,7 +432,7 @@ export default function NewTicketPage() {
             secHdr={secHdr} 
           />
 
-          <UploadAttachments secHdr={secHdr} />
+          <UploadAttachments secHdr={secHdr} files={pendingFiles} onChange={setPendingFiles} />
 
           {/* Ticket Accessories */}
           {form.deviceTypeId && (

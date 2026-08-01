@@ -19,8 +19,7 @@ export default function TabBar({ onMenuClick }) {
     removeTab(tabId);
   };
 
-  // Use location.pathname as the source of truth for the active tab
-  const currentActiveTab = location.pathname;
+  const currentActiveTab = location.pathname + location.search;
 
   // If the current path doesn't match any open tab (e.g., during navigation before the new tab mounts),
   // pass false to MUI Tabs to prevent the "invalid value" warning.

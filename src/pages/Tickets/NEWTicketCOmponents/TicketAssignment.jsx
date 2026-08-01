@@ -1,4 +1,4 @@
-import React from 'react';
+import { useEffect } from 'react';
 import { Box, Paper, Typography, TextField, MenuItem, Divider, Stack } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../../services/api';
@@ -32,23 +32,14 @@ export default function TicketAssignment({ form, setForm, handleChange, lbl, sec
     enabled: !!form.departmentId,
   });
 
-  // Filter statuses by selected department:
-  // Show statuses that are universal (no allowedDepartmentIds set) OR
-  // explicitly include the selected department.
-  const filteredStatuses = React.useMemo(() => {
-    // Step 1: keep only Ticket-type statuses (case-insensitive)
-    const ticketStatuses = statuses.filter(s =>
-      !s.statusType || s.statusType.toLowerCase() === 'ticket'
-    );
-    // Step 2: filter by department if one is selected
-    if (!form.departmentId) return ticketStatuses;
-    const deptIdStr = String(form.departmentId);
-    return ticketStatuses.filter(s => {
-      const allowed = s.allowedDepartmentIds;
-      if (!allowed || allowed.trim() === '') return true; // universal — show always
-      return allowed.split(',').map(d => d.trim()).includes(deptIdStr);
-    });
-  }, [statuses, form.departmentId]);
+  // Find the "Open" status and lock it
+  const openStatus = statuses.find(s => (s.statusName || s.name)?.toLowerCase() === 'open');
+
+  useEffect(() => {
+    if (openStatus && form.ticketStatusId !== openStatus.statusId) {
+      setForm(prev => ({ ...prev, ticketStatusId: openStatus.statusId }));
+    }
+  }, [openStatus, form.ticketStatusId, setForm]);
 
   return (
     <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>

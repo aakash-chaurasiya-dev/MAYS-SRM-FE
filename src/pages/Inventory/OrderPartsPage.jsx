@@ -66,7 +66,7 @@ export default function OrderPartsPage() {
       try {
         const response = await api.get('/tickets');
         setTickets(response.data?.data || response.data || []);
-      } catch (error) {}
+      } catch { /* ignored */ }
     };
     fetchTickets();
 
@@ -74,7 +74,7 @@ export default function OrderPartsPage() {
       try {
         const response = await api.get('/inventory');
         setInventory(response.data?.data || response.data || []);
-      } catch (error) {}
+      } catch { /* ignored */ }
     };
     fetchInventory();
 
@@ -83,7 +83,7 @@ export default function OrderPartsPage() {
         const response = await api.get('/statuses/type/parts');
         const partsStatuses = response.data?.data || response.data || [];
         setStatuses(partsStatuses);
-      } catch (error) {}
+      } catch { /* ignored */ }
     };
     fetchStatuses();
   }, [fetchParts]);
@@ -109,8 +109,7 @@ export default function OrderPartsPage() {
           returned: isOut ? false : prev.returned, 
         }));
         setIsOutOfWarranty(isOut);
-      } catch (error) {
-      } finally {
+      } catch { /* ignored */ } finally {
         setTicketLoading(false);
       }
     };

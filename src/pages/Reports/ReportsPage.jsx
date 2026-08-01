@@ -12,8 +12,8 @@ const REPORT_ITEMS = [
 ];
 
 export default function ReportsPage() {
-  const theme = useTheme();
   const navigate = useNavigate();
+  const theme = useTheme();
 
   return (
     <Box sx={{ p: 2 }}>

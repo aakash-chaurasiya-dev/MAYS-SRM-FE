@@ -1,4 +1,4 @@
-import { createContext, useState, useMemo, useEffect, useContext } from 'react';
+import { createContext, useState, useMemo, useContext } from 'react';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { getAppTheme } from './theme';
 

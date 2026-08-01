@@ -1,4 +1,3 @@
-import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { 
@@ -6,7 +5,6 @@ import {
     Button, Avatar, Paper, useTheme, Chip
 } from '@mui/material';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ConfirmationNumberOutlinedIcon from '@mui/icons-material/ConfirmationNumberOutlined';
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
 import AutorenewOutlinedIcon from '@mui/icons-material/AutorenewOutlined';
@@ -42,9 +40,9 @@ function StatCard({ title, value, icon, iconColor, iconBg }) {
 }
 
 export default function EmployeeProfilePage() {
+  const navigate = useNavigate();
     const { id } = useParams();
-    const navigate = useNavigate();
-
+  
     // 1. Fetch Employee Details
     const { data: employee, isLoading: loadingEmp } = useQuery({
         queryKey: ['employee', id],

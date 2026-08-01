@@ -63,7 +63,7 @@ export default function InventoryPage() {
       try {
         const response = await api.get('/brands');
         setBrands(response.data?.data || response.data || []);
-      } catch (error) {}
+      } catch { /* ignored */ }
     };
     fetchBrands();
 
@@ -71,7 +71,7 @@ export default function InventoryPage() {
       try {
         const response = await api.get('/branches');
         setBranches(response.data?.data || response.data || []);
-      } catch (error) {}
+      } catch { /* ignored */ }
     };
     fetchBranches();
   }, [fetchInventory]);

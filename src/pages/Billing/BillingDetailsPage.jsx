@@ -11,10 +11,10 @@ import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import { useTheme } from '@mui/material/styles';
-import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import List from '../../stereotype/AbstractList/List';
 import api from '../../services/api';
+import { useNavigate } from 'react-router-dom';
 
 const INVOICE_COLUMNS = [
   { field: 'invoiceNo', headerName: 'Billing ID', width: 130 },
@@ -62,8 +62,8 @@ function StatCard({ title, value, icon, iconColor, iconBg }) {
 }
 
 export default function BillingDetailsPage() {
-  const theme = useTheme();
   const navigate = useNavigate();
+  const theme = useTheme();
   const [invoices, setInvoices] = useState([]);
   const [fetchedPages, setFetchedPages] = useState(new Set());
 
