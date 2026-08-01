@@ -90,7 +90,7 @@ function App() {
                 </Route>
 
                 {/* Manager-Only Restricted Routes */}
-                <Route element={<ProtectedRoute allowedRoles={['ROLE_MANAGER']} />}>
+                <Route element={<ProtectedRoute allowedRoles={['ROLE_MANAGER', 'ROLE_EXECUTIVE']} />}>
                   {/* Maintenance Routes */}
                   <Route path="/maintenance" element={<MaintenancePage />} />
                   <Route path="/maintenance/brands" element={<BrandManagementPage />} />
@@ -126,6 +126,8 @@ function App() {
                   <Route path="/settings" element={<Box sx={{ p: 3 }}>Settings Page (WIP)</Box>} />
                   <Route path="/support" element={<Box sx={{ p: 3 }}>Support Desk (WIP)</Box>} />
                 </Route>
+
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Route>
             </Route>
           </Routes>
