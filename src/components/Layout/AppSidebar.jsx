@@ -407,6 +407,21 @@ export default function AppSidebar({
           />
         </RoleGuard>
 
+        <RoleGuard allowedRoles={MANAGER_ROLES}>
+          <NavItem
+            label="Vendor Details"
+            icon={BadgeOutlinedIcon}
+            path="/vendors"
+            active={isActive('/vendors')}
+            desktopOpen={desktopOpen}
+            onNav={handleNav}
+            navBtnSx={navBtnSx}
+            iconSx={iconSx}
+            textSx={textSx}
+            textProps={textProps}
+          />
+        </RoleGuard>
+
         <RoleGuard allowedRoles={[...MANAGER_ROLES, 'ROLE_ADMIN', 'ROLE_USER']}>
           <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
             <Button

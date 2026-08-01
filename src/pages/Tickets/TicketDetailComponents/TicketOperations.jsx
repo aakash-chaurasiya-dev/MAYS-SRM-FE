@@ -1,4 +1,4 @@
-import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+import { useState, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
 import { Box, Typography, Paper, Divider, Stack, TextField, MenuItem } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useQuery } from '@tanstack/react-query';
@@ -18,7 +18,6 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
   const userRole = user?.roles?.[0]?.authority || (typeof user?.role === 'string' ? user.role : user?.role?.[0]?.authority);
 
   const [initialLoad, setInitialLoad] = useState(false);
-  const [originalEmployeeId, setOriginalEmployeeId] = useState('');
 
   // Form
   const [editForm, setEditForm] = useState({
@@ -45,7 +44,7 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
   });
 
   // Ticket statuses: case-insensitive type, optional role + department filters (aligned with create flow)
-  const statuses = React.useMemo(() => {
+  const statuses = useMemo(() => {
     const ticketStatuses = allStatuses.filter((s) => {
       if (s.statusType && s.statusType.toLowerCase() !== 'ticket') return false;
       if (s.allowedRoles && String(s.allowedRoles).trim() !== '') {
@@ -68,7 +67,7 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
   }, [allStatuses, userRole, editForm.departmentId, ticket?.departmentId]);
 
   // Ensure current ticket status remains selectable/visible even if filters exclude it
-  const statusOptions = React.useMemo(() => {
+  const statusOptions = useMemo(() => {
     const currentId = editForm.ticketStatusId || ticket?.ticketStatusId;
     if (!currentId) return statuses;
     const currentIdStr = String(currentId);
@@ -120,8 +119,6 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
   useEffect(() => {
     if (initialLoad && employees.length > 0) {
       const empId = ticket?.employeeId || ticket?.assigneeEmployeeId || ticket?.employee?.employeeId || '';
-      
-      setOriginalEmployeeId(String(empId));
       setEditForm(prev => ({
         ...prev,
         employeeId: empId !== '' && empId !== null && empId !== undefined ? String(empId) : '',
@@ -129,19 +126,6 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
       setInitialLoad(false);
     }
   }, [employees, initialLoad, ticket]);
-
-  // Auto-set status to Open if assigned to someone else
-  const isReassigned = editForm.employeeId && String(editForm.employeeId) !== String(originalEmployeeId);
-  const openStatus = statusOptions.find(s => (s.statusName || s.name)?.toLowerCase() === 'open');
-
-  useEffect(() => {
-    if (isReassigned && openStatus) {
-      setEditForm(prev => ({
-        ...prev,
-        ticketStatusId: String(openStatus.statusId || openStatus.id),
-      }));
-    }
-  }, [isReassigned, openStatus]);
 
   useImperativeHandle(ref, () => ({
     getFormData: () => {
@@ -223,7 +207,6 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
                 value={editForm.ticketStatusId || ''} 
                 onChange={(e) => setEditForm({...editForm, ticketStatusId: e.target.value})} 
                 sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
-                disabled={isReassigned}
               >
                 {statusOptions.map((s) => {
                   const id = String(s.statusId || s.id);
