@@ -90,7 +90,7 @@ function App() {
                 </Route>
 
                 {/* Manager-Only Restricted Routes */}
-                <Route element={<ProtectedRoute allowedRoles={['ROLE_MANAGER', 'ROLE_EXECUTIVE']} />}>
+                <Route element={<ProtectedRoute allowedRoles={['ROLE_MANAGER']} />}>
                   {/* Maintenance Routes */}
                   <Route path="/maintenance" element={<MaintenancePage />} />
                   <Route path="/maintenance/brands" element={<BrandManagementPage />} />
