@@ -78,6 +78,8 @@ export default function TicketDetailPage() {
 
   const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
   const isNormalUser = rawRole === 'ROLE_USER';
+  const isVendor = rawRole === 'ROLE_VENDOR';
+  const isPortalUser = isNormalUser || isVendor;
 
   // Unified Edit State
   const [isEditMode, setIsEditMode] = useState(false);
@@ -91,9 +93,11 @@ export default function TicketDetailPage() {
   const accessoriesRef = useRef(null);
   const progressRef = useRef(null);
 
-  // 0. Cache-first Access Check for Normal Users
+  // 0. Cache-first Access Check for portal users
   const userTicketsCache = queryClient.getQueryData(['dashboard-ticket-list-user', user?.userId]);
+  const vendorTicketsCache = queryClient.getQueryData(['dashboard-ticket-list-vendor', user?.userId]);
   const hasCacheAndIsDenied = isNormalUser && userTicketsCache && !userTicketsCache.some(t => String(t.ticketId) === String(id));
+  const hasVendorCacheAndIsDenied = isVendor && vendorTicketsCache && !vendorTicketsCache.some(t => String(t.ticketId) === String(id));
 
   // 1. Fetch Ticket Data
   const {
@@ -107,7 +111,7 @@ export default function TicketDetailPage() {
       const res = await api.get(`/tickets/${id}`);
       return res.data;
     },
-    enabled: !hasCacheAndIsDenied,
+    enabled: !hasCacheAndIsDenied && !hasVendorCacheAndIsDenied,
   });
 
   // 2. Fetch Attachments
@@ -126,7 +130,7 @@ export default function TicketDetailPage() {
       const res = await api.get(`/ticket-logs/${id}/latest`);
       return Array.isArray(res.data) ? res.data : [];
     },
-    enabled: !isNormalUser, // Only fetch if it's a staff member
+    enabled: !isPortalUser, // Only fetch if it's a staff member
   });
 
   const timeline = Array.isArray(rawLogs) ? rawLogs.map(createTimelineEntry) : [];
@@ -208,8 +212,13 @@ export default function TicketDetailPage() {
     );
   }
 
-  // Frontend Restriction: Prevent a normal user from viewing someone else's ticket via direct URL
-  if (hasCacheAndIsDenied || (ticket && isNormalUser && String(ticket.userId) !== String(user?.userId))) {
+  // Frontend Restriction: Prevent portal users from viewing tickets they don't own
+  if (
+    hasCacheAndIsDenied
+    || hasVendorCacheAndIsDenied
+    || (ticket && isNormalUser && String(ticket.userId) !== String(user?.userId))
+    || (ticket && isVendor && String(ticket.vendorId) !== String(user?.userId))
+  ) {
     return (
       <Box sx={{ p: 4, textAlign: 'center', mt: 10 }}>
         <Typography variant="h5" color="error" fontWeight="bold">Access Denied</Typography>
@@ -229,7 +238,7 @@ export default function TicketDetailPage() {
         ticket={ticket}
         loading={loading}
         error={error}
-        isNormalUser={isNormalUser}
+        isNormalUser={isPortalUser}
         isEditMode={isEditMode}
         onNavigateBack={() => navigate(-1)}
         onNavigateBilling={() => navigate(`/billing/create?ticketId=${id}`)}
@@ -239,10 +248,10 @@ export default function TicketDetailPage() {
         saving={updateTicketMutation.isPending}
       />
 
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={isNormalUser ? 0 : 2.5}>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={isPortalUser ? 0 : 2.5}>
 
         {/* Left Column */}
-        <Box sx={{ flex: isNormalUser ? 1 : 0.7 }}>
+        <Box sx={{ flex: isPortalUser ? 1 : 0.7 }}>
           <TicketProgress ref={progressRef} ticket={ticket} isEditMode={isEditMode} />
           
           <TicketIssue
@@ -251,7 +260,7 @@ export default function TicketDetailPage() {
             isEditMode={isEditMode}
           />
 
-          {!isNormalUser && (
+          {!isPortalUser && (
             <TicketInternalUpdate
               ref={internalNoteRef}
               ticket={ticket}
@@ -265,7 +274,7 @@ export default function TicketDetailPage() {
             <TicketCustomer
               ref={customerRef}
               ticket={ticket}
-              isNormalUser={isNormalUser}
+              isNormalUser={isPortalUser}
               isEditMode={isEditMode}
             />
             <TicketDevice
@@ -273,7 +282,7 @@ export default function TicketDetailPage() {
               ticket={ticket}
               // isEditMode={isEditMode}
               isEditMode={false} // Kept read-only
-              isNormalUser={isNormalUser}
+              isNormalUser={isPortalUser}
             />
           </Stack>
 
@@ -282,7 +291,7 @@ export default function TicketDetailPage() {
             ticket={ticket}
             ticketId={id}
             isEditMode={isEditMode}
-            isNormalUser={isNormalUser}
+            isNormalUser={isPortalUser}
           />
 
           <TicketAttachments
@@ -292,7 +301,7 @@ export default function TicketDetailPage() {
         </Box>
 
         {/* Right Column (Staff Only) */}
-        {!isNormalUser && (
+        {!isPortalUser && (
           <Box sx={{ flex: 0.3 }}>
             <TicketOperations
               ref={operationsRef}

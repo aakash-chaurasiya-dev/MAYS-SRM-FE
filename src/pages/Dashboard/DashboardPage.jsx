@@ -19,6 +19,7 @@ import { useNavigate } from 'react-router-dom';
 const TICKET_COLUMNS = [
   { field: 'id', headerName: 'Ticket ID', width: 110, renderType: 'link' },
   { field: 'customer', headerName: 'Customer', width: 180 },
+  { field: 'vendor', headerName: 'Vendor', width: 150 },
   { field: 'serialNo', headerName: 'Serial No', width: 150 },
   { field: 'branch', headerName: 'Branch', width: 150 },
   { field: 'department', headerName: 'Department', width: 150 },
@@ -96,6 +97,8 @@ export default function DashboardPage() {
 
   const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
   const isNormalUser = rawRole === 'ROLE_USER';
+  const isVendor = rawRole === 'ROLE_VENDOR';
+  const isPortalUser = isNormalUser || isVendor;
   const isEngineer = rawRole === 'ROLE_ENGINEER';
   const isPurchase = rawRole === 'ROLE_PURCHASE';
   const isEmployeeWithSelfTickets = isEngineer || isPurchase;
@@ -107,7 +110,7 @@ export default function DashboardPage() {
       const res = await api.get('/tickets/dashboard/stats');
       return res.data;
     },
-    enabled: !isNormalUser && !isEmployeeWithSelfTickets,
+    enabled: !isPortalUser && !isEmployeeWithSelfTickets,
     refetchInterval: 6000000, // Poll every 60 seconds
   });
 
@@ -127,7 +130,7 @@ export default function DashboardPage() {
       const combined = [...(res0.data.content || []), ...(res1.data.content || [])];
       return Array.from(new Map(combined.map(item => [item.ticketId, item])).values());
     },
-    enabled: !isNormalUser && !isEmployeeWithSelfTickets,
+    enabled: !isPortalUser && !isEmployeeWithSelfTickets,
   });
 
   // 3. Fetch Tickets (Normal User)
@@ -151,29 +154,43 @@ export default function DashboardPage() {
     enabled: isEmployeeWithSelfTickets && !!user?.userId,
   });
 
+  // 5. Fetch Tickets (Vendor)
+  const { data: vendorTickets, isLoading: loadingVendorTickets } = useQuery({
+    queryKey: ['dashboard-ticket-list-vendor', user?.userId],
+    queryFn: async () => {
+      const ticketsResponse = await api.get(`/tickets/vendor/${user.userId}`);
+      return ticketsResponse.data || [];
+    },
+    enabled: isVendor && !!user?.userId,
+  });
+
   // Sync React Query data to local state only for Admin/Manager (for pagination append logic)
   useEffect(() => {
-    if (!isNormalUser && !isEmployeeWithSelfTickets && adminTicketsInitial) {
+    if (!isPortalUser && !isEmployeeWithSelfTickets && adminTicketsInitial) {
       setTickets(adminTicketsInitial);
       setFetchedPages(new Set([0, 1]));
     }
-  }, [isNormalUser, isEmployeeWithSelfTickets, adminTicketsInitial]);
+  }, [isPortalUser, isEmployeeWithSelfTickets, adminTicketsInitial]);
 
-  const loading = isNormalUser 
-    ? loadingUserTickets 
-    : isEmployeeWithSelfTickets 
-      ? loadingEmployeeTickets 
-      : loadingAdminTickets;
+  const loading = isNormalUser
+    ? loadingUserTickets
+    : isVendor
+      ? loadingVendorTickets
+      : isEmployeeWithSelfTickets
+        ? loadingEmployeeTickets
+        : loadingAdminTickets;
 
-  const displayTickets = isNormalUser 
+  const displayTickets = isNormalUser
     ? (userTickets || [])
-    : isEmployeeWithSelfTickets
-      ? (employeeTickets || [])
-      : tickets;
+    : isVendor
+      ? (vendorTickets || [])
+      : isEmployeeWithSelfTickets
+        ? (employeeTickets || [])
+        : tickets;
 
   // Prefetch logic triggered by grid navigation
   const handlePaginationChange = useCallback(async (newModel) => {
-    if (isNormalUser || isEmployeeWithSelfTickets) return;
+    if (isPortalUser || isEmployeeWithSelfTickets) return;
 
     const currentPage = newModel.page;
     const nextPage = currentPage + 1; // Always prefetch the next contiguous page
@@ -203,7 +220,7 @@ export default function DashboardPage() {
         console.error('Failed to prefetch page', nextPage, err);
       }
     }
-  }, [fetchedPages, isNormalUser, selectedDept]);
+  }, [fetchedPages, isPortalUser, selectedDept]);
 
   // Fetch counts from API stats response
   const getDeptCount = (deptName) => {
@@ -255,10 +272,12 @@ export default function DashboardPage() {
     const cDate = t.createdDate ? new Date(t.createdDate).toLocaleString() : 'N/A';
     const targetDate = t.targetDate ? new Date(t.targetDate).toLocaleString() : 'N/A';
     const employee = t.employeeName || 'Unassigned';
+    const vendor = t.vendorName || 'Direct';
 
     return {
       id: `TK-${tId}`,
       customer: customerName,
+      vendor,
       serialNo: serial,
       branch: branch,
       status: status,
@@ -296,28 +315,32 @@ export default function DashboardPage() {
     height: 480,
   };
 
-  /* ── Customer-Specific Portal (Mobile Friendly) ── */
-  if (isNormalUser) {
+  /* ── Customer / Vendor Portal (Mobile Friendly) ── */
+  if (isPortalUser) {
     return (
       <Box>
         {/* Header */}
         <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
           <Box>
             <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>
-              My Support Portal
+              {isVendor ? 'Vendor Ticket Portal' : 'My Support Portal'}
             </Typography>
             <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
-              Track the progress of your repair requests
+              {isVendor
+                ? 'Create and track tickets submitted to the service center'
+                : 'Track the progress of your repair requests'}
             </Typography>
           </Box>
-          {/* <Button
-            variant="contained"
-            startIcon={<AddOutlinedIcon />}
-            onClick={handleNewTicketClick}
-            sx={{ fontWeight: 600, textTransform: 'none', py: 0.9 }}
-          >
-            New Support Request
-          </Button> */}
+          {isVendor && (
+            <Button
+              variant="contained"
+              startIcon={<AddOutlinedIcon />}
+              onClick={handleNewTicketClick}
+              sx={{ fontWeight: 600, textTransform: 'none', py: 0.9 }}
+            >
+              New Ticket
+            </Button>
+          )}
         </Box>
 
         {/* Search Input */}
@@ -340,9 +363,13 @@ export default function DashboardPage() {
         ) : filteredRows.length === 0 ? (
           <Paper sx={{ p: 4, textAlign: 'center', border: `1px dashed ${theme.palette.divider}`, bgcolor: 'transparent' }}>
             <Typography sx={{ fontSize: '14px', fontWeight: 600, color: theme.palette.text.secondary }}>
-              {searchQuery ? 'No tickets match your search.' : 'You have not submitted any repair tickets.'}
+              {searchQuery
+                ? 'No tickets match your search.'
+                : isVendor
+                  ? 'You have not created any tickets yet.'
+                  : 'You have not submitted any repair tickets.'}
             </Typography>
-            {!searchQuery && !isNormalUser && (
+            {!searchQuery && isVendor && (
               <Button
                 variant="outlined"
                 startIcon={<AddOutlinedIcon />}

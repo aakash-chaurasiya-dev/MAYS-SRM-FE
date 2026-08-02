@@ -41,6 +41,8 @@ export default function NewTicketPage() {
 
   const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
   const isNormalUser = rawRole === 'ROLE_USER';
+  const isVendor = rawRole === 'ROLE_VENDOR';
+  const isStaff = !isNormalUser && !isVendor;
 
   // --- 1. Form State ---
   const [form, setForm] = useState({
@@ -109,16 +111,21 @@ export default function NewTicketPage() {
   });
 
   const { data: customers = [] } = useQuery({
-    queryKey: ['users'],
-    queryFn: async () => (await api.get('/users')).data,
-    enabled: !isNormalUser,
+    queryKey: ['users', isVendor ? user?.userId : 'all'],
+    queryFn: async () => {
+      if (isVendor) {
+        return (await api.get(`/users/vendor/${user.userId}`)).data;
+      }
+      return (await api.get('/users')).data;
+    },
+    enabled: isStaff || (isVendor && !!user?.userId),
   });
 
   
   const { data: vendors = [] } = useQuery({
     queryKey: ['vendors'],
     queryFn: async () => (await api.get('/vendors')).data,
-    enabled: !isNormalUser,
+    enabled: isStaff,
   });
 
   const { data: brands = [] } = useQuery({
@@ -151,14 +158,17 @@ export default function NewTicketPage() {
   const { data: chargeTypes = [] } = useQuery({
     queryKey: ['chargeTypes'],
     queryFn: async () => (await api.get('/charge-types')).data?.data || (await api.get('/charge-types')).data || [],
+    enabled: isStaff,
   });
   const { data: products = [] } = useQuery({
     queryKey: ['products'],
     queryFn: async () => (await api.get('/inventory')).data?.data || (await api.get('/inventory')).data || [],
+    enabled: isStaff,
   });
   const { data: services = [] } = useQuery({
     queryKey: ['services'],
     queryFn: async () => (await api.get('/service-charges')).data?.data || (await api.get('/service-charges')).data || [],
+    enabled: isStaff,
   });
   const { data: billingStatuses = [] } = useQuery({
     queryKey: ['statuses'],
@@ -166,7 +176,8 @@ export default function NewTicketPage() {
       const res = await api.get('/statuses');
       return res.data?.data || res.data || [];
     },
-    select: (data) => data.filter(s => s.statusType === 'Billing' || s.statusType === 'BILLING')
+    select: (data) => data.filter(s => s.statusType === 'Billing' || s.statusType === 'BILLING'),
+    enabled: isStaff,
   });
   const { data: paymentModes = [] } = useQuery({
     queryKey: ['paymentModes'],
@@ -175,6 +186,7 @@ export default function NewTicketPage() {
       const data = res.data?.data || res.data || [];
       return data.map((pm, idx) => ({ ...pm, id: pm.payModeId || `fallback-pm-${idx}` }));
     },
+    enabled: isStaff,
   });
 
   // --- 4. Billing Items State & Handlers ---
@@ -217,9 +229,15 @@ export default function NewTicketPage() {
     }
   }, [meData, isNormalUser]);
 
+  useEffect(() => {
+    if (isVendor && user?.userId) {
+      setForm((prev) => ({ ...prev, vendorId: user.userId }));
+    }
+  }, [isVendor, user?.userId]);
+
   // Auto-populate customer info (Only for staff choosing a customer)
   useEffect(() => {
-    if (form.customerId && !isNormalUser && customers.length > 0) {
+    if (form.customerId && (isStaff || isVendor) && customers.length > 0) {
       const customer = customers.find((c) => String(c.userId) === String(form.customerId));
       if (customer) {
         setForm((prev) => ({ 
@@ -230,7 +248,7 @@ export default function NewTicketPage() {
           vendorId: customer.vendorId || prev.vendorId
         }));
       }
-    } else if (!isNormalUser && !form.customerId && !form.customCustomerName) {
+    } else if ((isStaff || isVendor) && !form.customerId && !form.customCustomerName) {
       setForm((prev) => ({ 
         ...prev, 
         phone: '', 
@@ -238,7 +256,7 @@ export default function NewTicketPage() {
         customerAddress: '' 
       }));
     }
-  }, [form.customerId, customers, isNormalUser, form.customCustomerName]);
+  }, [form.customerId, customers, isStaff, isVendor, form.customCustomerName]);
 
   // Auto-add Service Charge when Brand is selected
   useEffect(() => {
@@ -282,7 +300,7 @@ export default function NewTicketPage() {
     mutationFn: async () => {
       let finalCustomerId = form.customerId;
       
-      if (!finalCustomerId && form.customCustomerName && !isNormalUser) {
+      if (!finalCustomerId && form.customCustomerName && (isStaff || isVendor)) {
         const nameParts = form.customCustomerName.trim().split(' ');
         const firstName = nameParts[0] || 'Unknown';
         const lastName = nameParts.slice(1).join(' ') || '';
@@ -410,7 +428,8 @@ export default function NewTicketPage() {
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2.5}>
         <Box sx={{ flex: 1 }}>
           <CustomerDetails 
-            isNormalUser={isNormalUser} 
+            isNormalUser={isNormalUser}
+            isVendor={isVendor}
             form={form} 
             setForm={setForm} 
             handleChange={handleChange} 
@@ -459,7 +478,7 @@ export default function NewTicketPage() {
             secHdr={secHdr} 
           />
 
-          {!isNormalUser && (
+          {!isNormalUser && !isVendor && (
             <TicketAssignment 
               form={form} 
               setForm={setForm} 
@@ -472,7 +491,7 @@ export default function NewTicketPage() {
       </Stack>
       
       {/* --- Billing Charges --- */}
-      {!isNormalUser && (
+      {isStaff && (
         <Box sx={{ mt: 1 }}>
           <ChargeDetails 
             items={items} 
