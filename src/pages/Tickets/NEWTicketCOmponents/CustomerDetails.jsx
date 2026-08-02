@@ -8,7 +8,7 @@ import { useTheme } from '@mui/material/styles';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../../services/api';
 
-export default function CustomerDetails({ isNormalUser, form, setForm, handleChange, customers, vendors = [], lbl, secHdr }) {
+export default function CustomerDetails({ isNormalUser, isVendor = false, form, setForm, handleChange, customers, vendors = [], lbl, secHdr }) {
   const theme = useTheme();
 
   // Fetch vendor users when a vendorId is set from the selected customer
@@ -56,8 +56,8 @@ export default function CustomerDetails({ isNormalUser, form, setForm, handleCha
       <Divider />
       <Box sx={{ p: 2.5 }}>
 
-        {/* ── Vendor Selector ── */}
-        {!isNormalUser && (
+        {/* ── Vendor Selector (staff only) ── */}
+        {!isNormalUser && !isVendor && (
           <Box sx={{ mb: 2 }}>
             <Typography sx={lbl}>Vendor</Typography>
             <Autocomplete

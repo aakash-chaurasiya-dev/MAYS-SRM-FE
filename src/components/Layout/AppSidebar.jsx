@@ -170,8 +170,9 @@ export default function AppSidebar({
   const isEngineer = rawRole === 'ROLE_ENGINEER';
   const isPurchase = rawRole === 'ROLE_PURCHASE';
   const isNormalUser = rawRole === 'ROLE_USER';
+  const isVendor = rawRole === 'ROLE_VENDOR';
 
-  const dashboardLabel = isNormalUser || isEngineer || isPurchase ? 'My Tickets' : 'Dashboard';
+  const dashboardLabel = isNormalUser || isEngineer || isPurchase || isVendor ? 'My Tickets' : 'Dashboard';
   const enquiryLabel = isNormalUser ? 'My Enquiries' : 'Enquiry Management';
 
   const isActive = (path) => location.pathname === path;
@@ -422,7 +423,7 @@ export default function AppSidebar({
           />
         </RoleGuard>
 
-        <RoleGuard allowedRoles={[...MANAGER_ROLES, 'ROLE_ADMIN', 'ROLE_USER']}>
+        <RoleGuard allowedRoles={[...MANAGER_ROLES, 'ROLE_ADMIN', 'ROLE_USER', 'ROLE_VENDOR']}>
           <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
             <Button
               variant="contained"
