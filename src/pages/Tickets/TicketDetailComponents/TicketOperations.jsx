@@ -1,4 +1,4 @@
-import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+import { useState, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
 import { Box, Typography, Paper, Divider, Stack, TextField, MenuItem } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useQuery } from '@tanstack/react-query';
@@ -14,10 +14,10 @@ import { useAuth } from '../../../contexts/AuthContext';
 const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
   const theme = useTheme();
   const { user } = useAuth();
-  const userRole = user?.roles?.[0]?.authority || user?.role?.[0]?.authority;
+  // Match ProtectedRoute: role may be roles[0].authority or a plain string on user.role
+  const userRole = user?.roles?.[0]?.authority || (typeof user?.role === 'string' ? user.role : user?.role?.[0]?.authority);
 
   const [initialLoad, setInitialLoad] = useState(false);
-  const [originalEmployeeId, setOriginalEmployeeId] = useState('');
 
   // Form
   const [editForm, setEditForm] = useState({
@@ -35,18 +35,55 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
     },
   });
 
-  const { data: statuses = [] } = useQuery({
+  const { data: allStatuses = [] } = useQuery({
     queryKey: ['statuses'],
     queryFn: async () => {
       const res = await api.get('/statuses');
       return res.data?.data || res.data || [];
     },
-    select: (data) => data.filter(s => {
-      if (s.statusType !== 'Ticket' && s.statusType !== 'TICKET') return false;
-      if (s.allowedRoles && !s.allowedRoles.includes(userRole)) return false;
-      return true;
-    })
   });
+
+  // Ticket statuses: case-insensitive type, optional role + department filters (aligned with create flow)
+  const statuses = useMemo(() => {
+    const ticketStatuses = allStatuses.filter((s) => {
+      if (s.statusType && s.statusType.toLowerCase() !== 'ticket') return false;
+      if (s.allowedRoles && String(s.allowedRoles).trim() !== '') {
+        if (!userRole) return true; // don't hide options if role can't be resolved
+        const roles = String(s.allowedRoles).split(',').map((r) => r.trim()).filter(Boolean);
+        if (roles.length > 0 && !roles.includes(userRole)) return false;
+      }
+      return true;
+    });
+
+    const deptId = editForm.departmentId || ticket?.departmentId;
+    if (!deptId) return ticketStatuses;
+
+    const deptIdStr = String(deptId);
+    return ticketStatuses.filter((s) => {
+      const allowed = s.allowedDepartmentIds;
+      if (!allowed || String(allowed).trim() === '') return true;
+      return String(allowed).split(',').map((d) => d.trim()).includes(deptIdStr);
+    });
+  }, [allStatuses, userRole, editForm.departmentId, ticket?.departmentId]);
+
+  // Ensure current ticket status remains selectable/visible even if filters exclude it
+  const statusOptions = useMemo(() => {
+    const currentId = editForm.ticketStatusId || ticket?.ticketStatusId;
+    if (!currentId) return statuses;
+    const currentIdStr = String(currentId);
+    const alreadyListed = statuses.some((s) => String(s.statusId || s.id) === currentIdStr);
+    if (alreadyListed) return statuses;
+
+    const current = allStatuses.find((s) => String(s.statusId || s.id) === currentIdStr);
+    if (current) return [current, ...statuses];
+    if (ticket?.ticketStatusName) {
+      return [
+        { statusId: currentId, statusName: ticket.ticketStatusName },
+        ...statuses,
+      ];
+    }
+    return statuses;
+  }, [statuses, allStatuses, editForm.ticketStatusId, ticket?.ticketStatusId, ticket?.ticketStatusName]);
 
   // 2. Dependent Query: Only fetch employees when departmentId is set
   const { data: employees = [] } = useQuery({
@@ -68,12 +105,12 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
       setInitialLoad(true);
 
       const deptId = ticket?.departmentId || ticket?.department?.departmentId || '';
-      const statId = ticket?.ticketStatusId || '';
+      const statId = ticket?.ticketStatusId ?? '';
 
       setEditForm(prev => ({
         ...prev,
-        departmentId: deptId || '',
-        ticketStatusId: statId || '',
+        departmentId: deptId !== undefined && deptId !== null ? String(deptId) : '',
+        ticketStatusId: statId !== '' && statId !== null && statId !== undefined ? String(statId) : '',
       }));
     }
   }, [isEditMode, ticket]);
@@ -82,22 +119,13 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
   useEffect(() => {
     if (initialLoad && employees.length > 0) {
       const empId = ticket?.employeeId || ticket?.assigneeEmployeeId || ticket?.employee?.employeeId || '';
-      
-      setOriginalEmployeeId(String(empId));
-      setEditForm(prev => ({ ...prev, employeeId: empId }));
+      setEditForm(prev => ({
+        ...prev,
+        employeeId: empId !== '' && empId !== null && empId !== undefined ? String(empId) : '',
+      }));
       setInitialLoad(false);
     }
   }, [employees, initialLoad, ticket]);
-
-  // Auto-set status to Open if assigned to someone else
-  const isReassigned = editForm.employeeId && String(editForm.employeeId) !== String(originalEmployeeId);
-  const openStatus = statuses.find(s => (s.statusName || s.name)?.toLowerCase() === 'open');
-
-  useEffect(() => {
-    if (isReassigned && openStatus) {
-      setEditForm(prev => ({ ...prev, ticketStatusId: openStatus.statusId }));
-    }
-  }, [isReassigned, openStatus]);
 
   useImperativeHandle(ref, () => ({
     getFormData: () => {
@@ -129,12 +157,17 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
                 select 
                 fullWidth 
                 size="small" 
-                value={editForm.departmentId} 
+                value={editForm.departmentId || ''} 
                 onChange={(e) => setEditForm({...editForm, departmentId: e.target.value, employeeId: ''})} 
                 sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
               >
                 <MenuItem value="">Unassigned</MenuItem>
-                {departments.map(dep => <MenuItem key={dep.departmentId || dep.id} value={dep.departmentId || dep.id}>{dep.departmentName || dep.name}</MenuItem>)}
+                {departments.map(dep => {
+                  const id = String(dep.departmentId || dep.id);
+                  return (
+                    <MenuItem key={id} value={id}>{dep.departmentName || dep.name}</MenuItem>
+                  );
+                })}
               </TextField>
             ) : (
               <Typography sx={{ fontSize: '13px' }}>{department}</Typography>
@@ -147,13 +180,18 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
                 select 
                 fullWidth 
                 size="small" 
-                value={editForm.employeeId} 
+                value={editForm.employeeId || ''} 
                 onChange={(e) => setEditForm({...editForm, employeeId: e.target.value})} 
                 sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
                 disabled={!editForm.departmentId}
               >
                 <MenuItem value="">Unassigned</MenuItem>
-                {employees.map(emp => <MenuItem key={emp.employeeId || emp.id} value={emp.employeeId || emp.id}>{emp.employeeName || emp.name}</MenuItem>)}
+                {employees.map(emp => {
+                  const id = String(emp.employeeId || emp.id);
+                  return (
+                    <MenuItem key={id} value={id}>{emp.employeeName || emp.name}</MenuItem>
+                  );
+                })}
               </TextField>
             ) : (
               <Typography sx={{ fontSize: '13px' }}>{assignedTo}</Typography>
@@ -166,12 +204,18 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
                 select 
                 fullWidth 
                 size="small" 
-                value={editForm.ticketStatusId} 
+                value={editForm.ticketStatusId || ''} 
                 onChange={(e) => setEditForm({...editForm, ticketStatusId: e.target.value})} 
                 sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
-                disabled={isReassigned}
               >
-                {statuses.map(s => <MenuItem key={s.statusId || s.id} value={s.statusId || s.id}>{s.statusName || s.name}</MenuItem>)}
+                {statusOptions.map((s) => {
+                  const id = String(s.statusId || s.id);
+                  return (
+                    <MenuItem key={id} value={id}>
+                      {s.statusName || s.name}
+                    </MenuItem>
+                  );
+                })}
               </TextField>
             ) : (
               <Typography sx={{ fontSize: '13px' }}>{statusDisplay}</Typography>

@@ -18,7 +18,7 @@ export default function AccessoryManagementPage() {
   // Modal & Form State
   const [openModal, setOpenModal] = useState(false);
   const [modalMode, setModalMode] = useState('create');
-  
+
   // Delete Confirmation State
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const queryClient = useQueryClient();
@@ -105,7 +105,7 @@ export default function AccessoryManagementPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accessories'] });
       if (modalMode !== 'create') {
-        setSelectedIds([]); 
+        setSelectedIds([]);
         setClearSelectionKey(prev => prev + 1);
       }
       handleCloseModal();
@@ -151,20 +151,18 @@ export default function AccessoryManagementPage() {
       { field: 'accessoryName', headerName: 'Name', flex: 1.5, renderType: 'link' },
       { field: 'deviceTypeName', headerName: 'Device Type', flex: 1.5 },
       { field: 'description', headerName: 'Description', flex: 2 },
-      { 
-        field: 'insertDate', 
-        headerName: 'Created At', 
+      {
+        field: 'insertDate',
+        headerName: 'Created At',
         width: 160,
-        valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString() : '' 
+        valueGetter: (value) => value ? new Date(value) : null, type: 'date'
       },
-      { 
-        field: 'lastUpdateDate', 
-        headerName: 'Updated At', 
+      {
+        field: 'lastUpdateDate',
+        headerName: 'Updated At',
         width: 160,
-        valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString() : '' 
+        valueGetter: (value) => value ? new Date(value) : null, type: 'date'
       },
-      { field: 'insertDate', headerName: 'Created At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
-      { field: 'lastUpdateDate', headerName: 'Updated At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
     ],
     checkboxSelection: true,
     searchable: true,
@@ -190,8 +188,8 @@ export default function AccessoryManagementPage() {
   return (
     <Box sx={{ p: 2 }}>
 
-      <List 
-        config={config} 
+      <List
+        config={config}
         rowSelectionModel={selectedIds}
         onRowSelectionModelChange={setSelectedIds}
       />
@@ -219,10 +217,10 @@ export default function AccessoryManagementPage() {
       </Box>
 
       {/* ── Modal (Create/Update) ── */}
-      <Dialog 
-        open={openModal} 
-        onClose={handleCloseModal} 
-        maxWidth="sm" 
+      <Dialog
+        open={openModal}
+        onClose={handleCloseModal}
+        maxWidth="sm"
         fullWidth
         PaperProps={{
           sx: {

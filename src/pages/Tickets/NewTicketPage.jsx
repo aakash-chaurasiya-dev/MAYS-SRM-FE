@@ -18,6 +18,9 @@ import IssueDescription from './NEWTicketCOmponents/IssueDescription';
 import TicketAssignment from './NEWTicketCOmponents/TicketAssignment';
 import UploadAttachments from './NEWTicketCOmponents/UploadAttachments';
 import TicketAccessoriesChecklist from './NEWTicketCOmponents/TicketAccessoriesChecklist';
+
+import ProtectedRoute from '../../components/ProtectedRoute.jsx';
+
 const PRIORITIES = ['Low', 'Normal', 'High', 'Critical'];
 const WARRANTY_TYPES = ['Warranty', 'RMA', 'Out-of-Warranty', 'Internal'];
 
@@ -108,6 +111,13 @@ export default function NewTicketPage() {
   const { data: customers = [] } = useQuery({
     queryKey: ['users'],
     queryFn: async () => (await api.get('/users')).data,
+    enabled: !isNormalUser,
+  });
+
+  
+  const { data: vendors = [] } = useQuery({
+    queryKey: ['vendors'],
+    queryFn: async () => (await api.get('/vendors')).data,
     enabled: !isNormalUser,
   });
 
@@ -217,11 +227,16 @@ export default function NewTicketPage() {
           phone: customer.mobileNo || '', 
           email: customer.emailId || '',
           customerAddress: customer.address || '',
-          vendorId: customer.vendorId || ''
+          vendorId: customer.vendorId || prev.vendorId
         }));
       }
-    } else if (!isNormalUser && !form.customCustomerName) {
-      setForm((prev) => ({ ...prev, phone: '', email: '', customerAddress: '', vendorId: '', vendorUserId: '' }));
+    } else if (!isNormalUser && !form.customerId && !form.customCustomerName) {
+      setForm((prev) => ({ 
+        ...prev, 
+        phone: '', 
+        email: '', 
+        customerAddress: '' 
+      }));
     }
   }, [form.customerId, customers, isNormalUser, form.customCustomerName]);
 
@@ -278,7 +293,8 @@ export default function NewTicketPage() {
           emailId: form.email, 
           password: 'Mays123', 
           isActive: true,
-          address: form.customerAddress || ''
+          address: form.customerAddress || '',
+          vendorId: form.vendorId ? Number(form.vendorId) : null
         };
         const userRes = await api.post('/users', newUserPayload);
         finalCustomerId = userRes.data.userId;
@@ -399,6 +415,7 @@ export default function NewTicketPage() {
             setForm={setForm} 
             handleChange={handleChange} 
             customers={customers} 
+            vendors={vendors} 
             lbl={lbl} 
             secHdr={secHdr} 
           />

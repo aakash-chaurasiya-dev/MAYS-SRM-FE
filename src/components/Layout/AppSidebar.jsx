@@ -47,6 +47,8 @@ const MAINTENANCE_SUBS = [
   { label: 'Service Charges', path: '/maintenance/service-charges' },
   { label: 'Status', path: '/maintenance/status' },
   { label: 'Ticket Type', path: '/maintenance/ticket-type' },
+  { label: 'Referred Category', path: '/maintenance/referred-category' },
+  { label: 'Warranty Type', path: '/maintenance/warranty-type' },
 ];
 
 const REPORTS_SUBS = [
@@ -396,6 +398,21 @@ export default function AppSidebar({
             icon={BadgeOutlinedIcon}
             path="/users"
             active={isActive('/users')}
+            desktopOpen={desktopOpen}
+            onNav={handleNav}
+            navBtnSx={navBtnSx}
+            iconSx={iconSx}
+            textSx={textSx}
+            textProps={textProps}
+          />
+        </RoleGuard>
+
+        <RoleGuard allowedRoles={MANAGER_ROLES}>
+          <NavItem
+            label="Vendor Details"
+            icon={BadgeOutlinedIcon}
+            path="/vendors"
+            active={isActive('/vendors')}
             desktopOpen={desktopOpen}
             onNav={handleNav}
             navBtnSx={navBtnSx}
