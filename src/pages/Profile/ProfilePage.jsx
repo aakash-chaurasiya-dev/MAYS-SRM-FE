@@ -35,6 +35,7 @@ import { useAppThemeContext } from '../../theme/ThemeContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { getUserRole } from '../../access/featureAccess';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -171,7 +172,7 @@ export default function ProfilePage() {
   const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'U';
 
   // Sourced from Auth context. Non-employees are always 'USER'
-  const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
+  const rawRole = getUserRole(user);
   const role = isEmployee ? rawRole.replace('ROLE_', '') : 'USER';
 
   return (

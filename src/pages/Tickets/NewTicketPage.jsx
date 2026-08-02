@@ -10,16 +10,15 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { getUserRole } from '../../access/featureAccess';
 import { useGlobalLoading } from '../../contexts/GlobalLoadingContext';
 import ChargeDetails from '../Billing/components/ChargeDetails';
-import CustomerDetails from './NEWTicketCOmponents/CustomerDetails';
-import DeviceInformation from './NEWTicketCOmponents/DeviceInformation';
-import IssueDescription from './NEWTicketCOmponents/IssueDescription';
-import TicketAssignment from './NEWTicketCOmponents/TicketAssignment';
-import UploadAttachments from './NEWTicketCOmponents/UploadAttachments';
-import TicketAccessoriesChecklist from './NEWTicketCOmponents/TicketAccessoriesChecklist';
-
-import ProtectedRoute from '../../components/ProtectedRoute.jsx';
+import CustomerDetails from './NewTicketComponents/CustomerDetails.jsx';
+import DeviceInformation from './NewTicketComponents/DeviceInformation.jsx';
+import IssueDescription from './NewTicketComponents/IssueDescription.jsx';
+import TicketAssignment from './NewTicketComponents/TicketAssignment.jsx';
+import UploadAttachments from './NewTicketComponents/UploadAttachments.jsx';
+import TicketAccessoriesChecklist from './NewTicketComponents/TicketAccessoriesChecklist.jsx';
 
 const PRIORITIES = ['Low', 'Normal', 'High', 'Critical'];
 const WARRANTY_TYPES = ['Warranty', 'RMA', 'Out-of-Warranty', 'Internal'];
@@ -39,7 +38,7 @@ export default function NewTicketPage() {
   const { user } = useAuth();
   const { showLoading, hideLoading } = useGlobalLoading();
 
-  const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
+  const rawRole = getUserRole(user);
   const isNormalUser = rawRole === 'ROLE_USER';
   const isVendor = rawRole === 'ROLE_VENDOR';
   const isStaff = !isNormalUser && !isVendor;

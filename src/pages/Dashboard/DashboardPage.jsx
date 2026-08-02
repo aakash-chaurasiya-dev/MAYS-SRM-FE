@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import List from '../../stereotype/AbstractList/List';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { getUserRole } from '../../access/featureAccess';
 import { useGlobalLoading } from '../../contexts/GlobalLoadingContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -95,7 +96,7 @@ export default function DashboardPage() {
   const [fetchedPages, setFetchedPages] = useState(new Set());
   const [selectedDept, setSelectedDept] = useState('All');
 
-  const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
+  const rawRole = getUserRole(user);
   const isNormalUser = rawRole === 'ROLE_USER';
   const isVendor = rawRole === 'ROLE_VENDOR';
   const isPortalUser = isNormalUser || isVendor;

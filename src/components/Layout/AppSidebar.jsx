@@ -26,7 +26,8 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useTheme } from '@mui/material/styles';
 import { useAuth } from '../../contexts/AuthContext';
 import { useGlobalLoading } from '../../contexts/GlobalLoadingContext';
-import RoleGuard, { getUserRole } from '../RoleGuard';
+import Can from '../../access/Can';
+import { getUserRole } from '../../access/featureAccess';
 import Logo from '../Logo/Logo';
 
 const INVENTORY_SUBS = [
@@ -56,8 +57,6 @@ const REPORTS_SUBS = [
   { label: 'Device Management', path: '/reports/device' },
   { label: 'User Entry Report', path: '/reports/user-entry' },
 ];
-
-const MANAGER_ROLES = ['ROLE_MANAGER', 'ROLE_EXECUTIVE'];
 
 function SubNavList({ items, isActive, onNav, theme }) {
   return (
@@ -288,7 +287,7 @@ export default function AppSidebar({
           textProps={textProps}
         />
 
-        <RoleGuard allowedRoles={[...MANAGER_ROLES, 'ROLE_ADMIN', 'ROLE_USER']}>
+        <Can feature="enquiries">
           <NavItem
             label={enquiryLabel}
             icon={SupportAgentOutlinedIcon}
@@ -301,9 +300,9 @@ export default function AppSidebar({
             textSx={textSx}
             textProps={textProps}
           />
-        </RoleGuard>
+        </Can>
 
-        <RoleGuard allowedRoles={[...MANAGER_ROLES, 'ROLE_PURCHASE']}>
+        <Can feature="inventory">
           <CollapsibleNavSection
             label="Inventory"
             icon={Inventory2OutlinedIcon}
@@ -321,9 +320,9 @@ export default function AppSidebar({
             textProps={textProps}
             theme={theme}
           />
-        </RoleGuard>
+        </Can>
 
-        <RoleGuard allowedRoles={MANAGER_ROLES}>
+        <Can feature="maintenance">
           <CollapsibleNavSection
             label="Maintenance"
             icon={BuildOutlinedIcon}
@@ -341,9 +340,9 @@ export default function AppSidebar({
             textProps={textProps}
             theme={theme}
           />
-        </RoleGuard>
+        </Can>
 
-        <RoleGuard allowedRoles={MANAGER_ROLES}>
+        <Can feature="billing">
           <NavItem
             label="Billing"
             icon={ReceiptLongOutlinedIcon}
@@ -356,9 +355,9 @@ export default function AppSidebar({
             textSx={textSx}
             textProps={textProps}
           />
-        </RoleGuard>
+        </Can>
 
-        <RoleGuard allowedRoles={MANAGER_ROLES}>
+        <Can feature="reports">
           <CollapsibleNavSection
             label="Reports"
             icon={AnalyticsOutlinedIcon}
@@ -376,9 +375,9 @@ export default function AppSidebar({
             textProps={textProps}
             theme={theme}
           />
-        </RoleGuard>
+        </Can>
 
-        <RoleGuard allowedRoles={MANAGER_ROLES}>
+        <Can feature="employees">
           <NavItem
             label="Employee Management"
             icon={BadgeOutlinedIcon}
@@ -391,9 +390,9 @@ export default function AppSidebar({
             textSx={textSx}
             textProps={textProps}
           />
-        </RoleGuard>
+        </Can>
 
-        <RoleGuard allowedRoles={MANAGER_ROLES}>
+        <Can feature="users">
           <NavItem
             label="User Details"
             icon={BadgeOutlinedIcon}
@@ -406,9 +405,9 @@ export default function AppSidebar({
             textSx={textSx}
             textProps={textProps}
           />
-        </RoleGuard>
+        </Can>
 
-        <RoleGuard allowedRoles={MANAGER_ROLES}>
+        <Can feature="vendors">
           <NavItem
             label="Vendor Details"
             icon={BadgeOutlinedIcon}
@@ -421,9 +420,9 @@ export default function AppSidebar({
             textSx={textSx}
             textProps={textProps}
           />
-        </RoleGuard>
+        </Can>
 
-        <RoleGuard allowedRoles={[...MANAGER_ROLES, 'ROLE_ADMIN', 'ROLE_USER', 'ROLE_VENDOR']}>
+        <Can feature="newTicket">
           <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
             <Button
               variant="contained"
@@ -444,7 +443,7 @@ export default function AppSidebar({
               {desktopOpen ? 'New Ticket' : <AddIcon fontSize="small" />}
             </Button>
           </Box>
-        </RoleGuard>
+        </Can>
       </MuiList>
 
       <Box sx={{ mt: 'auto', p: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
