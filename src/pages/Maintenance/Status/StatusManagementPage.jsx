@@ -29,12 +29,17 @@ export default function StatusManagementPage() {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const { data: rawStatuses = [] } = useQuery({
+  const { data: statuses = [] } = useQuery({
     queryKey: ['statuses'],
     queryFn: async () => {
       const response = await api.get('/statuses');
       return response.data?.data || response.data || [];
     },
+    select: (data) =>
+      data.map((s, index) => ({
+        ...s,
+        id: s.statusId || `fallback-id-${index}`,
+      })),
     staleTime: 1000 * 60 * 60,
   });
 
@@ -46,13 +51,6 @@ export default function StatusManagementPage() {
     },
     staleTime: 1000 * 60 * 60,
   });
-
-  const statuses = useMemo(() => {
-    return rawStatuses.map((s, index) => ({
-      ...s,
-      id: s.statusId || `fallback-id-${index}`,
-    }));
-  }, [rawStatuses]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');

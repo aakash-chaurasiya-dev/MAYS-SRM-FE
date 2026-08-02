@@ -29,21 +29,19 @@ export default function ChargeTypeManagementPage() {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const { data: rawChargeTypes = [] } = useQuery({
+  const { data: chargeTypes = [] } = useQuery({
     queryKey: ['chargeTypes'],
     queryFn: async () => {
       const response = await api.get('/charge-types');
       return response.data?.data || response.data || [];
     },
+    select: (data) =>
+      data.map((ct, index) => ({
+        ...ct,
+        id: ct.chargeTypeId || `fallback-id-${index}`,
+      })),
     staleTime: 1000 * 60 * 60,
   });
-
-  const chargeTypes = useMemo(() => {
-    return rawChargeTypes.map((ct, index) => ({
-      ...ct,
-      id: ct.chargeTypeId || `fallback-id-${index}`,
-    }));
-  }, [rawChargeTypes]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');

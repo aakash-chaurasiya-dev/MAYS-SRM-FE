@@ -30,21 +30,19 @@ export default function DepartmentManagementPage() {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const { data: rawDepartments = [] } = useQuery({
+  const { data: departments = [] } = useQuery({
     queryKey: ['departments'],
     queryFn: async () => {
       const response = await api.get('/departments');
       return response.data?.data || response.data || [];
     },
+    select: (data) =>
+      data.map((dept, index) => ({
+        ...dept,
+        id: dept.departmentId || `fallback-id-${index}`,
+      })),
     staleTime: 1000 * 60 * 60,
   });
-
-  const departments = useMemo(() => {
-    return rawDepartments.map((dept, index) => ({
-      ...dept,
-      id: dept.departmentId || `fallback-id-${index}`,
-    }));
-  }, [rawDepartments]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');

@@ -31,21 +31,19 @@ export default function PaymentModeManagementPage() {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const { data: rawPaymentModes = [] } = useQuery({
+  const { data: paymentModes = [] } = useQuery({
     queryKey: ['paymentModes'],
     queryFn: async () => {
       const response = await api.get('/payment-modes');
       return response.data?.data || response.data || [];
     },
+    select: (data) =>
+      data.map((pm, index) => ({
+        ...pm,
+        id: pm.payModeId || `fallback-id-${index}`,
+      })),
     staleTime: 1000 * 60 * 60,
   });
-
-  const paymentModes = useMemo(() => {
-    return rawPaymentModes.map((pm, index) => ({
-      ...pm,
-      id: pm.payModeId || `fallback-id-${index}`,
-    }));
-  }, [rawPaymentModes]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');

@@ -29,21 +29,19 @@ export default function BranchManagementPage() {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const { data: rawBranches = [] } = useQuery({
+  const { data: branches = [] } = useQuery({
     queryKey: ['branches'],
     queryFn: async () => {
       const response = await api.get('/branches');
       return response.data?.data || response.data || [];
     },
+    select: (data) =>
+      data.map((branch, index) => ({
+        ...branch,
+        id: branch.branchId || `fallback-id-${index}`,
+      })),
     staleTime: 1000 * 60 * 60, // 1 hour
   });
-
-  const branches = useMemo(() => {
-    return rawBranches.map((branch, index) => ({
-      ...branch,
-      id: branch.branchId || `fallback-id-${index}`,
-    }));
-  }, [rawBranches]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');
