@@ -1,9 +1,12 @@
-import React from 'react';
+import { useMemo } from 'react';
 import { Box, Paper, Typography, TextField, MenuItem, Divider, Stack } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../../services/api';
+import { useAuth } from '../../../contexts/AuthContext';
 
 export default function TicketAssignment({ form, setForm, handleChange, lbl, secHdr }) {
+  const { user } = useAuth();
+  const userRole = user?.roles?.[0]?.authority || (typeof user?.role === 'string' ? user.role : user?.role?.[0]?.authority);
 
   // Lookups
   const { data: departments = [] } = useQuery({
@@ -14,13 +17,13 @@ export default function TicketAssignment({ form, setForm, handleChange, lbl, sec
     },
   });
 
-  const { data: statuses = [] } = useQuery({
+  const { data: allStatuses = [] } = useQuery({
     queryKey: ['statuses'],
     queryFn: async () => {
       const res = await api.get('/statuses');
       return res.data?.data || res.data || [];
     },
-    select: (data) => data.filter(s => s.statusType === 'Ticket' || s.statusType === 'TICKET')
+    staleTime: 1000 * 60 * 60,
   });
 
   const { data: employees = [] } = useQuery({
@@ -32,14 +35,27 @@ export default function TicketAssignment({ form, setForm, handleChange, lbl, sec
     enabled: !!form.departmentId,
   });
 
-  // Find the "Open" status and lock it
-  const openStatus = statuses.find(s => (s.statusName || s.name)?.toLowerCase() === 'open');
+  // Same status filtering as TicketOperations: ticket type + role + department
+  const statusOptions = useMemo(() => {
+    const ticketStatuses = allStatuses.filter((s) => {
+      if (s.statusType && s.statusType.toLowerCase() !== 'ticket') return false;
+      if (s.allowedRoles && String(s.allowedRoles).trim() !== '') {
+        if (!userRole) return true;
+        const roles = String(s.allowedRoles).split(',').map((r) => r.trim()).filter(Boolean);
+        if (roles.length > 0 && !roles.includes(userRole)) return false;
+      }
+      return true;
+    });
 
-  React.useEffect(() => {
-    if (openStatus && form.ticketStatusId !== openStatus.statusId) {
-      setForm(prev => ({ ...prev, ticketStatusId: openStatus.statusId }));
-    }
-  }, [openStatus, form.ticketStatusId, setForm]);
+    if (!form.departmentId) return ticketStatuses;
+
+    const deptIdStr = String(form.departmentId);
+    return ticketStatuses.filter((s) => {
+      const allowed = s.allowedDepartmentIds;
+      if (!allowed || String(allowed).trim() === '') return true;
+      return String(allowed).split(',').map((d) => d.trim()).includes(deptIdStr);
+    });
+  }, [allStatuses, userRole, form.departmentId]);
 
   return (
     <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
@@ -60,11 +76,14 @@ export default function TicketAssignment({ form, setForm, handleChange, lbl, sec
               sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
             >
               <MenuItem value="">Unassigned</MenuItem>
-              {departments.map(dep => (
-                <MenuItem key={dep.departmentId || dep.id} value={dep.departmentId || dep.id}>
-                  {dep.departmentName || dep.name}
-                </MenuItem>
-              ))}
+              {departments.map(dep => {
+                const id = String(dep.departmentId || dep.id);
+                return (
+                  <MenuItem key={id} value={id}>
+                    {dep.departmentName || dep.name}
+                  </MenuItem>
+                );
+              })}
             </TextField>
           </Box>
           <Box>
@@ -79,11 +98,14 @@ export default function TicketAssignment({ form, setForm, handleChange, lbl, sec
               disabled={!form.departmentId}
             >
               <MenuItem value="">Unassigned</MenuItem>
-              {employees.map(emp => (
-                <MenuItem key={emp.employeeId || emp.id} value={emp.employeeId || emp.id}>
-                  {emp.employeeName || emp.name}
-                </MenuItem>
-              ))}
+              {employees.map(emp => {
+                const id = String(emp.employeeId || emp.id);
+                return (
+                  <MenuItem key={id} value={id}>
+                    {emp.employeeName || emp.name}
+                  </MenuItem>
+                );
+              })}
             </TextField>
           </Box>
           <Box>
@@ -92,16 +114,19 @@ export default function TicketAssignment({ form, setForm, handleChange, lbl, sec
               select
               fullWidth
               size="small"
-              value={form.ticketStatusId || ''}
+              value={form.ticketStatusId ? String(form.ticketStatusId) : ''}
               onChange={handleChange('ticketStatusId')}
               sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
-              disabled={true} // Unconditionally locked
             >
-              {statuses.map(s => (
-                <MenuItem key={s.statusId || s.id} value={s.statusId || s.id}>
-                  {s.statusName || s.name}
-                </MenuItem>
-              ))}
+              <MenuItem value="">— Select Status —</MenuItem>
+              {statusOptions.map((s) => {
+                const id = String(s.statusId || s.id);
+                return (
+                  <MenuItem key={id} value={id}>
+                    {s.statusName || s.name}
+                  </MenuItem>
+                );
+              })}
             </TextField>
           </Box>
           <Box>

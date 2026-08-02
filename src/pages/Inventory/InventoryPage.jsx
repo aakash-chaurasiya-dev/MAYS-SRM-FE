@@ -63,7 +63,7 @@ export default function InventoryPage() {
       try {
         const response = await api.get('/brands');
         setBrands(response.data?.data || response.data || []);
-      } catch (error) {}
+      } catch { /* ignored */ }
     };
     fetchBrands();
 
@@ -71,7 +71,7 @@ export default function InventoryPage() {
       try {
         const response = await api.get('/branches');
         setBranches(response.data?.data || response.data || []);
-      } catch (error) {}
+      } catch { /* ignored */ }
     };
     fetchBranches();
   }, [fetchInventory]);
@@ -243,12 +243,12 @@ export default function InventoryPage() {
 
   return (
     <Box sx={{ p: 2, pt: 3 }}>
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 2, mb: 3 }}>
+      {/* <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 2, mb: 3 }}>
         <Box>
           <Typography sx={{ fontSize: '24px', fontWeight: 600, letterSpacing: '-0.01em', color: theme.palette.text.primary }}>Purchase & Inventory</Typography>
           <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>Manage workshop inventory levels</Typography>
         </Box>
-      </Box>
+      </Box> */}
 
       <List 
         config={config} 

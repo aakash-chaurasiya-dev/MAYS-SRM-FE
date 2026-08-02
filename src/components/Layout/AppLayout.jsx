@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Box, useMediaQuery } from '@mui/material';
-import { Outlet } from 'react-router-dom';
+import KeepAliveOutlet from './KeepAliveOutlet';
 import AppSidebar from './AppSidebar';
 import TabBar from './TabBar';
 import UserEntryModal from '../UserEntryModal';
@@ -110,7 +110,7 @@ export default function AppLayout() {
             overflow: 'auto',
           }}
         >
-          <Outlet />
+          <KeepAliveOutlet />
         </Box>
       </Box>
       

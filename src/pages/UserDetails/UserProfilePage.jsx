@@ -1,6 +1,6 @@
-import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import {
     Box, Typography, Card, CardContent, Divider, CircularProgress,
     Button, Avatar, useTheme, Chip, Stack
@@ -8,9 +8,9 @@ import {
 import api from '../../services/api';
 
 export default function UserProfilePage() {
+  const navigate = useNavigate();
     const { id } = useParams();
-    const navigate = useNavigate();
-    const theme = useTheme();
+      const theme = useTheme();
 
     // 1. Fetch User Details
     const { data: user, isLoading: loadingUser } = useQuery({
@@ -33,7 +33,7 @@ export default function UserProfilePage() {
     });
 
     // Sort tickets by createdDate descending (newest first)
-    const tickets = React.useMemo(() => {
+    const tickets = useMemo(() => {
         return [...rawTickets].sort((a, b) => {
             if (!a.createdDate) return 1;
             if (!b.createdDate) return -1;

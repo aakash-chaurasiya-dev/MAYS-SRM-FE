@@ -11,7 +11,6 @@ import ConfirmationNumberOutlinedIcon from '@mui/icons-material/ConfirmationNumb
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
-
 const CONFIG_ITEMS = [
   { key: 'accessories', label: 'Ticket Accessories', desc: 'Manage list of device accessories.', icon: <CategoryOutlinedIcon />, path: '/maintenance/accessories' },
   { key: 'branch', label: 'Branch', desc: 'Manage workshop locations and centers.', icon: <StorefrontOutlinedIcon />, path: '/maintenance/branch' },
@@ -29,8 +28,8 @@ const CONFIG_ITEMS = [
 ];
 
 export default function MaintenancePage() {
-  const theme = useTheme();
   const navigate = useNavigate();
+  const theme = useTheme();
 
   return (
     <Box>

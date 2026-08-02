@@ -1,19 +1,19 @@
 import { useState, useMemo } from 'react';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, Button, Divider, Typography } from '@mui/material';
+import { Box, Dialog, DialogTitle, DialogContent, DialogActions, TextField, CircularProgress, Button, Divider, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { List } from '../../../stereotype/AbstractList';
 import api from '../../../services/api';
-import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '@mui/material/styles';
 import DeleteConfirmDialog from '../../../components/DeleteConfirmDialog';
 
 export default function PaymentModeManagementPage() {
-  const theme = useTheme();
   const navigate = useNavigate();
+  const theme = useTheme();
   const queryClient = useQueryClient();
 
   const [selectedIds, setSelectedIds] = useState([]);
@@ -135,8 +135,8 @@ export default function PaymentModeManagementPage() {
       { field: 'id', headerName: 'ID', width: 90 },
       { field: 'paymentMode', headerName: 'Payment Mode', flex: 1.2, renderType: 'link' },
       { field: 'description', headerName: 'Description', flex: 2 },
-      { field: 'insertDate', headerName: 'Created At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
-      { field: 'lastUpdateDate', headerName: 'Updated At', width: 130, type: 'date', valueGetter: (params) => params.value ? new Date(params.value) : null },
+      { field: 'insertDate', headerName: 'Created At', width: 130, type: 'date', valueGetter: (value) => value ? new Date(value) : null },
+      { field: 'lastUpdateDate', headerName: 'Updated At', width: 130, type: 'date', valueGetter: (value) => value ? new Date(value) : null },
     ],
     checkboxSelection: true,
     searchable: true,

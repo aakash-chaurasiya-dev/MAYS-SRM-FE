@@ -19,8 +19,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function LoginPage() {
-  const theme = useTheme();
   const navigate = useNavigate();
+  const theme = useTheme();
   const location = useLocation();
   const { login } = useAuth();
   

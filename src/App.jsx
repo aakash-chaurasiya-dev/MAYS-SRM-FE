@@ -73,7 +73,7 @@ function App() {
                 <Route path="/tickets/:id" element={<TicketDetailPage />} />
 
                 {/* New Ticket & Enquiry Routes (Accessible by Manager, Admin, and Customer/ROLE_USER) */}
-                <Route element={<ProtectedRoute allowedRoles={['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN', 'ROLE_USER']} />}>
+                <Route element={<ProtectedRoute allowedRoles={['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN', 'ROLE_USER', 'ROLE_VENDOR']} />}>
                   <Route path="/tickets/new" element={<NewTicketPage />} />
                   <Route path="/enquiries" element={<EnquiriesPage />} />
                 </Route>
@@ -126,6 +126,8 @@ function App() {
                   <Route path="/settings" element={<Box sx={{ p: 3 }}>Settings Page (WIP)</Box>} />
                   <Route path="/support" element={<Box sx={{ p: 3 }}>Support Desk (WIP)</Box>} />
                 </Route>
+
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Route>
             </Route>
           </Routes>

@@ -18,6 +18,9 @@ import IssueDescription from './NEWTicketCOmponents/IssueDescription';
 import TicketAssignment from './NEWTicketCOmponents/TicketAssignment';
 import UploadAttachments from './NEWTicketCOmponents/UploadAttachments';
 import TicketAccessoriesChecklist from './NEWTicketCOmponents/TicketAccessoriesChecklist';
+
+import ProtectedRoute from '../../components/ProtectedRoute.jsx';
+
 const PRIORITIES = ['Low', 'Normal', 'High', 'Critical'];
 const WARRANTY_TYPES = ['Warranty', 'RMA', 'Out-of-Warranty', 'Internal'];
 
@@ -31,8 +34,8 @@ const defaultLineItem = () => ({
 });
 
 export default function NewTicketPage() {
-  const theme = useTheme();
   const navigate = useNavigate();
+  const theme = useTheme();
   const { user } = useAuth();
   const { showLoading, hideLoading } = useGlobalLoading();
 
@@ -67,6 +70,7 @@ export default function NewTicketPage() {
   });
 
   const [selectedAccessories, setSelectedAccessories] = useState([]);
+  const [pendingFiles, setPendingFiles] = useState([]);
 
   const handleChange = (field) => (e) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -107,6 +111,13 @@ export default function NewTicketPage() {
   const { data: customers = [] } = useQuery({
     queryKey: ['users'],
     queryFn: async () => (await api.get('/users')).data,
+    enabled: !isNormalUser,
+  });
+
+  
+  const { data: vendors = [] } = useQuery({
+    queryKey: ['vendors'],
+    queryFn: async () => (await api.get('/vendors')).data,
     enabled: !isNormalUser,
   });
 
@@ -216,11 +227,16 @@ export default function NewTicketPage() {
           phone: customer.mobileNo || '', 
           email: customer.emailId || '',
           customerAddress: customer.address || '',
-          vendorId: customer.vendorId || ''
+          vendorId: customer.vendorId || prev.vendorId
         }));
       }
-    } else if (!isNormalUser && !form.customCustomerName) {
-      setForm((prev) => ({ ...prev, phone: '', email: '', customerAddress: '', vendorId: '', vendorUserId: '' }));
+    } else if (!isNormalUser && !form.customerId && !form.customCustomerName) {
+      setForm((prev) => ({ 
+        ...prev, 
+        phone: '', 
+        email: '', 
+        customerAddress: '' 
+      }));
     }
   }, [form.customerId, customers, isNormalUser, form.customCustomerName]);
 
@@ -277,7 +293,8 @@ export default function NewTicketPage() {
           emailId: form.email, 
           password: 'Mays123', 
           isActive: true,
-          address: form.customerAddress || ''
+          address: form.customerAddress || '',
+          vendorId: form.vendorId ? Number(form.vendorId) : null
         };
         const userRes = await api.post('/users', newUserPayload);
         finalCustomerId = userRes.data.userId;
@@ -325,6 +342,18 @@ export default function NewTicketPage() {
           accessoryId: accId
         }));
         await api.post('/ticket-accessories/bulk', accPayload);
+      }
+
+      if (newTicketId && pendingFiles.length > 0) {
+        await Promise.all(
+          pendingFiles.map((file) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            return api.post(`/tickets/${newTicketId}/attachments`, formData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+            });
+          })
+        );
       }
 
       return newTicketId;
@@ -386,6 +415,7 @@ export default function NewTicketPage() {
             setForm={setForm} 
             handleChange={handleChange} 
             customers={customers} 
+            vendors={vendors} 
             lbl={lbl} 
             secHdr={secHdr} 
           />
@@ -402,7 +432,7 @@ export default function NewTicketPage() {
             secHdr={secHdr} 
           />
 
-          <UploadAttachments secHdr={secHdr} />
+          <UploadAttachments secHdr={secHdr} files={pendingFiles} onChange={setPendingFiles} />
 
           {/* Ticket Accessories */}
           {form.deviceTypeId && (

@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Box, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, CircularProgress, Button, Divider, Typography, MenuItem } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -10,9 +10,9 @@ import api from '../../services/api';
 import { useTheme } from '@mui/material/styles';
 
 export default function UserDetailsPage() {
+  const navigate = useNavigate();
   const theme = useTheme();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   const { data: usersData, isLoading: loadingUsers } = useQuery({
     queryKey: ['users'],
@@ -32,6 +32,15 @@ export default function UserDetailsPage() {
     staleTime: 60 * 60 * 1000, // 1 hour
   });
 
+  const { data: vendorsData, isLoading: loadingVendors } = useQuery({
+    queryKey: ['vendors'],
+    queryFn: async () => {
+      const response = await api.get('/vendors');
+      return response.data?.data || response.data || [];
+    },
+    staleTime: 60 * 60 * 1000, // 1 hour
+  });
+
   const users = useMemo(() => {
     if (!usersData) return [];
     return usersData.map((u, index) => ({
@@ -41,6 +50,7 @@ export default function UserDetailsPage() {
   }, [usersData]);
 
   const branches = branchesData || [];
+  const vendors = vendorsData || [];
 
   const [selectedIds, setSelectedIds] = useState([]);
   const [clearSelectionKey, setClearSelectionKey] = useState(0);
@@ -55,7 +65,7 @@ export default function UserDetailsPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const initialFormState = {
-    userId: '', mobileNo: '', firstName: '', lastName: '', emailId: '', password: '', address: '', branchId: '', isActive: true,
+    userId: '', mobileNo: '', firstName: '', lastName: '', emailId: '', password: '', address: '', branchId: '', vendorId: '', isActive: true,
   };
   const [formData, setFormData] = useState(initialFormState);
 
@@ -91,6 +101,7 @@ export default function UserDetailsPage() {
         password: '', // Usually we do not pre-fill passwords
         address: uToUpdate.address || '',
         branchId: uToUpdate.branchId || matchedBranchId,
+        vendorId: uToUpdate.vendorId || '',
         isActive: uToUpdate.isActive === true || uToUpdate.isActive === 'true' || uToUpdate.isActive === 1,
       });
       setOpenModal(true);
@@ -121,6 +132,7 @@ export default function UserDetailsPage() {
         emailId: formData.emailId,
         address: formData.address,
         branchId: formData.branchId,
+        vendorId: formData.vendorId ? Number(formData.vendorId) : null,
         isActive: formData.isActive,
       };
 
@@ -164,7 +176,7 @@ export default function UserDetailsPage() {
   const config = useMemo(() => ({
     title: 'User Details',
     subtitle: `${users.length} users registered`,
-    loading: loadingUsers || loadingBranches,
+    loading: loadingUsers || loadingBranches || loadingVendors,
     rows: users,
     columns: [
       { field: 'id', headerName: 'ID', width: 70 },
@@ -178,6 +190,7 @@ export default function UserDetailsPage() {
       { field: 'mobileNo', headerName: 'Mobile', flex: 1 },
       { field: 'emailId', headerName: 'Email', flex: 1.5 },
       { field: 'branchName', headerName: 'Branch', flex: 1 },
+      { field: 'vendorName', headerName: 'Vendor', flex: 1 },
       { field: 'address', headerName: 'Address', flex: 1.5 },
       { 
         field: 'isActive', 
@@ -320,6 +333,25 @@ export default function UserDetailsPage() {
               {branches.length === 0 && (
                  <MenuItem value={formData.branchId} sx={{ display: formData.branchId ? 'block' : 'none' }}>
                    {formData.branchId} (Current)
+                 </MenuItem>
+              )}
+            </TextField>
+
+            <Typography sx={{ ...lbl, mt: 0 }}>Vendor Assignment</Typography>
+            <TextField
+              fullWidth size="small" select
+              name="vendorId" value={formData.vendorId} onChange={handleFormChange} required
+              sx={{ mb: 2 }}
+            >
+              <MenuItem value="" disabled>Select a vendor…</MenuItem>
+              {vendors.map((v) => (
+                <MenuItem key={v.id} value={v.id}>
+                  {v.name}
+                </MenuItem>
+              ))}
+              {vendors.length === 0 && (
+                 <MenuItem value={formData.vendorId} sx={{ display: formData.vendorId ? 'block' : 'none' }}>
+                   {formData.vendorId} (Current)
                  </MenuItem>
               )}
             </TextField>

@@ -21,12 +21,12 @@ import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
-import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { useNavigate } from 'react-router-dom';
 
 export default function RegisterPage() {
-  const theme = useTheme();
   const navigate = useNavigate();
+  const theme = useTheme();
 
   const [form, setForm] = useState({
     firstName: '',

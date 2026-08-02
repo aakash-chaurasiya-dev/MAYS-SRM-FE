@@ -1,33 +1,33 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  Box, Drawer, List as MuiList, ListItemButton, ListItemIcon, ListItemText,
-  Divider, Button, Collapse, Avatar, Typography
+  Box,
+  Drawer,
+  List as MuiList,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Divider,
+  Button,
+  Collapse,
+  Avatar,
+  Typography,
 } from '@mui/material';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import BuildOutlinedIcon from '@mui/icons-material/BuildOutlined';
 import AnalyticsOutlinedIcon from '@mui/icons-material/AnalyticsOutlined';
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
-import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
-import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import AddIcon from '@mui/icons-material/Add';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import Brightness4Icon from '@mui/icons-material/Brightness4';
-import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { useTheme } from '@mui/material/styles';
-import { useAppThemeContext } from '../../theme/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useGlobalLoading } from '../../contexts/GlobalLoadingContext';
-import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
+import RoleGuard, { getUserRole } from '../RoleGuard';
 import Logo from '../Logo/Logo';
-
-const NAV_ITEMS = [
-  { label: 'Dashboard', icon: <DashboardOutlinedIcon />, path: '/dashboard' },
-];
 
 const INVENTORY_SUBS = [
   { label: 'Inventory List', path: '/inventory' },
@@ -47,84 +47,170 @@ const MAINTENANCE_SUBS = [
   { label: 'Service Charges', path: '/maintenance/service-charges' },
   { label: 'Status', path: '/maintenance/status' },
   { label: 'Ticket Type', path: '/maintenance/ticket-type' },
+  { label: 'Referred Category', path: '/maintenance/referred-category' },
+  { label: 'Warranty Type', path: '/maintenance/warranty-type' },
 ];
 
 const REPORTS_SUBS = [
   { label: 'Overview', path: '/reports' },
   { label: 'Device Management', path: '/reports/device' },
   { label: 'User Entry Report', path: '/reports/user-entry' },
-
 ];
 
-const SECTION2 = [
-  { label: 'Employee Management', icon: <BadgeOutlinedIcon />, path: '/employees' },
-  { label: 'User Details', icon: <BadgeOutlinedIcon />, path: '/users' },
-  { label: 'Vendor Management', icon: <StorefrontOutlinedIcon />, path: '/vendors' },
-];
+const MANAGER_ROLES = ['ROLE_MANAGER', 'ROLE_EXECUTIVE'];
 
+function SubNavList({ items, isActive, onNav, theme }) {
+  return (
+    <MuiList disablePadding sx={{ pl: 2 }}>
+      {items.map((sub) => {
+        const active = isActive(sub.path);
+        return (
+          <ListItemButton
+            key={sub.path}
+            onClick={() => onNav(sub.path)}
+            sx={{
+              borderRadius: '6px',
+              mb: 0.2,
+              py: 0.4,
+              px: 1.5,
+              bgcolor: active ? `${theme.palette.secondary.main}14` : 'transparent',
+              '&:hover': { bgcolor: `${theme.palette.primary.main}06` },
+            }}
+          >
+            <ListItemText
+              primary={sub.label}
+              primaryTypographyProps={{
+                fontSize: '12px',
+                fontWeight: active ? 600 : 400,
+                color: active ? theme.palette.secondary.main : theme.palette.text.secondary,
+              }}
+            />
+          </ListItemButton>
+        );
+      })}
+    </MuiList>
+  );
+}
 
+function NavItem({ label, icon: Icon, path, active, desktopOpen, onNav, navBtnSx, iconSx, textSx, textProps }) {
+  return (
+    <ListItemButton onClick={() => onNav(path)} sx={navBtnSx(active)}>
+      <ListItemIcon sx={iconSx(active)}>
+        <Icon />
+      </ListItemIcon>
+      <ListItemText primary={label} sx={textSx} primaryTypographyProps={textProps(active)} />
+    </ListItemButton>
+  );
+}
 
-export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, drawerWidth, onStartResizing, isResizing }) {
+function CollapsibleNavSection({
+  label,
+  icon: Icon,
+  sectionPath,
+  overviewPath,
+  subs,
+  open,
+  setOpen,
+  desktopOpen,
+  pathname,
+  onNav,
+  navBtnSx,
+  iconSx,
+  textSx,
+  textProps,
+  theme,
+}) {
+  const active = pathname.startsWith(sectionPath);
+  const expandIconSx = { fontSize: 18, color: theme.palette.text.secondary };
+
+  const handleToggle = () => {
+    if (pathname.startsWith(sectionPath)) {
+      setOpen(!open);
+    } else {
+      onNav(overviewPath);
+      setOpen(true);
+    }
+  };
+
+  return (
+    <>
+      <ListItemButton onClick={handleToggle} sx={navBtnSx(active)}>
+        <ListItemIcon sx={iconSx(active)}>
+          <Icon />
+        </ListItemIcon>
+        <ListItemText primary={label} sx={textSx} primaryTypographyProps={textProps(active)} />
+        {desktopOpen && (open ? <ExpandLessIcon sx={expandIconSx} /> : <ExpandMoreIcon sx={expandIconSx} />)}
+      </ListItemButton>
+      <Collapse in={open && desktopOpen} timeout="auto" unmountOnExit>
+        <SubNavList items={subs} isActive={(path) => pathname === path} onNav={onNav} theme={theme} />
+      </Collapse>
+    </>
+  );
+}
+
+export default function AppSidebar({
+  mobileOpen,
+  desktopOpen,
+  onMobileClose,
+  drawerWidth,
+  onStartResizing,
+  isResizing,
+}) {
   const theme = useTheme();
-  const { mode, toggleTheme } = useAppThemeContext();
-  const { logout, user } = useAuth();
+  const { user } = useAuth();
   const { showLoading, hideLoading } = useGlobalLoading();
   const location = useLocation();
   const navigate = useNavigate();
+
   const [inventoryOpen, setInventoryOpen] = useState(location.pathname.startsWith('/inventory'));
   const [maintOpen, setMaintOpen] = useState(location.pathname.startsWith('/maintenance'));
   const [reportsOpen, setReportsOpen] = useState(location.pathname.startsWith('/reports'));
-  const [billingOpen, setBillingOpen] = useState(location.pathname.startsWith('/billing'));
 
-  const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
-  const isManager = rawRole === 'ROLE_MANAGER' || rawRole === 'ROLE_EXECUTIVE';
-  const isAdmin = rawRole === 'ROLE_ADMIN';
+  const rawRole = getUserRole(user);
   const isEngineer = rawRole === 'ROLE_ENGINEER';
   const isPurchase = rawRole === 'ROLE_PURCHASE';
   const isNormalUser = rawRole === 'ROLE_USER';
 
-  // Visibility flags
-  const showDashboard = true;
-  const showEnquiries = isManager || isAdmin || isNormalUser;
-  const showInventory = isManager || isPurchase;
-  const showMaintenance = isManager;
-  const showBilling = isManager;
-  const showReports = isManager;
-  const showEmployeeManagement = isManager;
-  const showUserDetails = isManager;
-  const showNewTicketButton = isManager || isAdmin || isNormalUser;
-
-  const dashboardLabel = (isNormalUser || isEngineer || isPurchase) ? "My Tickets" : "Dashboard";
+  const dashboardLabel = isNormalUser || isEngineer || isPurchase ? 'My Tickets' : 'Dashboard';
+  const enquiryLabel = isNormalUser ? 'My Enquiries' : 'Enquiry Management';
 
   const isActive = (path) => location.pathname === path;
-  const isMaintActive = location.pathname.startsWith('/maintenance');
-  const isReportsActive = location.pathname.startsWith('/reports');
 
   const navBtnSx = (active) => ({
-    borderRadius: '6px', mb: 0.3, py: 0.8,
+    borderRadius: '6px',
+    mb: 0.3,
+    py: 0.8,
     px: desktopOpen ? 1.5 : 1,
     justifyContent: desktopOpen ? 'initial' : 'center',
     bgcolor: active ? `${theme.palette.secondary.main}14` : 'transparent',
-    '&:hover': { bgcolor: active ? `${theme.palette.secondary.main}1A` : `${theme.palette.primary.main}06` },
+    '&:hover': {
+      bgcolor: active ? `${theme.palette.secondary.main}1A` : `${theme.palette.primary.main}06`,
+    },
   });
 
   const iconSx = (active) => ({
     minWidth: desktopOpen ? 34 : 0,
-    mr: desktopOpen ? 0 : 'auto', ml: desktopOpen ? 0 : 'auto',
+    mr: desktopOpen ? 0 : 'auto',
+    ml: desktopOpen ? 0 : 'auto',
     justifyContent: 'center',
     color: active ? theme.palette.secondary.main : theme.palette.text.secondary,
   });
 
-  const textSx = { opacity: { xs: 1, md: desktopOpen ? 1 : 0 }, display: { xs: 'block', md: desktopOpen ? 'block' : 'none' }, whiteSpace: 'nowrap' };
+  const textSx = {
+    opacity: { xs: 1, md: desktopOpen ? 1 : 0 },
+    display: { xs: 'block', md: desktopOpen ? 'block' : 'none' },
+    whiteSpace: 'nowrap',
+  };
 
   const textProps = (active) => ({
-    fontSize: '13px', fontWeight: active ? 600 : 500,
+    fontSize: '13px',
+    fontWeight: active ? 600 : 500,
     color: active ? theme.palette.secondary.main : theme.palette.text.primary,
   });
 
   const handleNav = (path) => {
     navigate(path);
-    if (onMobileClose) onMobileClose();
+    onMobileClose?.();
   };
 
   const handleNewTicketClick = () => {
@@ -135,23 +221,29 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
     }, 800);
   };
 
+  const widthTransition = theme.transitions.create('width', {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.enteringScreen,
+  });
+
   const drawerContent = (
-    <Box sx={{
-      width: { xs: 240, md: drawerWidth }, height: '100%',
-      bgcolor: theme.palette.background.paper,
-      display: 'flex', flexDirection: 'column', overflowX: 'hidden',
-      transition: isResizing ? 'none' : theme.transitions.create('width', {
-        easing: theme.transitions.easing.sharp,
-        duration: theme.transitions.duration.enteringScreen,
-      }),
-      position: 'relative'
-    }}>
-      {/* ── Logo / Brand ── */}
+    <Box
+      sx={{
+        width: { xs: 240, md: drawerWidth },
+        height: '100%',
+        bgcolor: theme.palette.background.paper,
+        display: 'flex',
+        flexDirection: 'column',
+        overflowX: 'hidden',
+        transition: isResizing ? 'none' : widthTransition,
+        position: 'relative',
+      }}
+    >
       <Box sx={{ px: 2, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 68 }}>
         <Logo width={desktopOpen ? 128 : 40} height={desktopOpen ? 64 : 40} />
       </Box>
       <Divider />
-      {/* ── Resizer ── */}
+
       {desktopOpen && (
         <Box
           onMouseDown={onStartResizing}
@@ -169,197 +261,191 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
         />
       )}
 
-      {/* ── Main nav ── */}
-      <MuiList sx={{ 
-        px: 1, 
-        pt: 1, 
-        flex: 1,
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        '&::-webkit-scrollbar': { width: '4px' },
-        '&::-webkit-scrollbar-track': { background: 'transparent' },
-        '&::-webkit-scrollbar-thumb': { background: 'transparent', borderRadius: '4px' },
-        '&:hover::-webkit-scrollbar-thumb': { background: theme.palette.divider }
-      }}>
-        {/* Dashboard / My Tickets */}
-        {showDashboard && (
-          <ListItemButton onClick={() => handleNav('/dashboard')} sx={navBtnSx(isActive('/dashboard'))}>
-            <ListItemIcon sx={iconSx(isActive('/dashboard'))}><DashboardOutlinedIcon /></ListItemIcon>
-            <ListItemText primary={dashboardLabel} sx={textSx} primaryTypographyProps={textProps(isActive('/dashboard'))} />
-          </ListItemButton>
-        )}
+      <MuiList
+        sx={{
+          px: 1,
+          pt: 1,
+          flex: 1,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          '&::-webkit-scrollbar': { width: '4px' },
+          '&::-webkit-scrollbar-track': { background: 'transparent' },
+          '&::-webkit-scrollbar-thumb': { background: 'transparent', borderRadius: '4px' },
+          '&:hover::-webkit-scrollbar-thumb': { background: theme.palette.divider },
+        }}
+      >
+        <NavItem
+          label={dashboardLabel}
+          icon={DashboardOutlinedIcon}
+          path="/dashboard"
+          active={isActive('/dashboard')}
+          desktopOpen={desktopOpen}
+          onNav={handleNav}
+          navBtnSx={navBtnSx}
+          iconSx={iconSx}
+          textSx={textSx}
+          textProps={textProps}
+        />
 
-        {/* Enquiry Link */}
-        {showEnquiries && (
-          <ListItemButton onClick={() => handleNav('/enquiries')} sx={navBtnSx(isActive('/enquiries'))}>
-            <ListItemIcon sx={iconSx(isActive('/enquiries'))}><SupportAgentOutlinedIcon /></ListItemIcon>
-            <ListItemText primary={isNormalUser ? "My Enquiries" : "Enquiry Management"} sx={textSx} primaryTypographyProps={textProps(isActive('/enquiries'))} />
-          </ListItemButton>
-        )}
+        <RoleGuard allowedRoles={[...MANAGER_ROLES, 'ROLE_ADMIN', 'ROLE_USER']}>
+          <NavItem
+            label={enquiryLabel}
+            icon={SupportAgentOutlinedIcon}
+            path="/enquiries"
+            active={isActive('/enquiries')}
+            desktopOpen={desktopOpen}
+            onNav={handleNav}
+            navBtnSx={navBtnSx}
+            iconSx={iconSx}
+            textSx={textSx}
+            textProps={textProps}
+          />
+        </RoleGuard>
 
-        {/* ── Inventory (collapsible) ── */}
-        {showInventory && (() => {
-          const isInventoryActive = location.pathname.startsWith('/inventory');
-          return (
-            <>
-              <ListItemButton
-                onClick={() => { setInventoryOpen(!inventoryOpen); if (!isInventoryActive) handleNav('/inventory'); }}
-                sx={navBtnSx(isInventoryActive)}
-              >
-                <ListItemIcon sx={iconSx(isInventoryActive)}><Inventory2OutlinedIcon /></ListItemIcon>
-                <ListItemText primary="Inventory" sx={textSx} primaryTypographyProps={textProps(isInventoryActive)} />
-                {desktopOpen && (inventoryOpen ? <ExpandLessIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} /> : <ExpandMoreIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />)}
-              </ListItemButton>
-              <Collapse in={inventoryOpen && desktopOpen} timeout="auto" unmountOnExit>
-                <MuiList disablePadding sx={{ pl: 2 }}>
-                  {INVENTORY_SUBS.map((sub) => (
-                    <ListItemButton key={sub.path} onClick={() => handleNav(sub.path)}
-                      sx={{
-                        borderRadius: '6px', mb: 0.2, py: 0.4, px: 1.5,
-                        bgcolor: isActive(sub.path) ? `${theme.palette.secondary.main}14` : 'transparent',
-                        '&:hover': { bgcolor: `${theme.palette.primary.main}06` },
-                      }}>
-                      <ListItemText primary={sub.label}
-                        primaryTypographyProps={{
-                          fontSize: '12px', fontWeight: isActive(sub.path) ? 600 : 400,
-                          color: isActive(sub.path) ? theme.palette.secondary.main : theme.palette.text.secondary
-                        }} />
-                    </ListItemButton>
-                  ))}
-                </MuiList>
-              </Collapse>
-            </>
-          );
-        })()}
+        <RoleGuard allowedRoles={[...MANAGER_ROLES, 'ROLE_PURCHASE']}>
+          <CollapsibleNavSection
+            label="Inventory"
+            icon={Inventory2OutlinedIcon}
+            sectionPath="/inventory"
+            overviewPath="/inventory"
+            subs={INVENTORY_SUBS}
+            open={inventoryOpen}
+            setOpen={setInventoryOpen}
+            desktopOpen={desktopOpen}
+            pathname={location.pathname}
+            onNav={handleNav}
+            navBtnSx={navBtnSx}
+            iconSx={iconSx}
+            textSx={textSx}
+            textProps={textProps}
+            theme={theme}
+          />
+        </RoleGuard>
 
-        {/* ── Maintenance (collapsible) ── */}
-        {showMaintenance && (
-          <>
-            <ListItemButton
-              onClick={() => {
-                if (location.pathname !== '/maintenance') {
-                  handleNav('/maintenance');
-                  setMaintOpen(true);
-                } else {
-                  setMaintOpen(!maintOpen);
-                }
-              }}
-              sx={navBtnSx(isMaintActive)}
-            >
-              <ListItemIcon sx={iconSx(isMaintActive)}><BuildOutlinedIcon /></ListItemIcon>
-              <ListItemText primary="Maintenance" sx={textSx} primaryTypographyProps={textProps(isMaintActive)} />
-              {desktopOpen && (maintOpen ? <ExpandLessIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} /> : <ExpandMoreIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />)}
-            </ListItemButton>
+        <RoleGuard allowedRoles={MANAGER_ROLES}>
+          <CollapsibleNavSection
+            label="Maintenance"
+            icon={BuildOutlinedIcon}
+            sectionPath="/maintenance"
+            overviewPath="/maintenance"
+            subs={MAINTENANCE_SUBS}
+            open={maintOpen}
+            setOpen={setMaintOpen}
+            desktopOpen={desktopOpen}
+            pathname={location.pathname}
+            onNav={handleNav}
+            navBtnSx={navBtnSx}
+            iconSx={iconSx}
+            textSx={textSx}
+            textProps={textProps}
+            theme={theme}
+          />
+        </RoleGuard>
 
-            <Collapse in={maintOpen && desktopOpen} timeout="auto" unmountOnExit>
-              <MuiList disablePadding sx={{ pl: 2 }}>
-                {MAINTENANCE_SUBS.map((sub) => (
-                  <ListItemButton key={sub.path} onClick={() => handleNav(sub.path)}
-                    sx={{
-                      borderRadius: '6px', mb: 0.2, py: 0.4, px: 1.5,
-                      bgcolor: isActive(sub.path) ? `${theme.palette.secondary.main}14` : 'transparent',
-                      '&:hover': { bgcolor: `${theme.palette.primary.main}06` },
-                    }}>
-                    <ListItemText primary={sub.label}
-                      primaryTypographyProps={{
-                        fontSize: '12px', fontWeight: isActive(sub.path) ? 600 : 400,
-                        color: isActive(sub.path) ? theme.palette.secondary.main : theme.palette.text.secondary
-                      }} />
-                  </ListItemButton>
-                ))}
-              </MuiList>
-            </Collapse>
-          </>
-        )}
+        <RoleGuard allowedRoles={MANAGER_ROLES}>
+          <NavItem
+            label="Billing"
+            icon={ReceiptLongOutlinedIcon}
+            path="/billing/billing-details"
+            active={location.pathname.startsWith('/billing')}
+            desktopOpen={desktopOpen}
+            onNav={handleNav}
+            navBtnSx={navBtnSx}
+            iconSx={iconSx}
+            textSx={textSx}
+            textProps={textProps}
+          />
+        </RoleGuard>
 
-        {/* ── Billing ── */}
-        {showBilling && (() => {
-          const isBillingActive = location.pathname.startsWith('/billing');
-          return (
-            <ListItemButton
-              onClick={() => handleNav('/billing/billing-details')}
-              sx={navBtnSx(isBillingActive)}
-            >
-              <ListItemIcon sx={iconSx(isBillingActive)}><ReceiptLongOutlinedIcon /></ListItemIcon>
-              <ListItemText primary="Billing" sx={textSx} primaryTypographyProps={textProps(isBillingActive)} />
-            </ListItemButton>
-          );
-        })()}
+        <RoleGuard allowedRoles={MANAGER_ROLES}>
+          <CollapsibleNavSection
+            label="Reports"
+            icon={AnalyticsOutlinedIcon}
+            sectionPath="/reports"
+            overviewPath="/reports"
+            subs={REPORTS_SUBS}
+            open={reportsOpen}
+            setOpen={setReportsOpen}
+            desktopOpen={desktopOpen}
+            pathname={location.pathname}
+            onNav={handleNav}
+            navBtnSx={navBtnSx}
+            iconSx={iconSx}
+            textSx={textSx}
+            textProps={textProps}
+            theme={theme}
+          />
+        </RoleGuard>
 
-        {/* ── Reports (collapsible) ── */}
-        {showReports && (
-          <>
-            <ListItemButton
-              onClick={() => {
-                if (location.pathname !== '/reports') {
-                  handleNav('/reports');
-                  setReportsOpen(true);
-                } else {
-                  setReportsOpen(!reportsOpen);
-                }
-              }}
-              sx={navBtnSx(isReportsActive)}
-            >
-              <ListItemIcon sx={iconSx(isReportsActive)}><AnalyticsOutlinedIcon /></ListItemIcon>
-              <ListItemText primary="Reports" sx={textSx} primaryTypographyProps={textProps(isReportsActive)} />
-              {desktopOpen && (reportsOpen ? <ExpandLessIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} /> : <ExpandMoreIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />)}
-            </ListItemButton>
+        <RoleGuard allowedRoles={MANAGER_ROLES}>
+          <NavItem
+            label="Employee Management"
+            icon={BadgeOutlinedIcon}
+            path="/employees"
+            active={isActive('/employees')}
+            desktopOpen={desktopOpen}
+            onNav={handleNav}
+            navBtnSx={navBtnSx}
+            iconSx={iconSx}
+            textSx={textSx}
+            textProps={textProps}
+          />
+        </RoleGuard>
 
-            <Collapse in={reportsOpen && desktopOpen} timeout="auto" unmountOnExit>
-              <MuiList disablePadding sx={{ pl: 2 }}>
-                {REPORTS_SUBS.map((sub) => (
-                  <ListItemButton key={sub.path} onClick={() => handleNav(sub.path)}
-                    sx={{
-                      borderRadius: '6px', mb: 0.2, py: 0.4, px: 1.5,
-                      bgcolor: isActive(sub.path) ? `${theme.palette.secondary.main}14` : 'transparent',
-                      '&:hover': { bgcolor: `${theme.palette.primary.main}06` },
-                    }}>
-                    <ListItemText primary={sub.label}
-                      primaryTypographyProps={{
-                        fontSize: '12px', fontWeight: isActive(sub.path) ? 600 : 400,
-                        color: isActive(sub.path) ? theme.palette.secondary.main : theme.palette.text.secondary
-                      }} />
-                  </ListItemButton>
-                ))}
-              </MuiList>
-            </Collapse>
-          </>
-        )}
+        <RoleGuard allowedRoles={MANAGER_ROLES}>
+          <NavItem
+            label="User Details"
+            icon={BadgeOutlinedIcon}
+            path="/users"
+            active={isActive('/users')}
+            desktopOpen={desktopOpen}
+            onNav={handleNav}
+            navBtnSx={navBtnSx}
+            iconSx={iconSx}
+            textSx={textSx}
+            textProps={textProps}
+          />
+        </RoleGuard>
 
-        {/* ── Section 2: Employee Mgmt, Users ── */}
-        {showEmployeeManagement && (
-          <ListItemButton onClick={() => handleNav('/employees')} sx={navBtnSx(isActive('/employees'))}>
-            <ListItemIcon sx={iconSx(isActive('/employees'))}><BadgeOutlinedIcon /></ListItemIcon>
-            <ListItemText primary="Employee Management" sx={textSx} primaryTypographyProps={textProps(isActive('/employees'))} />
-          </ListItemButton>
-        )}
+        <RoleGuard allowedRoles={MANAGER_ROLES}>
+          <NavItem
+            label="Vendor Details"
+            icon={BadgeOutlinedIcon}
+            path="/vendors"
+            active={isActive('/vendors')}
+            desktopOpen={desktopOpen}
+            onNav={handleNav}
+            navBtnSx={navBtnSx}
+            iconSx={iconSx}
+            textSx={textSx}
+            textProps={textProps}
+          />
+        </RoleGuard>
 
-        {showUserDetails && (
-          <ListItemButton onClick={() => handleNav('/users')} sx={navBtnSx(isActive('/users'))}>
-            <ListItemIcon sx={iconSx(isActive('/users'))}><BadgeOutlinedIcon /></ListItemIcon>
-            <ListItemText primary="User Details" sx={textSx} primaryTypographyProps={textProps(isActive('/users'))} />
-          </ListItemButton>
-        )}
-
-        {/* ── + New Ticket Button ── */}
-        {showNewTicketButton && (
+        <RoleGuard allowedRoles={[...MANAGER_ROLES, 'ROLE_ADMIN', 'ROLE_USER']}>
           <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
-            <Button variant="contained" fullWidth
+            <Button
+              variant="contained"
+              fullWidth
               startIcon={desktopOpen ? <AddIcon /> : undefined}
               onClick={handleNewTicketClick}
               sx={{
-                borderRadius: '6px', py: 0.9, fontSize: '13px', fontWeight: 600,
-                textTransform: 'none', minWidth: desktopOpen ? 'auto' : 40,
-                px: desktopOpen ? 2 : 0, justifyContent: 'center'
-              }}>
+                borderRadius: '6px',
+                py: 0.9,
+                fontSize: '13px',
+                fontWeight: 600,
+                textTransform: 'none',
+                minWidth: desktopOpen ? 'auto' : 40,
+                px: desktopOpen ? 2 : 0,
+                justifyContent: 'center',
+              }}
+            >
               {desktopOpen ? 'New Ticket' : <AddIcon fontSize="small" />}
-             </Button>
+            </Button>
           </Box>
-        )}
+        </RoleGuard>
       </MuiList>
 
-
-      {/* ── Profile Section ── */}
       <Box sx={{ mt: 'auto', p: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
         <Box
           onClick={() => handleNav('/profile')}
@@ -369,7 +455,7 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
             cursor: 'pointer',
             p: 1,
             borderRadius: 1,
-            '&:hover': { bgcolor: 'action.hover' }
+            '&:hover': { bgcolor: 'action.hover' },
           }}
         >
           <Avatar
@@ -377,7 +463,7 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
               width: 36,
               height: 36,
               bgcolor: theme.palette.primary.main,
-              mr: desktopOpen ? 1.5 : 0
+              mr: desktopOpen ? 1.5 : 0,
             }}
           >
             {user?.name ? user.name[0].toUpperCase() : 'U'}
@@ -397,23 +483,41 @@ export default function AppSidebar({ mobileOpen, desktopOpen, onMobileClose, dra
     </Box>
   );
 
+  const drawerPaperSx = {
+    boxSizing: 'border-box',
+    overflow: 'hidden',
+    transition: isResizing ? 'none' : widthTransition,
+  };
 
   return (
-    <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 }, transition: isResizing ? 'none' : theme.transitions.create('width', { easing: theme.transitions.easing.sharp, duration: theme.transitions.duration.enteringScreen }) }}>
-      <Drawer variant="temporary" open={mobileOpen} onClose={onMobileClose}
+    <Box
+      component="nav"
+      sx={{
+        width: { md: drawerWidth },
+        flexShrink: { md: 0 },
+        transition: isResizing ? 'none' : widthTransition,
+      }}
+    >
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={onMobileClose}
         ModalProps={{ keepMounted: true }}
-        sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 240, overflow: 'hidden' } }}>
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          '& .MuiDrawer-paper': { ...drawerPaperSx, width: 240 },
+        }}
+      >
         {drawerContent}
       </Drawer>
-      <Drawer variant="permanent"
+      <Drawer
+        variant="permanent"
+        open
         sx={{
           display: { xs: 'none', md: 'block' },
-          '& .MuiDrawer-paper': {
-            boxSizing: 'border-box', width: drawerWidth, overflow: 'hidden',
-            transition: isResizing ? 'none' : theme.transitions.create('width', { easing: theme.transitions.easing.sharp, duration: theme.transitions.duration.enteringScreen })
-          }
+          '& .MuiDrawer-paper': { ...drawerPaperSx, width: drawerWidth },
         }}
-        open>
+      >
         {drawerContent}
       </Drawer>
     </Box>
