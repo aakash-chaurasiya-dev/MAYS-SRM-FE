@@ -1,0 +1,11 @@
+{
+  "data": [
+    {
+      "warrantyTypeId": 1,
+      "warrantyTypeName": "Standard Warranty",
+      "ticketTypeId": 1,
+      "warrantyTypeDescription": "12 month coverage",
+      "isLocked": false
+    }
+  ]
+}
