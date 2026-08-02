@@ -29,37 +29,33 @@ export default function ServiceChargesManagementPage() {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const { data: rawServiceCharges = [] } = useQuery({
+  const { data: serviceCharges = [] } = useQuery({
     queryKey: ['serviceCharges'],
     queryFn: async () => {
       const response = await api.get('/service-charges');
       return response.data?.data || response.data || [];
     },
+    select: (data) =>
+      data.map((charge, index) => ({
+        ...charge,
+        id: charge.chargeId || `fallback-id-${index}`,
+      })),
     staleTime: 1000 * 60 * 60,
   });
 
-  const { data: rawBrands = [] } = useQuery({
+  const { data: brands = [] } = useQuery({
     queryKey: ['brands'],
     queryFn: async () => {
       const response = await api.get('/brands');
       return response.data?.data || response.data || [];
     },
+    select: (data) =>
+      data.map((brand, index) => ({
+        ...brand,
+        id: brand.brandId || `fallback-id-${index}`,
+      })),
     staleTime: 1000 * 60 * 60,
   });
-
-  const serviceCharges = useMemo(() => {
-    return rawServiceCharges.map((charge, index) => ({
-      ...charge,
-      id: charge.chargeId || `fallback-id-${index}`,
-    }));
-  }, [rawServiceCharges]);
-
-  const brands = useMemo(() => {
-    return rawBrands.map((brand, index) => ({
-      ...brand,
-      id: brand.brandId || `fallback-id-${index}`,
-    }));
-  }, [rawBrands]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');

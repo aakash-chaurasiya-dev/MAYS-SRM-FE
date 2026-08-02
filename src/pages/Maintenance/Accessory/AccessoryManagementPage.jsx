@@ -28,37 +28,33 @@ export default function AccessoryManagementPage() {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const { data: rawAccessories = [], isLoading: accessoriesLoading } = useQuery({
+  const { data: accessories = [], isLoading: accessoriesLoading } = useQuery({
     queryKey: ['accessories'],
     queryFn: async () => {
       const response = await api.get('/device-accessories');
       return response.data?.data || response.data || [];
     },
+    select: (data) =>
+      data.map((acc, index) => ({
+        ...acc,
+        id: acc.accessoryId || `fallback-id-${index}`,
+      })),
     staleTime: 1000 * 60 * 60, // 1 hour
   });
 
-  const { data: rawDeviceTypes = [] } = useQuery({
+  const { data: deviceTypes = [] } = useQuery({
     queryKey: ['deviceTypes'],
     queryFn: async () => {
       const response = await api.get('/devicetypes');
       return response.data?.data || response.data || [];
     },
+    select: (data) =>
+      data.map((type, index) => ({
+        ...type,
+        id: type.deviceTypeId || `fallback-id-${index}`,
+      })),
     staleTime: 1000 * 60 * 60, // 1 hour
   });
-
-  const accessories = useMemo(() => {
-    return rawAccessories.map((acc, index) => ({
-      ...acc,
-      id: acc.accessoryId || `fallback-id-${index}`,
-    }));
-  }, [rawAccessories]);
-
-  const deviceTypes = useMemo(() => {
-    return rawDeviceTypes.map((type, index) => ({
-      ...type,
-      id: type.deviceTypeId || `fallback-id-${index}`,
-    }));
-  }, [rawDeviceTypes]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');

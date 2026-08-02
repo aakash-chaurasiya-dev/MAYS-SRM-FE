@@ -31,49 +31,47 @@ export default function WarrantyTypeManagementPage() {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const selectedRowsAreLocked = selectedIds.some(id => {
-    const row = warrantyTypes.find(b => String(b.id) === String(id));
-    return row?.isLocked;
-  });
+
 
   // Fetch ticket types for parent dropdown selection
-  const { data: rawTicketTypes = [] } = useQuery({
+  const { data: ticketTypes = [] } = useQuery({
     queryKey: ['ticketTypes'],
     queryFn: async () => {
       const response = await api.get('/ticket-types');
       return response.data?.data || response.data || [];
     },
+    select: (data) =>
+      data.map((tt, index) => ({
+        ...tt,
+        id: tt.ticketTypeId || `fallback-id-${index}`,
+      })),
     staleTime: 1000 * 60 * 60,
   });
 
-  const { data: rawWarrantyTypes = [] } = useQuery({
+  const { data: warrantyTypes = [] } = useQuery({
     queryKey: ['warrantyTypes'],
     queryFn: async () => {
       const response = await api.get('/warranty-types');
       return response.data?.data || response.data || [];
     },
+    select: (data) =>
+      data.map((wt, index) => ({
+        ...wt,
+        id: wt.warrantyTypeId || `fallback-id-${index}`,
+      })),
     staleTime: 1000 * 60 * 60,
   });
-
-  const ticketTypes = useMemo(() => {
-    return rawTicketTypes.map((tt, index) => ({
-      ...tt,
-      id: tt.ticketTypeId || `fallback-id-${index}`,
-    }));
-  }, [rawTicketTypes]);
-
-  const warrantyTypes = useMemo(() => {
-    return rawWarrantyTypes.map((wt, index) => ({
-      ...wt,
-      id: wt.warrantyTypeId || `fallback-id-${index}`,
-    }));
-  }, [rawWarrantyTypes]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');
     setFormData(initialFormState);
     setOpenModal(true);
   };
+
+  const selectedRowsAreLocked = selectedIds.some(id => {
+    const row = warrantyTypes.find(b => String(b.id) === String(id));
+    return row?.isLocked;
+  });
 
   const handleOpenUpdateModal = () => {
     if (selectedIds.length !== 1) return;

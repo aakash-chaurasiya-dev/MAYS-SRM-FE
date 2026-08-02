@@ -36,21 +36,19 @@ export default function ReferredCategoryManagementPage() {
     return row?.isLocked;
   });
 
-  const { data: rawReferredCategories = [] } = useQuery({
+  const { data: referredCategories = [] } = useQuery({
     queryKey: ['referredCategories'],
     queryFn: async () => {
       const response = await api.get('/referred-categories');
       return response.data?.data || response.data || [];
     },
+    select: (data) =>
+      data.map((rc, index) => ({
+        ...rc,
+        id: rc.referredCategoryId || `fallback-id-${index}`,
+      })),
     staleTime: 1000 * 60 * 60,
   });
-
-  const referredCategories = useMemo(() => {
-    return rawReferredCategories.map((rc, index) => ({
-      ...rc,
-      id: rc.referredCategoryId || `fallback-id-${index}`,
-    }));
-  }, [rawReferredCategories]);
 
   const handleOpenCreateModal = () => {
     setModalMode('create');
