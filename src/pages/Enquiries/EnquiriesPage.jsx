@@ -16,13 +16,14 @@ import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
 import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined';
 import { useTheme } from '@mui/material/styles';
 import { useAuth } from '../../contexts/AuthContext';
+import { getUserRole } from '../../access/featureAccess';
 import api from '../../services/api';
 
 export default function EnquiriesPage() {
   const theme = useTheme();
   const { user } = useAuth();
 
-  const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
+  const rawRole = getUserRole(user);
   const isNormalUser = rawRole === 'ROLE_USER';
 
   // API Data State

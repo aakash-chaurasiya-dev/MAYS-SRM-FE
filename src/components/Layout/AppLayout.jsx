@@ -6,6 +6,7 @@ import TabBar from './TabBar';
 import UserEntryModal from '../UserEntryModal';
 import { useTheme } from '@mui/material/styles';
 import { useAuth } from '../../contexts/AuthContext';
+import { getUserRole } from '../../access/featureAccess';
 
 /**
  * AppLayout — Shared shell for all authenticated pages.
@@ -24,11 +25,8 @@ export default function AppLayout() {
     if (!user) return;
 
     const hasAnswered = sessionStorage.getItem('hasAnsweredHereFor');
-    
-    // Safely extract the role handling different possible token structures
-    const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
-    
-    if (!hasAnswered && rawRole === 'ROLE_USER') {
+
+    if (!hasAnswered && getUserRole(user) === 'ROLE_USER') {
       setShowEntryModal(true);
     }
   }, [user]);

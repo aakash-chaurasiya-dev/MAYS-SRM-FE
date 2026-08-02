@@ -36,7 +36,6 @@ export default defineConfig([
     files: [
       'src/contexts/**/*.{js,jsx}',
       'src/theme/ThemeContext.jsx',
-      'src/components/RoleGuard.jsx',
     ],
     rules: {
       'react-refresh/only-export-components': 'off',

@@ -3,10 +3,11 @@ import { Box, Paper, Typography, TextField, MenuItem, Divider, Stack } from '@mu
 import { useQuery } from '@tanstack/react-query';
 import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
+import { getUserRole } from '../../../access/featureAccess';
 
 export default function TicketAssignment({ form, setForm, handleChange, lbl, secHdr }) {
   const { user } = useAuth();
-  const userRole = user?.roles?.[0]?.authority || (typeof user?.role === 'string' ? user.role : user?.role?.[0]?.authority);
+  const userRole = getUserRole(user);
 
   // Lookups
   const { data: departments = [] } = useQuery({

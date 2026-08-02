@@ -44,8 +44,8 @@ import VendorProfilePage from './pages/VendorDetails/VendorProfilePage';
 import ProfilePage from './pages/Profile/ProfilePage';
 import EnquiriesPage from './pages/Enquiries/EnquiriesPage';
 
-// Components
-import ProtectedRoute from './components/ProtectedRoute';
+// Access
+import Can from './access/Can';
 import GlobalNotificationPopup from './components/GlobalNotificationPopup';
 import GlobalLoading from './components/GlobalLoading';
 
@@ -61,36 +61,32 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
             {/* Authenticated Routes with Sidebar & TabBar */}
-            <Route element={<ProtectedRoute />}>
+            <Route element={<Can mode="redirect" />}>
               <Route element={<AppLayout />}>
                 {/* Common Authenticated Routes (Accessible by all roles) */}
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
 
-                {/* Ticket Routes (Accessible by both customers and employees) */}
-                <Route path="/tickets/new" element={<NewTicketPage />} />
+                {/* Ticket detail — any authenticated user */}
                 <Route path="/tickets/:id" element={<TicketDetailPage />} />
 
-                {/* New Ticket & Enquiry Routes (Accessible by Manager, Admin, and Customer/ROLE_USER) */}
-                <Route element={<ProtectedRoute allowedRoles={['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN', 'ROLE_USER', 'ROLE_VENDOR']} />}>
+                {/* Feature-gated routes — roles from FEATURES in access/featureAccess.js */}
+                <Route element={<Can feature="enquiries" mode="redirect" />}>
                   <Route path="/tickets/new" element={<NewTicketPage />} />
                   <Route path="/enquiries" element={<EnquiriesPage />} />
                 </Route>
 
-                {/* Inventory Routes (Accessible by Manager and Purchase) */}
-                <Route element={<ProtectedRoute allowedRoles={['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_PURCHASE']} />}>
+                <Route element={<Can feature="inventory" mode="redirect" />}>
                   <Route path="/inventory" element={<InventoryPage />} />
                   <Route path="/inventory/parts" element={<OrderPartsPage />} />
                 </Route>
 
-                {/* Diagnosis Routes (Accessible by Manager and Engineer) */}
-                <Route element={<ProtectedRoute allowedRoles={['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ENGINEER']} />}>
+                <Route element={<Can feature="diagnosis" mode="redirect" />}>
                   <Route path="/diagnosis" element={<DiagnosisPage />} />
                 </Route>
 
-                {/* Manager-Only Restricted Routes */}
-                <Route element={<ProtectedRoute allowedRoles={['ROLE_MANAGER', 'ROLE_EXECUTIVE']} />}>
+                <Route element={<Can feature="maintenance" mode="redirect" />}>
                   {/* Maintenance Routes */}
                   <Route path="/maintenance" element={<MaintenancePage />} />
                   <Route path="/maintenance/brands" element={<BrandManagementPage />} />

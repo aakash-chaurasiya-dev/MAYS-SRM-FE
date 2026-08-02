@@ -4,6 +4,7 @@ import { useTheme } from '@mui/material/styles';
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import { useAuth } from '../../../contexts/AuthContext';
+import { hasAnyRole } from '../../../access/featureAccess';
 import ChargeEditModal from './ChargeEditModal';
 
 export default function ChargeDetails({
@@ -24,20 +25,7 @@ export default function ChargeDetails({
 
   const [editingItem, setEditingItem] = useState(null);
 
-  const isManager = () => {
-    if (!auth || !auth.user) return false;
-
-    const rolesData = auth.user.roles || auth.user.role || '';
-    let rolesString = '';
-
-    if (Array.isArray(rolesData)) {
-      rolesString = rolesData[0]?.authority?.toLowerCase() || '';
-    } else if (typeof rolesData === 'string') {
-      rolesString = rolesData.toLowerCase();
-    }
-
-    return rolesString.includes('manager') || rolesString.includes('executive');
-  };
+  const isManager = () => hasAnyRole(auth?.user, ['ROLE_MANAGER', 'ROLE_EXECUTIVE']);
 
   const isRowDisabled = (item) => {
     const s = statuses.find(st => st.statusId === item.originalStatusId);

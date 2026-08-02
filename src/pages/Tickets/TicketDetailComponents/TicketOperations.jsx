@@ -4,6 +4,7 @@ import { useTheme } from '@mui/material/styles';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
+import { getUserRole } from '../../../access/featureAccess';
 
 /**
  * TicketOperations
@@ -14,8 +15,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
   const theme = useTheme();
   const { user } = useAuth();
-  // Match ProtectedRoute: role may be roles[0].authority or a plain string on user.role
-  const userRole = user?.roles?.[0]?.authority || (typeof user?.role === 'string' ? user.role : user?.role?.[0]?.authority);
+  const userRole = getUserRole(user);
 
   const [initialLoad, setInitialLoad] = useState(false);
 

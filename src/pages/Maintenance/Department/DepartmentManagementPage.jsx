@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Box, Dialog, DialogTitle, DialogContent, DialogActions, TextField, CircularProgress, Button, Divider, Typography } from '@mui/material';
+import { Box, Dialog, DialogTitle, DialogContent, DialogActions, TextField, CircularProgress, Button, Divider, Typography, MenuItem } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
@@ -8,6 +8,7 @@ import { List } from '../../../stereotype/AbstractList';
 import api from '../../../services/api';
 import { useTheme } from '@mui/material/styles';
 import DeleteConfirmDialog from '../../../components/DeleteConfirmDialog';
+import { KNOWN_ROLES } from '../../../access/featureAccess';
 
 export default function DepartmentManagementPage() {
   const theme = useTheme();
@@ -25,7 +26,7 @@ export default function DepartmentManagementPage() {
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
 
   const initialFormState = {
-    departmentId: '', departmentName: '', departmentDescription: '',
+    departmentId: '', departmentName: '', departmentDescription: '', defaultRole: 'ROLE_ADMIN',
   };
   const [formData, setFormData] = useState(initialFormState);
 
@@ -60,6 +61,7 @@ export default function DepartmentManagementPage() {
         departmentId: deptToUpdate.departmentId || '',
         departmentName: deptToUpdate.departmentName || '',
         departmentDescription: deptToUpdate.departmentDescription || '',
+        defaultRole: deptToUpdate.defaultRole || 'ROLE_ADMIN',
       });
       setOpenModal(true);
     }
@@ -117,6 +119,7 @@ export default function DepartmentManagementPage() {
     submitMutation.mutate({
       departmentName: formData.departmentName,
       departmentDescription: formData.departmentDescription,
+      defaultRole: formData.defaultRole,
     });
   };
 
@@ -132,6 +135,7 @@ export default function DepartmentManagementPage() {
 
       { field: 'id', headerName: 'Department ID', width: 140 },
       { field: 'departmentName', headerName: 'Department Name', flex: 1.2, renderType: 'link' },
+      { field: 'defaultRole', headerName: 'Default Role', flex: 1, valueGetter: (value) => value ? String(value).replace('ROLE_', '') : '—' },
       { field: 'departmentDescription', headerName: 'Description', flex: 2 },
       { field: 'insertDate', headerName: 'Created At', width: 130, type: 'date', valueGetter: (value) => value ? new Date(value) : null },
       { field: 'lastUpdateDate', headerName: 'Updated At', width: 130, type: 'date', valueGetter: (value) => value ? new Date(value) : null },
@@ -224,6 +228,25 @@ export default function DepartmentManagementPage() {
               multiline rows={3}
               sx={{ mb: 2 }}
             />
+
+            <Typography sx={lbl}>Default Role</Typography>
+            <TextField
+              select
+              fullWidth
+              size="small"
+              name="defaultRole"
+              value={formData.defaultRole}
+              onChange={handleFormChange}
+              required
+              sx={{ mb: 2 }}
+              helperText="Employees in this department get this role for app access"
+            >
+              {KNOWN_ROLES.filter((r) => r !== 'ROLE_VENDOR' && r !== 'ROLE_USER').map((role) => (
+                <MenuItem key={role} value={role}>
+                  {role.replace('ROLE_', '')}
+                </MenuItem>
+              ))}
+            </TextField>
           </Box>
         </DialogContent>
         <Divider />

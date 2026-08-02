@@ -21,6 +21,10 @@ export const AuthProvider = ({ children }) => {
     queryClient.clear();
   }, [queryClient]);
 
+  //need to check if the token is expired
+  //if it is expired, logout the user
+  //if it is not expired, set the user and the isAuthenticated to true
+  //if it is not set, set the user to null
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -51,6 +55,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', token);
 
       const decoded = jwtDecode(token);
+      console.log('decoded', decoded);
       setUser(decoded);
       setIsAuthenticated(true);
       return { success: true };

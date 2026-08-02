@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { getUserRole } from '../../access/featureAccess';
 
 // Import modular components
 import TicketHeader from './TicketDetailComponents/TicketHeader';
@@ -76,7 +77,7 @@ export default function TicketDetailPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const rawRole = user?.roles?.[0]?.authority || user?.role || 'ROLE_USER';
+  const rawRole = getUserRole(user);
   const isNormalUser = rawRole === 'ROLE_USER';
   const isVendor = rawRole === 'ROLE_VENDOR';
   const isPortalUser = isNormalUser || isVendor;
