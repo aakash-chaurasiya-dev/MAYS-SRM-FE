@@ -16,6 +16,7 @@ import TicketOperations from './TicketDetailComponents/TicketOperations';
 import TicketTimeline from './TicketDetailComponents/TicketTimeline';
 import TicketInternalUpdate from './TicketDetailComponents/TicketInternalUpdate';
 import TicketAccessories from './TicketDetailComponents/TicketAccessories';
+import TicketParts from './TicketDetailComponents/TicketParts';
 import TicketProgress from './TicketDetailComponents/TicketProgress';
 import TicketTimeTracker from './TicketDetailComponents/TicketTimeTracker';
 
@@ -292,6 +293,11 @@ export default function TicketDetailPage() {
             ticket={ticket}
             ticketId={id}
             isEditMode={isEditMode}
+            isNormalUser={isPortalUser}
+          />
+
+          <TicketParts
+            ticketId={id}
             isNormalUser={isPortalUser}
           />
 
