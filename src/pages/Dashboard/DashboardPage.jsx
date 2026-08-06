@@ -13,7 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import List from '../../stereotype/AbstractList/List';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { getUserRole } from '../../access/featureAccess';
+import { getUserRole, hasAnyRole } from '../../access/featureAccess';
 import { useGlobalLoading } from '../../contexts/GlobalLoadingContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -103,6 +103,18 @@ export default function DashboardPage() {
   const isEngineer = rawRole === 'ROLE_ENGINEER';
   const isPurchase = rawRole === 'ROLE_PURCHASE';
   const isEmployeeWithSelfTickets = isEngineer || isPurchase;
+  const isExecutiveView = hasAnyRole(user, ['ROLE_EXECUTIVE', 'ROLE_MANAGER', 'ROLE_ADMIN']);
+
+  // Pending SLA hold requests (Executive/Manager dashboard)
+  const { data: pendingHoldRequests = [] } = useQuery({
+    queryKey: ['sla-hold-pending'],
+    queryFn: async () => {
+      const res = await api.get('/sla-hold-requests/pending');
+      return res.data || [];
+    },
+    enabled: isExecutiveView && !isPortalUser,
+    refetchInterval: 60000,
+  });
 
   // 1. Fetch Stats (Admin/Manager only) - Automatically refreshes every 60 seconds
   const { data: stats } = useQuery({
@@ -459,6 +471,33 @@ export default function DashboardPage() {
             />
           ))}
         </Box>
+      )}
+
+      {isExecutiveView && pendingHoldRequests.length > 0 && (
+        <Paper sx={{ p: 2, mb: 3, border: `1px solid ${theme.palette.warning.light}` }}>
+          <Typography sx={{ fontSize: '15px', fontWeight: 600, mb: 1.5 }}>
+            Tickets Awaiting SLA Hold Approval ({pendingHoldRequests.length})
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {pendingHoldRequests.map((req) => (
+              <Box
+                key={req.id}
+                onClick={() => navigate(`/tickets/${req.ticketId}`)}
+                sx={{
+                  p: 1.5, borderRadius: 1, border: `1px solid ${theme.palette.divider}`,
+                  cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' },
+                }}
+              >
+                <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>
+                  Ticket #{req.ticketId} · {req.assigneeName || req.requestedByName}
+                </Typography>
+                <Typography sx={{ fontSize: '13px', color: 'text.secondary' }}>
+                  {req.reason || 'No reason provided'}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Paper>
       )}
 
       {/* ── Tickets DataGrid ── */}

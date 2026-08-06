@@ -26,6 +26,7 @@ import DeviceTypeManagementPage from './pages/Maintenance/DeviceType/DeviceTypeM
 import PaymentModeManagementPage from './pages/Maintenance/PaymentMode/PaymentModeManagementPage';
 import ServiceChargesManagementPage from './pages/Maintenance/ServiceCharges/ServiceChargesManagementPage';
 import StatusManagementPage from './pages/Maintenance/Status/StatusManagementPage';
+import SlaPolicyManagementPage from './pages/Maintenance/SlaPolicy/SlaPolicyManagementPage';
 import TicketTypeManagementPage from './pages/Maintenance/TicketType/TicketTypeManagementPage';
 import ReferredCategoryManagementPage from './pages/Maintenance/ReferredCategory/ReferredCategoryManagementPage';
 import WarrantyTypeManagementPage from './pages/Maintenance/WarrantyType/WarrantyTypeManagementPage';
@@ -98,6 +99,7 @@ function App() {
                   <Route path="/maintenance/payment-mode" element={<PaymentModeManagementPage />} />
                   <Route path="/maintenance/service-charges" element={<ServiceChargesManagementPage />} />
                   <Route path="/maintenance/status" element={<StatusManagementPage />} />
+                  <Route path="/maintenance/sla-policy" element={<SlaPolicyManagementPage />} />
                   <Route path="/maintenance/ticket-type" element={<TicketTypeManagementPage />} />
                   <Route path="/maintenance/referred-category" element={<ReferredCategoryManagementPage />} />
                   <Route path="/maintenance/warranty-type" element={<WarrantyTypeManagementPage />} />

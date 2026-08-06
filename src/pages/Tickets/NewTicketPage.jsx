@@ -63,7 +63,7 @@ export default function NewTicketPage() {
     issueDescription: '',
     departmentId: '',
     employeeId: '',
-    ticketStatusId: 1, // Defaulting to Open or initial status
+    ticketStatusId: isVendor ? 3 : 1, // Registered for vendors, Open for staff
     targetDate: '',
     vendorId: '',
     vendorUserId: '',
@@ -331,7 +331,8 @@ export default function NewTicketPage() {
         deviceModelId: form.modelId || null,
         customModelName: form.customModelName || null,
         brandId: form.brandId || null,
-        ticketStatusId: form.ticketStatusId || 1, // Use selected status or default
+        ticketStatusId: isVendor ? 3 : (form.ticketStatusId || 1),
+        modifiedByEmployeeId: isStaff ? user?.userId : null,
         employeeId: form.employeeId || null,
         targetDate: form.targetDate ? form.targetDate + ':00' : null, // Backend usually expects complete ISO time
         vendorId: form.vendorId ? Number(form.vendorId) : null,
