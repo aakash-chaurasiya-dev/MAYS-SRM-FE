@@ -47,6 +47,7 @@ const MAINTENANCE_SUBS = [
   { label: 'Payment Mode', path: '/maintenance/payment-mode' },
   { label: 'Service Charges', path: '/maintenance/service-charges' },
   { label: 'Status', path: '/maintenance/status' },
+  { label: 'SLA Policy', path: '/maintenance/sla-policy' },
   { label: 'Ticket Type', path: '/maintenance/ticket-type' },
   { label: 'Referred Category', path: '/maintenance/referred-category' },
   { label: 'Warranty Type', path: '/maintenance/warranty-type' },

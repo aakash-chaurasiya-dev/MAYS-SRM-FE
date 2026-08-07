@@ -1,3 +1,4 @@
+// eslint.config.js
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
@@ -39,6 +40,18 @@ export default defineConfig([
     ],
     rules: {
       'react-refresh/only-export-components': 'off',
+    },
+  },
+  // Enable Jest globals for test files so ESLint recognizes describe/it/expect/jest
+  {
+    files: [
+      '**/*.test.{js,jsx}',
+      '**/__tests__/**',
+      'src/**/__test__/**',
+      'src/**/__tests__/**',
+    ],
+    languageOptions: {
+      globals: { ...globals.jest },
     },
   },
 ])

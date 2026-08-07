@@ -47,17 +47,20 @@ export default function TicketTimeTracker({ ticketId }) {
       if (!record.assigneeId) return;
 
       const currentMinutes = record.accumulatedMinutes || 0;
-      const activeMinutes = record.isActive ? getMinutesSince(record.lastClockStart) : 0;
+      const activeMinutes = record.isActive && record.lastClockStart ? getMinutesSince(record.lastClockStart) : 0;
+      const isPaused = record.isTimerPaused || (record.isActive && !record.lastClockStart);
       const totalSessionMinutes = currentMinutes + activeMinutes;
 
       if (statsMap.has(record.assigneeId)) {
         const existing = statsMap.get(record.assigneeId);
         existing.totalMinutes += totalSessionMinutes;
+        existing.isPaused = existing.isPaused || isPaused;
       } else {
         statsMap.set(record.assigneeId, {
           assigneeId: record.assigneeId,
           assigneeName: record.assigneeName || 'Unknown Employee',
           totalMinutes: totalSessionMinutes,
+          isPaused,
         });
       }
     });
@@ -113,8 +116,9 @@ export default function TicketTimeTracker({ ticketId }) {
                   </Typography>
                 </Box>
               </Box>
-              <Typography sx={{ fontWeight: 600, fontSize: '14px', color: 'primary.main' }}>
+              <Typography sx={{ fontWeight: 600, fontSize: '14px', color: stat.isPaused ? 'text.secondary' : 'primary.main' }}>
                 {formatMinutes(stat.totalMinutes)}
+                {stat.isPaused ? ' (paused)' : ''}
               </Typography>
             </Box>
           ))}

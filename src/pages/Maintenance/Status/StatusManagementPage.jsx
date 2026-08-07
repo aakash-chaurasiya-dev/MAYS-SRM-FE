@@ -25,7 +25,7 @@ export default function StatusManagementPage() {
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
 
   const initialFormState = {
-    statusId: '', statusName: '', statusFlg: 1, statusDescription: '', statusType: '', allowedDepartmentIds: []
+    statusId: '', statusName: '', statusFlg: 1, statusDescription: '', statusType: '', allowedDepartmentIds: [], slaTimerAction: 'NONE',
   };
   const [formData, setFormData] = useState(initialFormState);
 
@@ -70,6 +70,7 @@ export default function StatusManagementPage() {
         statusDescription: sToUpdate.statusDescription || '',
         statusType: sToUpdate.statusType || '',
         allowedDepartmentIds: sToUpdate.allowedDepartmentIds ? sToUpdate.allowedDepartmentIds.split(',').filter(v => v.trim() !== '').map(v => Number(v.trim())) : [],
+        slaTimerAction: sToUpdate.slaTimerAction || 'NONE',
       });
       setOpenModal(true);
     }
@@ -138,6 +139,7 @@ export default function StatusManagementPage() {
       statusDescription: formData.statusDescription,
       statusType: formData.statusType,
       allowedDepartmentIds: formData.allowedDepartmentIds.length > 0 ? formData.allowedDepartmentIds.join(',') : null,
+      slaTimerAction: formData.slaTimerAction || 'NONE',
     });
   };
 
@@ -156,6 +158,7 @@ export default function StatusManagementPage() {
       { field: 'statusType', headerName: 'Type', flex: 1 },
       { field: 'statusDescription', headerName: 'Description', flex: 2 },
       { field: 'allowedRoles', headerName: 'Allowed Roles', flex: 1 },
+      { field: 'slaTimerAction', headerName: 'SLA Action', width: 160 },
       {
         field: 'statusFlg',
         headerName: 'Status',
@@ -297,6 +300,18 @@ export default function StatusManagementPage() {
                 ))}
               </Select>
             </FormControl>
+
+            <Typography sx={{ ...lbl, mt: 1 }}>SLA Timer Action</Typography>
+            <TextField
+              select fullWidth size="small" name="slaTimerAction"
+              value={formData.slaTimerAction || 'NONE'}
+              onChange={handleFormChange}
+              sx={{ mb: 2 }}
+            >
+              {['NONE', 'CREATE_HOLD_REQUEST', 'PAUSE_TIMER', 'RESUME_TIMER', 'STOP_TIMER'].map((a) => (
+                <MenuItem key={a} value={a}>{a}</MenuItem>
+              ))}
+            </TextField>
 
             <Typography sx={{ ...lbl, mt: 1 }}>Active Status</Typography>
             <FormControlLabel

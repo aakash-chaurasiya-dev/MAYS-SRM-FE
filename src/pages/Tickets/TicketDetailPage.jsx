@@ -19,6 +19,7 @@ import TicketAccessories from './TicketDetailComponents/TicketAccessories';
 import TicketParts from './TicketDetailComponents/TicketParts';
 import TicketProgress from './TicketDetailComponents/TicketProgress';
 import TicketTimeTracker from './TicketDetailComponents/TicketTimeTracker';
+import SlaHoldRequestPanel from './TicketDetailComponents/SlaHoldRequestPanel';
 
 /**
  * Helper to safely format timestamp strings.
@@ -155,7 +156,9 @@ export default function TicketDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['ticket', id] });
       queryClient.invalidateQueries({ queryKey: ['ticket-logs', id] });
       queryClient.invalidateQueries({ queryKey: ['ticket-logs-latest', id] });
-      queryClient.invalidateQueries({ queryKey: ['ticket-accessories', id] });
+      queryClient.invalidateQueries({ queryKey: ['ticket-time-tracking', id] });
+      queryClient.invalidateQueries({ queryKey: ['sla-hold-active', id] });
+      queryClient.invalidateQueries({ queryKey: ['sla-hold-pending'] });
 
 
       // Clear the internal note text box
@@ -197,6 +200,8 @@ export default function TicketDetailPage() {
     // Only add remarks if they exist to avoid overwriting with null unnecessarily
     if (noteData.remarks) {
       payload.remarks = noteData.remarks;
+    } else if (operationsData.remarks) {
+      payload.remarks = operationsData.remarks;
     }
 
     updateTicketMutation.mutate(payload);
@@ -315,6 +320,7 @@ export default function TicketDetailPage() {
               ticket={ticket}
               isEditMode={isEditMode}
             />
+            <SlaHoldRequestPanel ticketId={id} />
             <TicketTimeline
               ticketId={id}
               timeline={timeline}

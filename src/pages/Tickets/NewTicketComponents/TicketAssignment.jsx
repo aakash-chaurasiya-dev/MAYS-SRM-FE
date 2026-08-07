@@ -36,9 +36,9 @@ export default function TicketAssignment({ form, setForm, handleChange, lbl, sec
     enabled: !!form.departmentId,
   });
 
-  // Same status filtering as TicketOperations: ticket type + role + department
+  // Same status filtering as TicketOperations: ticket type + role for current user
   const statusOptions = useMemo(() => {
-    const ticketStatuses = allStatuses.filter((s) => {
+    return allStatuses.filter((s) => {
       if (s.statusType && s.statusType.toLowerCase() !== 'ticket') return false;
       if (s.allowedRoles && String(s.allowedRoles).trim() !== '') {
         if (!userRole) return true;
@@ -47,16 +47,7 @@ export default function TicketAssignment({ form, setForm, handleChange, lbl, sec
       }
       return true;
     });
-
-    if (!form.departmentId) return ticketStatuses;
-
-    const deptIdStr = String(form.departmentId);
-    return ticketStatuses.filter((s) => {
-      const allowed = s.allowedDepartmentIds;
-      if (!allowed || String(allowed).trim() === '') return true;
-      return String(allowed).split(',').map((d) => d.trim()).includes(deptIdStr);
-    });
-  }, [allStatuses, userRole, form.departmentId]);
+  }, [allStatuses, userRole]);
 
   return (
     <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>

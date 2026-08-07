@@ -24,6 +24,7 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
     employeeId: '',
     departmentId: '',
     ticketStatusId: '',
+    holdReason: '',
   });
 
   // 1. Global Lookups
@@ -43,9 +44,9 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
     },
   });
 
-  // Ticket statuses: case-insensitive type, optional role + department filters (aligned with create flow)
+  // Ticket statuses: type filter + only statuses allowed for the current user's role
   const statuses = useMemo(() => {
-    const ticketStatuses = allStatuses.filter((s) => {
+    return allStatuses.filter((s) => {
       if (s.statusType && s.statusType.toLowerCase() !== 'ticket') return false;
       if (s.allowedRoles && String(s.allowedRoles).trim() !== '') {
         if (!userRole) return true; // don't hide options if role can't be resolved
@@ -54,17 +55,7 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
       }
       return true;
     });
-
-    const deptId = editForm.departmentId || ticket?.departmentId;
-    if (!deptId) return ticketStatuses;
-
-    const deptIdStr = String(deptId);
-    return ticketStatuses.filter((s) => {
-      const allowed = s.allowedDepartmentIds;
-      if (!allowed || String(allowed).trim() === '') return true;
-      return String(allowed).split(',').map((d) => d.trim()).includes(deptIdStr);
-    });
-  }, [allStatuses, userRole, editForm.departmentId, ticket?.departmentId]);
+  }, [allStatuses, userRole]);
 
   // Ensure current ticket status remains selectable/visible even if filters exclude it
   const statusOptions = useMemo(() => {
@@ -94,6 +85,14 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
     },
     enabled: !!editForm.departmentId, // Wait until department is selected
   });
+
+  const selectedStatus = useMemo(() => {
+    const currentId = editForm.ticketStatusId || ticket?.ticketStatusId;
+    if (!currentId) return null;
+    return allStatuses.find((s) => String(s.statusId || s.id) === String(currentId));
+  }, [allStatuses, editForm.ticketStatusId, ticket?.ticketStatusId]);
+
+  const isRequestForHold = selectedStatus?.slaTimerAction === 'CREATE_HOLD_REQUEST';
 
   const assignedTo = ticket?.employeeName || 'Not available';
   const department = ticket?.departmentName || 'Not available';
@@ -129,11 +128,15 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
 
   useImperativeHandle(ref, () => ({
     getFormData: () => {
-      return {
+      const data = {
         employeeId: editForm.employeeId || null,
         departmentId: editForm.departmentId || null,
         ticketStatusId: editForm.ticketStatusId || null,
       };
+      if (isRequestForHold && editForm.holdReason?.trim()) {
+        data.remarks = editForm.holdReason.trim();
+      }
+      return data;
     }
   }));
 
@@ -221,6 +224,22 @@ const TicketOperations = forwardRef(({ ticket, isEditMode }, ref) => {
               <Typography sx={{ fontSize: '13px' }}>{statusDisplay}</Typography>
             )}
           </Box>
+          {isEditMode && isRequestForHold && (
+            <Box>
+              <Typography sx={lbl}>Hold Reason (required)</Typography>
+              <TextField
+                fullWidth
+                size="small"
+                multiline
+                rows={2}
+                placeholder="Why do you need SLA hold? e.g. Part not received physically"
+                value={editForm.holdReason}
+                onChange={(e) => setEditForm({ ...editForm, holdReason: e.target.value })}
+                required
+                sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+              />
+            </Box>
+          )}
         </Stack>
       </Box>
     </Paper>
