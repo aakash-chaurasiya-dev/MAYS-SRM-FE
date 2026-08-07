@@ -42,16 +42,18 @@ export default defineConfig([
       'react-refresh/only-export-components': 'off',
     },
   },
-  // Enable Jest globals for test files so ESLint recognizes describe/it/expect/jest
+  // Enable Jest/Node globals for test files and setup
   {
     files: [
+      'jest.setup.js',
       '**/*.test.{js,jsx}',
       '**/__tests__/**',
+      '**/__mocks__/**',
       'src/**/__test__/**',
       'src/**/__tests__/**',
     ],
     languageOptions: {
-      globals: { ...globals.jest },
+      globals: { ...globals.jest, ...globals.node },
     },
   },
 ])
