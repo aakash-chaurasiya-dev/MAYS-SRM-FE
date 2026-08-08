@@ -2,7 +2,7 @@ import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Box, Typography, LinearProgress, Paper, TextField } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 
-const TicketProgress = forwardRef(({ ticket, isEditMode }, ref) => {
+const TicketProgress = forwardRef(({ ticket, isEditMode, canEditTargetDate = false }, ref) => {
   const theme = useTheme();
   
   // State for the editable target date
@@ -18,9 +18,12 @@ const TicketProgress = forwardRef(({ ticket, isEditMode }, ref) => {
   }, [isEditMode, ticket]);
 
   useImperativeHandle(ref, () => ({
-    getFormData: () => ({
-      targetDate: targetDateStr ? targetDateStr + (targetDateStr.length === 16 ? ':00' : '') : null
-    })
+    getFormData: () => {
+      if (!canEditTargetDate) return {};
+      return {
+        targetDate: targetDateStr ? targetDateStr + (targetDateStr.length === 16 ? ':00' : '') : null,
+      };
+    },
   }));
 
   // If no createdDate, we can't draw the timeline reliably
@@ -61,7 +64,7 @@ const TicketProgress = forwardRef(({ ticket, isEditMode }, ref) => {
           Created: {formatDate(created)}
         </Typography>
         
-        {isEditMode ? (
+        {isEditMode && canEditTargetDate ? (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography sx={{ fontSize: '12px', fontWeight: 600, color: theme.palette.text.secondary }}>Target:</Typography>
             <TextField

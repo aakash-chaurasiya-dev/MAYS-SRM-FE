@@ -21,6 +21,8 @@ export const FEATURES = {
   employees: ['ROLE_MANAGER', 'ROLE_EXECUTIVE'],
   users: ['ROLE_MANAGER', 'ROLE_EXECUTIVE'],
   vendors: ['ROLE_MANAGER', 'ROLE_EXECUTIVE'],
+  /** Who may change ticket target date on create/edit */
+  editTicketTargetDate: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN'],
 };
 
 export function getUserRole(user) {

@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { getUserRole } from '../../access/featureAccess';
+import { getUserRole, canAccess } from '../../access/featureAccess';
 
 // Import modular components
 import TicketHeader from './TicketDetailComponents/TicketHeader';
@@ -83,6 +83,7 @@ export default function TicketDetailPage() {
   const isNormalUser = rawRole === 'ROLE_USER';
   const isVendor = rawRole === 'ROLE_VENDOR';
   const isPortalUser = isNormalUser || isVendor;
+  const canEditTargetDate = canAccess(user, 'editTicketTargetDate');
 
   // Unified Edit State
   const [isEditMode, setIsEditMode] = useState(false);
@@ -259,7 +260,7 @@ export default function TicketDetailPage() {
 
         {/* Left Column */}
         <Box sx={{ flex: isPortalUser ? 1 : 0.7 }}>
-          <TicketProgress ref={progressRef} ticket={ticket} isEditMode={isEditMode} />
+          <TicketProgress ref={progressRef} ticket={ticket} isEditMode={isEditMode} canEditTargetDate={canEditTargetDate} />
           
           <TicketIssue
             ref={issueRef}

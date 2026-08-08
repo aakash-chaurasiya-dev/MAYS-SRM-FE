@@ -58,6 +58,7 @@ export const AuthProvider = ({ children }) => {
       console.log('decoded', decoded);
       setUser(decoded);
       setIsAuthenticated(true);
+      window.dispatchEvent(new CustomEvent('user-logged-in'));
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
