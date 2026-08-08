@@ -45,25 +45,31 @@ import VendorProfilePage from './pages/VendorDetails/VendorProfilePage';
 import ProfilePage from './pages/Profile/ProfilePage';
 import EnquiriesPage from './pages/Enquiries/EnquiriesPage';
 
+//auth context
+import { useAuth } from './contexts/AuthContext';
+
 // Access
 import Can from './access/Can';
 import GlobalNotificationPopup from './components/GlobalNotificationPopup';
 import GlobalLoading from './components/GlobalLoading';
 
 function App() {
+  const { isAuthenticated, user, logout } = useAuth();
   return (
     <GlobalLoadingProvider>
       <BrowserRouter>
         <TabNavigationProvider>
           <Routes>
             {/* Public Routes */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+            <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <RegisterPage />} />
+            <Route path="/forgot-password" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <ForgotPasswordPage />} />
 
             {/* Authenticated Routes with Sidebar & TabBar */}
-            <Route element={<Can mode="redirect" />}>
+            <Route element={<Can  mode="redirect" />}>
+            
               <Route element={<AppLayout />}>
+
                 {/* Common Authenticated Routes (Accessible by all roles) */}
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<DashboardPage />} />

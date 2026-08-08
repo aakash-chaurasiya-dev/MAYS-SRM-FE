@@ -122,6 +122,11 @@ export default function BranchManagementPage() {
     deleteMutation.mutate(selectedIds[0]);
   };
 
+  const selectedRowsAreLocked = selectedIds.some(id => {
+    const row = branches.find(b => String(b.id) === String(id));
+    return row?.isLocked;
+  });
+
   const branchConfig = useMemo(() => ({
     title: 'Branch Management',
     subtitle: `${branches.length} branches configured`,
@@ -141,49 +146,28 @@ export default function BranchManagementPage() {
     height: 480,
     gridKey: clearSelectionKey,
     getRowClassName: (params) => params.row?.isLocked ? 'locked-row' : '',
+    headerActions: [
+      { label: 'Update', icon: <EditOutlinedIcon />, variant: 'outlined', color: 'primary', disabled: selectedIds.length !== 1 || selectedRowsAreLocked, onClick: handleOpenUpdateModal },
+      { label: 'Delete', icon: <DeleteOutlinedIcon />, variant: 'outlined', color: 'error', disabled: selectedIds.length === 0 || selectedRowsAreLocked, onClick: () => setOpenDeleteConfirm(true) },
+    ],
     actions: [
       { label: 'Add Branch', icon: <AddIcon />, variant: 'contained', color: 'primary', onClick: handleOpenCreateModal },
     ],
-  }), [branches, clearSelectionKey]);
+  }), [branches, clearSelectionKey, selectedIds, selectedRowsAreLocked]);
 
   const lbl = {
     fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary,
     textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.8, mt: 2,
   };
-  const selectedRowsAreLocked = selectedIds.some(id => {
-    const row = branches.find(b => String(b.id) === String(id));
-    return row?.isLocked;
-  });
+  
 
   return (
-    <Box sx={{ p: 2 }}>
+    <Box>
       <List 
         config={branchConfig} 
         rowSelectionModel={selectedIds}
         onRowSelectionModelChange={setSelectedIds}
       />
-
-      {/* Action Buttons for Update and Delete */}
-      <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-        <Button
-          variant="outlined"
-          color="primary"
-          startIcon={<EditOutlinedIcon />}
-          disabled={selectedIds.length !== 1 || selectedRowsAreLocked}
-          onClick={handleOpenUpdateModal}
-        >
-          Update
-        </Button>
-        <Button
-          variant="outlined"
-          color="error"
-          startIcon={<DeleteOutlinedIcon />}
-          disabled={selectedIds.length === 0 || selectedRowsAreLocked}
-          onClick={() => setOpenDeleteConfirm(true)}
-        >
-          Delete
-        </Button>
-      </Box>
 
       {/* ── Branch Modal (Create/Update) ── */}
       <Dialog 

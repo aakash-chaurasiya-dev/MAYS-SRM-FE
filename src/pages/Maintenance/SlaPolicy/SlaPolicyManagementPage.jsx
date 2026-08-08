@@ -71,8 +71,13 @@ export default function SlaPolicyManagementPage() {
     },
   });
 
+  const selectedRowsAreLocked = selectedIds.length > 0 && policies.some(
+    (p) => selectedIds.includes(String(p.id)) && p.isLocked
+  );
+
   const listConfig = {
     title: 'SLA Policies',
+    subtitle: `${policies.length} policies configured`,
     rows: policies,
     columns: [
       { field: 'departmentName', headerName: 'Department', flex: 1 },
@@ -87,23 +92,34 @@ export default function SlaPolicyManagementPage() {
         renderType: 'chip', chipColorMap: { true: 'success', false: 'default' },
       },
     ],
-    actions: [
-      { label: 'Add Policy', icon: <AddIcon />, onClick: () => { setModalMode('create'); setFormData(initialFormState); setOpenModal(true); } },
-      { label: 'Edit', icon: <EditOutlinedIcon />, onClick: () => {
-        const p = policies.find((x) => String(x.id) === String(selectedIds[0]));
-        if (p) {
-          setModalMode('update');
-          setFormData({
-            id: p.id, departmentId: p.departmentId || '', role: p.role || '',
-            targetMinutes: p.targetMinutes ?? 120, isTimerTracked: p.isTimerTracked !== false, isActive: p.isActive !== false,
-          });
-          setOpenModal(true);
-        }
-      }, disabled: selectedIds.length !== 1 },
-      { label: 'Delete', icon: <DeleteOutlinedIcon />, onClick: () => setOpenDeleteConfirm(true), disabled: selectedIds.length !== 1 },
+    checkboxSelection: true,
+    searchable: true,
+    gridKey: clearSelectionKey,
+    headerActions: [
+      { label: 'Update', icon: <EditOutlinedIcon />, variant: 'outlined', color: 'primary',
+        disabled: selectedIds.length !== 1 || selectedRowsAreLocked,
+        onClick: () => {
+          const p = policies.find((x) => String(x.id) === String(selectedIds[0]));
+          if (p) {
+            setModalMode('update');
+            setFormData({
+              id: p.id, departmentId: p.departmentId || '', role: p.role || '',
+              targetMinutes: p.targetMinutes ?? 120, isTimerTracked: p.isTimerTracked !== false, isActive: p.isActive !== false,
+            });
+            setOpenModal(true);
+          }
+        },
+      },
+      { label: 'Delete', icon: <DeleteOutlinedIcon />, variant: 'outlined', color: 'error',
+        disabled: selectedIds.length !== 1 || selectedRowsAreLocked,
+        onClick: () => setOpenDeleteConfirm(true),
+      },
     ],
-    onSelectionChange: setSelectedIds,
-    clearSelectionKey,
+    actions: [
+      { label: 'Add Policy', icon: <AddIcon />, variant: 'contained', color: 'primary',
+        onClick: () => { setModalMode('create'); setFormData(initialFormState); setOpenModal(true); },
+      },
+    ],
     getRowId: (row) => row.id,
     height: 480,
   };
@@ -112,8 +128,12 @@ export default function SlaPolicyManagementPage() {
 
   return (
     <Box>
-      <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => navigate('/maintenance')} sx={{ mb: 2 }}>Back</Button>
-      <List config={listConfig} />
+      <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => navigate('/maintenance')} sx={{ mb: 1 }}>Back</Button>
+      <List
+        config={listConfig}
+        rowSelectionModel={selectedIds}
+        onRowSelectionModelChange={setSelectedIds}
+      />
 
       <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{modalMode === 'create' ? 'Add SLA Policy' : 'Update SLA Policy'}</DialogTitle>
