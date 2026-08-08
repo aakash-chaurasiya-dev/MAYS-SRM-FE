@@ -65,13 +65,8 @@ export default function NewTicketPage() {
     issueDescription: '',
     departmentId: '',
     employeeId: '',
-<<<<<<< Updated upstream
-    ticketStatusId: isVendor ? 3 : 1, // Registered for vendors, Open for staff
-    targetDate: '',
-=======
     ticketStatusId: 1, // Defaulting to Open or initial status
     targetDate: getDefaultTargetDateLocal(),
->>>>>>> Stashed changes
     vendorId: '',
     vendorUserId: '',
     customerAddress: '',
