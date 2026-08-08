@@ -3,10 +3,12 @@ import {
   Box, Paper, Typography, Chip, Button, Divider, TextField,
 } from '@mui/material';
 import ConfirmationNumberOutlinedIcon from '@mui/icons-material/ConfirmationNumberOutlined';
+import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
 import EngineeringOutlinedIcon from '@mui/icons-material/EngineeringOutlined';
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
+import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined';
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import { useTheme } from '@mui/material/styles';
 import { useQuery } from '@tanstack/react-query';
@@ -34,6 +36,35 @@ const TICKET_COLUMNS = [
   { field: 'createdDate', headerName: 'Created Date', width: 170 },
   { field: 'targetDate', headerName: 'Target Date', flex: 1 },
 ];
+
+const DEPT_CARD_STYLES = [
+  { icon: <AdminPanelSettingsOutlinedIcon />, iconColor: '#003d9b', iconBg: '#003d9b14' },
+  { icon: <EngineeringOutlinedIcon />, iconColor: '#006c47', iconBg: '#006c4714' },
+  { icon: <ManageAccountsOutlinedIcon />, iconColor: '#B95000', iconBg: '#B9500014' },
+  { icon: <ShoppingCartOutlinedIcon />, iconColor: '#7b2600', iconBg: '#7b260014' },
+  { icon: <BusinessOutlinedIcon />, iconColor: '#5b2d8e', iconBg: '#5b2d8e14' },
+];
+
+const KNOWN_DEPT_STYLES = {
+  Admin: DEPT_CARD_STYLES[0],
+  Engineer: DEPT_CARD_STYLES[1],
+  Management: DEPT_CARD_STYLES[2],
+  'Purchase Team': DEPT_CARD_STYLES[3],
+  Unassigned: {
+    icon: <HelpOutlineOutlinedIcon />,
+    iconColor: '#5f6368',
+    iconBg: '#5f636814',
+  },
+};
+
+function getDeptCardStyle(departmentName, index) {
+  return KNOWN_DEPT_STYLES[departmentName] || DEPT_CARD_STYLES[index % DEPT_CARD_STYLES.length];
+}
+
+function buildDashboardEndpoint(selectedDept) {
+  if (selectedDept === 'All') return '/tickets/dashboard';
+  return `/tickets/dashboard/department/${encodeURIComponent(selectedDept)}`;
+}
 
 /* ── Stat Card Component ── */
 function StatCard({ title, value, icon, iconColor, iconBg, selected, onClick }) {
@@ -124,16 +155,14 @@ export default function DashboardPage() {
       return res.data;
     },
     enabled: !isPortalUser && !isEmployeeWithSelfTickets,
-    refetchInterval: 6000000, // Poll every 60 seconds
+    refetchInterval: 60000,
   });
 
   // 2. Fetch Initial Tickets (Admin/Manager)
   const { data: adminTicketsInitial, isLoading: loadingAdminTickets } = useQuery({
     queryKey: ['dashboard-ticket-list', selectedDept],
     queryFn: async () => {
-      const baseEndpoint = selectedDept === 'All'
-        ? '/tickets/dashboard'
-        : `/tickets/dashboard/department/${selectedDept}`;
+      const baseEndpoint = buildDashboardEndpoint(selectedDept);
 
       const [res0, res1] = await Promise.all([
         api.get(`${baseEndpoint}?offset=0&limit=10`),
@@ -210,9 +239,7 @@ export default function DashboardPage() {
 
     if (!fetchedPages.has(nextPage)) {
       try {
-        const baseEndpoint = selectedDept === 'All'
-          ? '/tickets/dashboard'
-          : `/tickets/dashboard/department/${selectedDept}`;
+        const baseEndpoint = buildDashboardEndpoint(selectedDept);
 
         const res = await api.get(`${baseEndpoint}?offset=${nextPage}&limit=${newModel.pageSize}`);
         const newTickets = res.data.content || [];
@@ -233,41 +260,27 @@ export default function DashboardPage() {
         console.error('Failed to prefetch page', nextPage, err);
       }
     }
-  }, [fetchedPages, isPortalUser, selectedDept]);
-
-  // Fetch counts from API stats response
-  const getDeptCount = (deptName) => {
-    if (!stats) return 0;
-    const dept = stats.departmentCounts.find(d => d.departmentName === deptName);
-    return dept ? dept.ticketCount : 0;
-  };
+  }, [fetchedPages, isPortalUser, isEmployeeWithSelfTickets, selectedDept]);
 
   const STATS = [
     {
-      id: 'All', title: 'Total Tickets', value: stats ? stats.totalTickets : 0,
+      id: 'All',
+      title: 'Total Tickets',
+      value: stats ? stats.totalTickets : 0,
       icon: <ConfirmationNumberOutlinedIcon />,
-      iconColor: '#0052cc', iconBg: '#0052cc14',
+      iconColor: '#0052cc',
+      iconBg: '#0052cc14',
     },
-    {
-      id: 'Admin', title: 'Admin Tickets', value: getDeptCount('Admin'),
-      icon: <AdminPanelSettingsOutlinedIcon />,
-      iconColor: '#003d9b', iconBg: '#003d9b14',
-    },
-    {
-      id: 'Engineer', title: 'Engineer Tickets', value: getDeptCount('Engineer'),
-      icon: <EngineeringOutlinedIcon />,
-      iconColor: '#006c47', iconBg: '#006c4714',
-    },
-    {
-      id: 'Management', title: 'Manager Tickets', value: getDeptCount('Management'),
-      icon: <ManageAccountsOutlinedIcon />,
-      iconColor: '#B95000', iconBg: '#B9500014',
-    },
-    {
-      id: 'Purchase Team', title: 'Purchase Tickets', value: getDeptCount('Purchase Team'),
-      icon: <ShoppingCartOutlinedIcon />,
-      iconColor: '#7b2600', iconBg: '#7b260014',
-    },
+    ...((stats?.departmentCounts) || []).map((dept, index) => {
+      const name = dept.departmentName || 'Unassigned';
+      const style = getDeptCardStyle(name, index);
+      return {
+        id: name,
+        title: `${name} Tickets`,
+        value: dept.ticketCount ?? 0,
+        ...style,
+      };
+    }),
   ];
 
   // Map raw API data to grid rows gracefully handling DTO fields
@@ -457,14 +470,14 @@ export default function DashboardPage() {
               xs: '1fr',
               sm: 'repeat(2, 1fr)',
               md: 'repeat(3, 1fr)',
-              lg: 'repeat(5, 1fr)',
+              lg: 'repeat(auto-fill, minmax(180px, 1fr))',
             },
             gap: 2, mb: 3,
           }}
         >
           {STATS.map((stat) => (
             <StatCard
-              key={stat.title}
+              key={stat.id}
               {...stat}
               selected={selectedDept === stat.id}
               onClick={() => setSelectedDept(stat.id)}

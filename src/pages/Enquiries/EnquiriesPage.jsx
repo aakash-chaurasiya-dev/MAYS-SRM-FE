@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Paper, Typography, TextField, Button, Divider,
   MenuItem, Stack, Chip, Dialog, DialogTitle, DialogContent,
@@ -22,24 +23,16 @@ import api from '../../services/api';
 export default function EnquiriesPage() {
   const theme = useTheme();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const rawRole = getUserRole(user);
   const isNormalUser = rawRole === 'ROLE_USER';
 
-  // API Data State
-  const [enquiries, setEnquiries] = useState([]);
-  const [brands, setBrands] = useState([]);
-  const [statuses, setStatuses] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Modals / Actions State
   const [openCreateModal, setOpenCreateModal] = useState(false);
   const [openReplyModal, setOpenReplyModal] = useState(false);
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
 
-  // Form State
   const [createForm, setCreateForm] = useState({
     brandId: '',
     serialNo: '',
@@ -52,107 +45,114 @@ export default function EnquiriesPage() {
     statusId: '',
   });
 
-  // Fetch all necessary initial data
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      // 1. Fetch Brands
-      const brandsRes = await api.get('/brands');
-      setBrands(brandsRes.data || []);
+  const invalidateEnquiryCaches = () => {
+    queryClient.invalidateQueries({ queryKey: ['enquiries'] });
+    queryClient.invalidateQueries({ queryKey: ['enquiries-pending-count'] });
+  };
 
-      // 2. Fetch Enquiries depending on role
+  const { data: brands = [] } = useQuery({
+    queryKey: ['brands'],
+    queryFn: async () => {
+      const res = await api.get('/brands');
+      return res.data || [];
+    },
+  });
+
+  const { data: statuses = [] } = useQuery({
+    queryKey: ['statuses', 'enquiry'],
+    queryFn: async () => {
+      const res = await api.get('/statuses/type/enquiry');
+      return res.data || [];
+    },
+    enabled: !isNormalUser,
+  });
+
+  const { data: enquiries = [], isLoading: loading } = useQuery({
+    queryKey: ['enquiries', isNormalUser ? 'user' : 'all'],
+    queryFn: async () => {
       if (isNormalUser) {
         const meResponse = await api.get('/auth/me');
         const myId = meResponse.data.userId;
-        const enquiriesRes = await api.get(`/enquiries/user/${myId}`);
-        setEnquiries(enquiriesRes.data || []);
-      } else {
-        const [enquiriesRes, statusesRes] = await Promise.all([
-          api.get('/enquiries'),
-          api.get('/statuses/type/enquiry')
-        ]);
-        setEnquiries(enquiriesRes.data || []);
-        setStatuses(statusesRes.data || []);
+        const res = await api.get(`/enquiries/user/${myId}`);
+        return res.data || [];
       }
-    } catch (error) {
-      console.error('Failed to fetch enquiry page data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [isNormalUser]);
+      const res = await api.get('/enquiries');
+      return res.data || [];
+    },
+  });
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const createMutation = useMutation({
+    mutationFn: async (payload) => {
+      await api.post('/enquiries', payload);
+    },
+    onSuccess: () => {
+      window.dispatchEvent(new CustomEvent('app-notification', {
+        detail: { message: 'Enquiry submitted successfully!', severity: 'success' }
+      }));
+      setCreateForm({ brandId: '', serialNo: '', enquiryFor: '', queryText: '' });
+      setOpenCreateModal(false);
+      invalidateEnquiryCaches();
+    },
+    onError: (error) => {
+      console.error('Failed to submit enquiry:', error);
+    },
+  });
 
-  // Handle new enquiry submission
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, payload }) => {
+      await api.put(`/enquiries/${id}`, payload);
+    },
+    onSuccess: () => {
+      window.dispatchEvent(new CustomEvent('app-notification', {
+        detail: { message: 'Enquiry response updated!', severity: 'success' }
+      }));
+      setOpenReplyModal(false);
+      setSelectedEnquiry(null);
+      invalidateEnquiryCaches();
+    },
+    onError: (error) => {
+      console.error('Failed to update enquiry response:', error);
+    },
+  });
+
+  const submitting = createMutation.isPending || updateMutation.isPending;
+
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     if (!createForm.brandId || !createForm.enquiryFor || !createForm.queryText) {
       return;
     }
-    setSubmitting(true);
-    try {
-      const meResponse = await api.get('/auth/me');
-      const myId = meResponse.data.userId;
+    const meResponse = await api.get('/auth/me');
+    const myId = meResponse.data.userId;
 
-      const payload = {
-        userId: myId,
-        brandId: Number(createForm.brandId),
-        serialNo: createForm.serialNo || '',
-        enquiryFor: createForm.enquiryFor,
-        queryText: createForm.queryText,
-      };
-
-      await api.post('/enquiries', payload);
-      window.dispatchEvent(new CustomEvent('app-notification', {
-        detail: { message: 'Enquiry submitted successfully!', severity: 'success' }
-      }));
-      
-      setCreateForm({ brandId: '', serialNo: '', enquiryFor: '', queryText: '' });
-      setOpenCreateModal(false);
-      fetchData();
-    } catch (error) {
-      console.error('Failed to submit enquiry:', error);
-    } finally {
-      setSubmitting(false);
-    }
+    createMutation.mutate({
+      userId: myId,
+      brandId: Number(createForm.brandId),
+      serialNo: createForm.serialNo || '',
+      enquiryFor: createForm.enquiryFor,
+      queryText: createForm.queryText,
+    });
   };
 
-  // Handle staff reply and status change submission
   const handleReplySubmit = async (e) => {
     e.preventDefault();
     if (!selectedEnquiry) return;
-    setSubmitting(true);
-    try {
-      // Find brand details to keep them during updating
-      const matchedBrand = brands.find(b => b.brandName === selectedEnquiry.brandName);
-      const matchedStatus = statuses.find(s => String(s.statusId) === String(replyForm.statusId)) || 
-                            statuses.find(s => s.statusName === selectedEnquiry.statusName);
 
-      // If user ID or profile of the enquirer is needed, we resolve from original enquiry context
-      const payload = {
+    const matchedBrand = brands.find(b => b.brandName === selectedEnquiry.brandName);
+    const matchedStatus = statuses.find(s => String(s.statusId) === String(replyForm.statusId)) ||
+                          statuses.find(s => s.statusName === selectedEnquiry.statusName);
+
+    updateMutation.mutate({
+      id: selectedEnquiry.enquiryId,
+      payload: {
         remark: replyForm.remark,
         statusId: matchedStatus ? matchedStatus.statusId : null,
         brandId: matchedBrand ? matchedBrand.brandId : null,
         enquiryFor: selectedEnquiry.enquiryFor,
         queryText: selectedEnquiry.queryText,
         serialNo: selectedEnquiry.serialNo,
-      };
-
-      await api.put(`/enquiries/${selectedEnquiry.enquiryId}`, payload);
-      window.dispatchEvent(new CustomEvent('app-notification', {
-        detail: { message: 'Enquiry response updated!', severity: 'success' }
-      }));
-
-      setOpenReplyModal(false);
-      setSelectedEnquiry(null);
-      fetchData();
-    } catch (error) {
-      console.error('Failed to update enquiry response:', error);
-    } finally {
-      setSubmitting(false);
-    }
+      },
+    });
   };
 
   const handleOpenReply = (enq) => {
@@ -165,7 +165,6 @@ export default function EnquiriesPage() {
     setOpenReplyModal(true);
   };
 
-  // Filter Logic
   const filteredEnquiries = enquiries.filter(enq => {
     const q = searchQuery.toLowerCase();
     return (
@@ -186,7 +185,6 @@ export default function EnquiriesPage() {
     return 'default';
   };
 
-  // UI styling tokens
   const sectionHeaderSx = {
     px: 2.5, py: 1.8,
     bgcolor: `${theme.palette.primary.main}06`,
@@ -200,7 +198,6 @@ export default function EnquiriesPage() {
 
   return (
     <Box>
-      {/* ── Page Header ── */}
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
         <Box>
           <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -223,7 +220,6 @@ export default function EnquiriesPage() {
         )}
       </Box>
 
-      {/* ── Search Input ── */}
       <Box sx={{ mb: 3 }}>
         <TextField
           fullWidth
@@ -244,7 +240,6 @@ export default function EnquiriesPage() {
         />
       </Box>
 
-      {/* ── Loading Spinner ── */}
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
           <CircularProgress />
@@ -267,7 +262,6 @@ export default function EnquiriesPage() {
           )}
         </Paper>
       ) : (
-        /* ── Enquiries Grid/List ── */
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2.5 }}>
           {filteredEnquiries.map((enq) => (
             <Card
@@ -289,7 +283,6 @@ export default function EnquiriesPage() {
               }}
             >
               <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
-                {/* Header info */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
                   <Stack direction="row" spacing={1.5} alignItems="center">
                     <Typography sx={{ fontWeight: 600, fontSize: '13px', color: theme.palette.primary.main }}>
@@ -310,7 +303,6 @@ export default function EnquiriesPage() {
                   />
                 </Box>
 
-                {/* Sender metadata for staff */}
                 {!isNormalUser && (
                   <Box sx={{ mb: 1.5, p: 1, px: 1.5, bgcolor: `${theme.palette.secondary.main}08`, borderRadius: '4px' }}>
                     <Typography sx={{ fontSize: '12px', fontWeight: 600 }}>
@@ -319,7 +311,6 @@ export default function EnquiriesPage() {
                   </Box>
                 )}
 
-                {/* Brand & Device */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 1 }}>
                   <LaptopMacIcon sx={{ fontSize: 16, color: theme.palette.text.secondary }} />
                   <Typography sx={{ fontWeight: 600, fontSize: '14px', color: 'text.primary' }}>
@@ -327,17 +318,14 @@ export default function EnquiriesPage() {
                   </Typography>
                 </Box>
 
-                {/* Enquiry subject */}
                 <Typography sx={{ fontWeight: 700, fontSize: '15px', mb: 1, color: theme.palette.text.primary }}>
                   {enq.enquiryFor}
                 </Typography>
 
-                {/* Enquiry body query */}
                 <Typography sx={{ fontSize: '13.5px', color: theme.palette.text.secondary, mb: 2, whiteSpace: 'pre-wrap' }}>
                   {enq.queryText}
                 </Typography>
 
-                {/* Remarks/Replies section */}
                 {enq.remark ? (
                   <Box sx={{ mt: 2, p: 2, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#f8f9fa', borderRadius: '4px', border: `1px solid ${theme.palette.divider}` }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 1, color: theme.palette.success.main }}>
@@ -359,7 +347,6 @@ export default function EnquiriesPage() {
                   </Box>
                 )}
 
-                {/* Staff Response Action */}
                 {!isNormalUser && (
                   <Box sx={{ mt: 2.5, display: 'flex', justifyContent: 'flex-end' }}>
                     <Button
@@ -379,7 +366,6 @@ export default function EnquiriesPage() {
         </Box>
       )}
 
-      {/* ── Customer Create Enquiry Modal ── */}
       <Dialog
         open={openCreateModal}
         onClose={() => setOpenCreateModal(false)}
@@ -464,7 +450,6 @@ export default function EnquiriesPage() {
         </form>
       </Dialog>
 
-      {/* ── Staff Reply / Update Dialog ── */}
       <Dialog
         open={openReplyModal}
         onClose={() => { setOpenReplyModal(false); setSelectedEnquiry(null); }}

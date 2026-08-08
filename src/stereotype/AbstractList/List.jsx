@@ -44,7 +44,8 @@ import { exportToExcel } from '../../utils/exportExcel';
  *    subtitle:      string                     — optional subtitle
  *    rows:          array                      — data rows (each must have `id`)
  *    columns:       array of ColumnDef         — column definitions (see below)
- *    actions:       array of ActionDef         — toolbar action buttons
+ *    actions:       array of ActionDef         — toolbar action buttons (right of search)
+ *    headerActions: array of ActionDef         — action buttons inline with title row
  *    pagination:    { pageSize, pageSizeOptions }
  *    checkboxSelection: boolean
  *    density:       'compact' | 'standard' | 'comfortable'
@@ -214,6 +215,7 @@ export default function List({ config, rowSelectionModel: directRowSelectionMode
     rows = EMPTY_ARRAY,
     columns = EMPTY_ARRAY,
     actions = EMPTY_ARRAY,
+    headerActions = EMPTY_ARRAY,
     pagination = EMPTY_OBJECT,
     checkboxSelection = false,
     density = 'standard',
@@ -513,31 +515,63 @@ export default function List({ config, rowSelectionModel: directRowSelectionMode
       {/* ── Header ── */}
       <Box
         sx={{
-          px: 3,
-          pt: 2.5,
-          pb: 2,
+          px: 2,
+          py: 1.5,
           background: `linear-gradient(135deg, ${theme.palette.primary.main}06 0%, ${theme.palette.secondary.main}06 100%)`,
         }}
       >
-        <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
-          <Box>
-            <Typography variant="h5" color="text.primary">
-              {title}
-            </Typography>
-            {subtitle && (
-              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                {subtitle}
-              </Typography>
-            )}
-          </Box>
-          {headerSlot && <Box>{headerSlot}</Box>}
-        </Stack>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 2,
+            minWidth: 0,
+          }}
+        >
+          <Typography
+            variant="h5"
+            color="text.primary"
+            sx={{ fontSize: '1.15rem', fontWeight: 600, lineHeight: 1.3, minWidth: 0 }}
+          >
+            {title}
+          </Typography>
+          {(headerActions.length > 0 || headerSlot) && (
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1}
+              sx={{ flexShrink: 0, ml: 'auto' }}
+            >
+              {headerActions.map((action, idx) => (
+                <Button
+                  key={idx}
+                  variant={action.variant || 'outlined'}
+                  color={action.color || 'primary'}
+                  size="small"
+                  startIcon={action.icon}
+                  onClick={action.onClick}
+                  disabled={action.disabled}
+                  sx={{ textTransform: 'none', fontWeight: 600 }}
+                >
+                  {action.label}
+                </Button>
+              ))}
+              {headerSlot && <Box>{headerSlot}</Box>}
+            </Stack>
+          )}
+        </Box>
+        {subtitle && (
+          <Typography variant="body2" sx={{ mt: 0.35, fontSize: '0.8rem' }}>
+            {subtitle}
+          </Typography>
+        )}
       </Box>
 
       <Divider />
 
       {/* ── Toolbar ── */}
-      <Box sx={{ px: 3, py: 1.5, display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+      <Box sx={{ px: 2, py: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         {searchable && (
           <TextField
             size="small"
@@ -690,7 +724,7 @@ export default function List({ config, rowSelectionModel: directRowSelectionMode
       </Box>
 
       {activeFilters.length > 0 && (
-        <Box sx={{ px: 3, pb: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+        <Box sx={{ px: 2, pb: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
           <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
             Active filters:
           </Typography>
