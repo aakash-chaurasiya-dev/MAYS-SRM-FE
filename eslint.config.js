@@ -42,16 +42,32 @@ export default defineConfig([
       'react-refresh/only-export-components': 'off',
     },
   },
-  // Enable Jest globals for test files so ESLint recognizes describe/it/expect/jest
+  // Jest unit/integration tests and test helpers
   {
     files: [
       '**/*.test.{js,jsx}',
       '**/__tests__/**',
       'src/**/__test__/**',
       'src/**/__tests__/**',
+      'src/**/__mocks__/**',
+      'src/test-utils/**',
+      'jest.config.js',
+      'jest.setup.js',
     ],
     languageOptions: {
-      globals: { ...globals.jest },
+      globals: { ...globals.browser, ...globals.jest, ...globals.node },
+    },
+  },
+  // Cypress E2E tests
+  {
+    files: ['cypress/**/*.{js,jsx}'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.mocha,
+        cy: 'readonly',
+        Cypress: 'readonly',
+      },
     },
   },
 ])

@@ -65,6 +65,26 @@ export function TabNavigationProvider({ children }) {
     }
   });
 
+  // Reset tab state on fresh login (avoid restoring /profile or other stale tabs)
+  useEffect(() => {
+    const handleLoggedIn = () => {
+      const routeInfo = findRouteInfo('/dashboard', '');
+      if (!routeInfo) return;
+      const dashboardTab = {
+        id: '/dashboard',
+        path: '/dashboard',
+        title: routeInfo.title,
+        icon: routeInfo.icon,
+        isClosable: false,
+      };
+      setTabs([dashboardTab]);
+      setActiveTabId('/dashboard');
+    };
+
+    window.addEventListener('user-logged-in', handleLoggedIn);
+    return () => window.removeEventListener('user-logged-in', handleLoggedIn);
+  }, []);
+
   const location = useLocation();
 
   // Save to localStorage whenever tabs or active tab changes
