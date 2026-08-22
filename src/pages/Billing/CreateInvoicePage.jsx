@@ -72,11 +72,16 @@ export default function CreateInvoicePage() {
   });
 
   const { data: products = [] } = useQuery({
-    queryKey: ['inventory'],
+    queryKey: ['inventory-products'],
     queryFn: async () => {
-      const res = await api.get('/inventory');
+      const res = await api.get('/inventory/products', { params: { limit: 200 } });
       const data = res.data?.data || res.data || [];
-      return data.map((p, idx) => ({ ...p, id: p.productId || `fallback-prod-${idx}` }));
+      return data.map((p, idx) => ({
+        ...p,
+        productId: p.partCatId || p.productId,
+        productName: p.partName || p.productName,
+        id: p.partCatId || p.productId || `fallback-prod-${idx}`,
+      }));
     },
     staleTime,
   });

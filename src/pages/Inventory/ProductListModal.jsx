@@ -1,51 +1,32 @@
 import { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, MenuItem, CircularProgress, Divider, FormControlLabel, Checkbox
+  DialogActions, TextField, MenuItem, CircularProgress, Divider, FormControlLabel, Checkbox,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
 
 const INITIAL_FORM = {
-  productId: '',
-  productName: '',
+  partCatId: '',
+  partName: '',
   sku: '',
   deviceTypeId: '',
+  brandId: '',
+  hsnCode: '',
   specification: '',
   descr: '',
-  sellingPrice: '',
-  buyingPrice: '',
-  stock: 0,
+  stocks: 0,
   minStock: '',
-  hsnCode: '',
-  branchId: '',
+  maxStock: '',
   isActive: true,
 };
 
-/**
- * Create / update modal for inventory products.
- * Uses shared TanStack Query caches for branches and device types.
- */
-export default function InventoryModal({ open, onClose, mode = 'create', item = null }) {
+export default function ProductListModal({ open, onClose, mode = 'create', item = null }) {
   const theme = useTheme();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState(INITIAL_FORM);
-
-  const { data: branches = [] } = useQuery({
-    queryKey: ['branches'],
-    queryFn: async () => {
-      const response = await api.get('/branches');
-      return response.data?.data || response.data || [];
-    },
-    select: (data) =>
-      (data || []).map((b, index) => ({
-        ...b,
-        id: b.branchId || b.id || `fallback-id-${index}`,
-      })),
-    staleTime: 1000 * 60 * 60,
-    enabled: open,
-  });
+  const [brandsAvailable, setBrandsAvailable] = useState(true);
 
   const { data: deviceTypes = [] } = useQuery({
     queryKey: ['deviceTypes'],
@@ -62,6 +43,28 @@ export default function InventoryModal({ open, onClose, mode = 'create', item = 
     enabled: open,
   });
 
+  const { data: brands = [] } = useQuery({
+    queryKey: ['brands'],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/brands');
+        setBrandsAvailable(true);
+        return response.data?.data || response.data || [];
+      } catch {
+        setBrandsAvailable(false);
+        return [];
+      }
+    },
+    select: (data) =>
+      (data || []).map((b, index) => ({
+        ...b,
+        id: b.brandId || b.id || `fallback-id-${index}`,
+      })),
+    staleTime: 1000 * 60 * 60,
+    enabled: open,
+    retry: false,
+  });
+
   useEffect(() => {
     if (!open) return;
 
@@ -72,14 +75,6 @@ export default function InventoryModal({ open, onClose, mode = 'create', item = 
 
     if (!item) return;
 
-    let matchedBranchId = item.branchId || '';
-    if (!matchedBranchId && item.branchName) {
-      const match = branches.find(
-        (b) => b.branchName === item.branchName || b.name === item.branchName
-      );
-      if (match) matchedBranchId = match.branchId || match.id;
-    }
-
     let matchedDeviceTypeId = item.deviceTypeId || '';
     if (!matchedDeviceTypeId && item.deviceTypeName) {
       const match = deviceTypes.find(
@@ -88,37 +83,44 @@ export default function InventoryModal({ open, onClose, mode = 'create', item = 
       if (match) matchedDeviceTypeId = match.deviceTypeId || match.id;
     }
 
+    let matchedBrandId = item.brandId || '';
+    if (!matchedBrandId && item.brandName) {
+      const match = brands.find(
+        (b) => b.brandName === item.brandName || b.name === item.brandName
+      );
+      if (match) matchedBrandId = match.brandId || match.id;
+    }
+
     setFormData({
-      productId: item.productId || '',
-      productName: item.productName || '',
+      partCatId: item.partCatId || '',
+      partName: item.partName || '',
       sku: item.sku || '',
       deviceTypeId: matchedDeviceTypeId,
+      brandId: matchedBrandId,
+      hsnCode: item.hsnCode || '',
       specification: item.specification || '',
       descr: item.descr || '',
-      sellingPrice: item.sellingPrice || '',
-      buyingPrice: item.buyingPrice || '',
-      stock: item.stock ?? 0,
+      stocks: item.stocks ?? 0,
       minStock: item.minStock ?? '',
-      hsnCode: item.hsnCode || '',
-      branchId: matchedBranchId,
+      maxStock: item.maxStock ?? '',
       isActive: item.isActive !== false,
     });
-  }, [open, mode, item, branches, deviceTypes]);
+  }, [open, mode, item, deviceTypes, brands]);
 
   const saveMutation = useMutation({
     mutationFn: async (payload) => {
       if (mode === 'create') {
-        return api.post('/inventory', payload);
+        return api.post('/inventory/products', payload);
       }
-      return api.put(`/inventory/${formData.productId}`, payload);
+      return api.put(`/inventory/products/${formData.partCatId}`, payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
       onClose(true);
     },
     onError: (error) => {
-      console.error(`Failed to ${mode} inventory item:`, error);
-      alert(error.response?.data?.message || error.message || 'Failed to save inventory item');
+      console.error(`Failed to ${mode} product:`, error);
+      alert(error.response?.data?.message || error.message || 'Failed to save product');
     },
   });
 
@@ -133,17 +135,16 @@ export default function InventoryModal({ open, onClose, mode = 'create', item = 
   const handleSubmit = (e) => {
     e.preventDefault();
     saveMutation.mutate({
-      productName: formData.productName,
+      partName: formData.partName,
       sku: formData.sku || null,
       deviceTypeId: formData.deviceTypeId || null,
-      specification: formData.specification,
-      descr: formData.descr,
-      sellingPrice: formData.sellingPrice,
-      buyingPrice: formData.buyingPrice,
-      stock: formData.stock,
-      minStock: formData.minStock === '' ? null : Number(formData.minStock),
+      brandId: formData.brandId || null,
       hsnCode: formData.hsnCode || null,
-      branchId: formData.branchId,
+      specification: formData.specification || null,
+      descr: formData.descr || null,
+      stocks: formData.stocks === '' ? 0 : Number(formData.stocks),
+      minStock: formData.minStock === '' ? null : Number(formData.minStock),
+      maxStock: formData.maxStock === '' ? null : Number(formData.maxStock),
       isActive: formData.isActive,
     });
   };
@@ -161,25 +162,25 @@ export default function InventoryModal({ open, onClose, mode = 'create', item = 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontSize: '18px', fontWeight: 600, py: 2, px: 3 }}>
-        {mode === 'create' ? 'Add Inventory Item' : 'Update Inventory Item'}
+        {mode === 'create' ? 'Add Product' : 'Update Product'}
       </DialogTitle>
       <Divider />
       <DialogContent sx={{ px: 3, py: 2.5 }}>
-        <Box component="form" id="inventory-form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+        <Box component="form" id="product-list-form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
             <Box>
-              <Typography sx={{ ...lbl, mt: 0 }}>Product Name</Typography>
+              <Typography sx={{ ...lbl, mt: 0 }}>Part Name</Typography>
               <TextField
-                name="productName"
+                name="partName"
                 required
-                value={formData.productName}
+                value={formData.partName}
                 onChange={handleFormChange}
                 fullWidth
                 size="small"
               />
             </Box>
             <Box>
-              <Typography sx={{ ...lbl, mt: 0 }}>SKU / Part No</Typography>
+              <Typography sx={{ ...lbl, mt: 0 }}>SKU</Typography>
               <TextField
                 name="sku"
                 value={formData.sku}
@@ -190,13 +191,12 @@ export default function InventoryModal({ open, onClose, mode = 'create', item = 
             </Box>
           </Box>
 
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: brandsAvailable ? '1fr 1fr' : '1fr', gap: 2 }}>
             <Box>
               <Typography sx={{ ...lbl, mt: 0 }}>Device Type</Typography>
               <TextField
                 select
                 name="deviceTypeId"
-                required
                 value={formData.deviceTypeId}
                 onChange={handleFormChange}
                 fullWidth
@@ -210,61 +210,35 @@ export default function InventoryModal({ open, onClose, mode = 'create', item = 
                 ))}
               </TextField>
             </Box>
-            <Box>
-              <Typography sx={{ ...lbl, mt: 0 }}>Branch</Typography>
-              <TextField
-                select
-                name="branchId"
-                required
-                value={formData.branchId}
-                onChange={handleFormChange}
-                fullWidth
-                size="small"
-              >
-                <MenuItem value=""><em>None</em></MenuItem>
-                {branches.map((b) => (
-                  <MenuItem key={b.branchId || b.id} value={b.branchId || b.id}>
-                    {b.branchName || b.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Box>
+            {brandsAvailable && (
+              <Box>
+                <Typography sx={{ ...lbl, mt: 0 }}>Brand</Typography>
+                <TextField
+                  select
+                  name="brandId"
+                  value={formData.brandId}
+                  onChange={handleFormChange}
+                  fullWidth
+                  size="small"
+                >
+                  <MenuItem value=""><em>None</em></MenuItem>
+                  {brands.map((b) => (
+                    <MenuItem key={b.brandId || b.id} value={b.brandId || b.id}>
+                      {b.brandName || b.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Box>
+            )}
           </Box>
 
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 2 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2 }}>
             <Box>
-              <Typography sx={{ ...lbl, mt: 0 }}>Buying Price</Typography>
+              <Typography sx={{ ...lbl, mt: 0 }}>Stocks</Typography>
               <TextField
-                name="buyingPrice"
+                name="stocks"
                 type="number"
-                required
-                value={formData.buyingPrice}
-                onChange={handleFormChange}
-                fullWidth
-                size="small"
-                inputProps={{ min: 0, step: '0.01' }}
-              />
-            </Box>
-            <Box>
-              <Typography sx={{ ...lbl, mt: 0 }}>Selling Price</Typography>
-              <TextField
-                name="sellingPrice"
-                type="number"
-                required
-                value={formData.sellingPrice}
-                onChange={handleFormChange}
-                fullWidth
-                size="small"
-                inputProps={{ min: 0, step: '0.01' }}
-              />
-            </Box>
-            <Box>
-              <Typography sx={{ ...lbl, mt: 0 }}>Stock</Typography>
-              <TextField
-                name="stock"
-                type="number"
-                required
-                value={formData.stock}
+                value={formData.stocks}
                 onChange={handleFormChange}
                 fullWidth
                 size="small"
@@ -277,6 +251,18 @@ export default function InventoryModal({ open, onClose, mode = 'create', item = 
                 name="minStock"
                 type="number"
                 value={formData.minStock}
+                onChange={handleFormChange}
+                fullWidth
+                size="small"
+                inputProps={{ min: 0 }}
+              />
+            </Box>
+            <Box>
+              <Typography sx={{ ...lbl, mt: 0 }}>Max Stock</Typography>
+              <TextField
+                name="maxStock"
+                type="number"
+                value={formData.maxStock}
                 onChange={handleFormChange}
                 fullWidth
                 size="small"
@@ -343,14 +329,14 @@ export default function InventoryModal({ open, onClose, mode = 'create', item = 
         </Button>
         <Button
           type="submit"
-          form="inventory-form"
+          form="product-list-form"
           variant="contained"
           disabled={saveMutation.isPending}
           sx={{ textTransform: 'none', minWidth: 100 }}
         >
           {saveMutation.isPending
             ? <CircularProgress size={24} color="inherit" />
-            : (mode === 'create' ? 'Save Item' : 'Update Item')}
+            : (mode === 'create' ? 'Save Product' : 'Update Product')}
         </Button>
       </DialogActions>
     </Dialog>

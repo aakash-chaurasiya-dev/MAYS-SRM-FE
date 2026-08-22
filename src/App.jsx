@@ -12,7 +12,12 @@ import RegisterPage from './pages/Register/RegisterPage';
 import ForgotPasswordPage from './pages/Auth/ForgotPasswordPage';
 import DashboardPage from './pages/Dashboard/DashboardPage';
 import DiagnosisPage from './pages/EngineerDiagnosis/DiagnosisPage';
-import InventoryPage from './pages/Inventory/InventoryPage';
+import ProductListPage from './pages/Inventory/ProductListPage';
+import PartPricesPage from './pages/Inventory/PartPricesPage';
+import InStockPartsPage from './pages/Inventory/InStockPartsPage';
+import TicketPartsListPage from './pages/Inventory/TicketPartsListPage';
+import PartsOrdersPage from './pages/Inventory/PartsOrdersPage';
+import PartsOrderDetailPage from './pages/Inventory/PartsOrderDetailPage';
 import NewTicketPage from './pages/Tickets/NewTicketPage';
 import TicketDetailPage from './pages/Tickets/TicketDetailPage';
 import MaintenancePage from './pages/Maintenance/MaintenancePage';
@@ -35,7 +40,6 @@ import BillingDetailsPage from './pages/Billing/BillingDetailsPage';
 import CreateInvoicePage from './pages/Billing/CreateInvoicePage';
 import ReportsPage from './pages/Reports/ReportsPage';
 import UserEntryReportPage from './pages/Reports/UserEntryReportPage';
-import OrderPartsPage from './pages/Inventory/OrderPartsPage';
 import EmployeeDetailsPage from './pages/EmployeeDetails/EmployeeDetails';
 import EmployeeProfilePage from './pages/EmployeeDetails/EmployeeProfilePage';
 import UserDetailsPage from './pages/UserDetails/UserDetailsPage';
@@ -85,8 +89,13 @@ function App() {
                 </Route>
 
                 <Route element={<Can feature="inventory" mode="redirect" />}>
-                  <Route path="/inventory" element={<InventoryPage />} />
-                  <Route path="/inventory/parts" element={<OrderPartsPage />} />
+                  <Route path="/inventory" element={<Navigate to="/inventory/products" replace />} />
+                  <Route path="/inventory/products" element={<ProductListPage />} />
+                  <Route path="/inventory/prices" element={<PartPricesPage />} />
+                  <Route path="/inventory/in-stock" element={<InStockPartsPage />} />
+                  <Route path="/inventory/ticket-parts" element={<TicketPartsListPage />} />
+                  <Route path="/inventory/orders" element={<PartsOrdersPage />} />
+                  <Route path="/inventory/orders/:orderId" element={<PartsOrderDetailPage />} />
                 </Route>
 
                 <Route element={<Can feature="diagnosis" mode="redirect" />}>

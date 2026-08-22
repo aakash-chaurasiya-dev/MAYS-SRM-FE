@@ -7,9 +7,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { List } from '../../stereotype/AbstractList';
 import api from '../../services/api';
 import DeleteConfirmDialog from '../../components/DeleteConfirmDialog';
-import InventoryModal from './InventoryModal';
+import ProductListModal from './ProductListModal';
 
-export default function InventoryPage() {
+export default function ProductListPage() {
   const queryClient = useQueryClient();
 
   const [selectedIds, setSelectedIds] = useState([]);
@@ -19,31 +19,31 @@ export default function InventoryPage() {
   const [editingItem, setEditingItem] = useState(null);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
 
-  const { data: inventory = [] } = useQuery({
-    queryKey: ['inventory'],
+  const { data: products = [] } = useQuery({
+    queryKey: ['inventory-products'],
     queryFn: async () => {
-      const response = await api.get('/inventory');
+      const response = await api.get('/inventory/products');
       return response.data?.data || response.data || [];
     },
     select: (data) =>
-      (data || []).map((inv, i) => ({
-        ...inv,
-        id: inv.productId || `fallback-id-${i}`,
+      (data || []).map((row, i) => ({
+        ...row,
+        id: row.partCatId || `fallback-id-${i}`,
       })),
     staleTime: 1000 * 60 * 5,
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (productId) => api.delete(`/inventory/${productId}`),
+    mutationFn: (ids) => api.delete('/inventory/products', { data: ids }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
       setOpenDeleteConfirm(false);
       setSelectedIds([]);
       setClearSelectionKey((prev) => prev + 1);
     },
     onError: (error) => {
-      console.error('Failed to delete inventory item:', error);
-      alert(error.response?.data?.message || error.message || 'Failed to delete inventory item');
+      console.error('Failed to delete products:', error);
+      alert(error.response?.data?.message || error.message || 'Failed to delete products');
     },
   });
 
@@ -55,10 +55,10 @@ export default function InventoryPage() {
 
   const handleOpenUpdateModal = () => {
     if (selectedIds.length !== 1) return;
-    const invToUpdate = inventory.find((i) => String(i.id) === String(selectedIds[0]));
-    if (!invToUpdate) return;
+    const item = products.find((p) => String(p.id) === String(selectedIds[0]));
+    if (!item) return;
     setModalMode('update');
-    setEditingItem(invToUpdate);
+    setEditingItem(item);
     setOpenModal(true);
   };
 
@@ -72,17 +72,18 @@ export default function InventoryPage() {
   };
 
   const config = useMemo(() => ({
-    title: 'Inventory Items',
-    subtitle: `${inventory.length} products in stock`,
-    rows: inventory,
+    title: 'Product List',
+    subtitle: `${products.length} products`,
+    rows: products,
     columns: [
       { field: 'id', headerName: 'ID', width: 70 },
-      { field: 'productName', headerName: 'Product Name', width: 140, renderType: 'link' },
-      { field: 'sku', headerName: 'SKU', width: 100 },
+      { field: 'partName', headerName: 'Part Name', width: 160, renderType: 'link' },
+      { field: 'sku', headerName: 'SKU', width: 110 },
       { field: 'deviceTypeName', headerName: 'Device Type', width: 120 },
+      { field: 'brandName', headerName: 'Brand', width: 110 },
       {
-        field: 'stock',
-        headerName: 'Stock',
+        field: 'stocks',
+        headerName: 'Stocks',
         width: 80,
         renderCell: (params) => {
           const min = params.row?.minStock;
@@ -95,52 +96,27 @@ export default function InventoryPage() {
         },
       },
       { field: 'minStock', headerName: 'Min', width: 70 },
+      { field: 'maxStock', headerName: 'Max', width: 70 },
       { field: 'hsnCode', headerName: 'HSN', width: 90 },
-      {
-        field: 'buyingPrice',
-        headerName: 'Buy Price',
-        width: 100,
-        renderCell: (params) => {
-          if (params.value == null) return '-';
-          return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(params.value);
-        },
-      },
-      {
-        field: 'sellingPrice',
-        headerName: 'Sell Price',
-        width: 100,
-        renderCell: (params) => {
-          if (params.value == null) return '-';
-          return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(params.value);
-        },
-      },
-      { field: 'branchName', headerName: 'Branch', width: 100 },
       {
         field: 'isActive',
         headerName: 'Active',
         width: 80,
         renderCell: (params) => (params.value === false ? 'No' : 'Yes'),
       },
-      {
-        field: 'lastUpdationDate',
-        headerName: 'Last Updated',
-        width: 140,
-        renderCell: (params) => {
-          if (!params.value) return '-';
-          return new Date(params.value).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
-        },
-      },
+      { field: 'createdByName', headerName: 'Created By', width: 130 },
+      { field: 'updatedByName', headerName: 'Updated By', width: 130 },
     ],
     checkboxSelection: true,
     searchable: true,
-    searchPlaceholder: 'Search inventory...',
+    searchPlaceholder: 'Search products...',
     pagination: { pageSize: 10, pageSizeOptions: [5, 10, 25] },
     height: 480,
     gridKey: clearSelectionKey,
     actions: [
-      { label: 'Add Item', icon: <AddIcon />, variant: 'contained', color: 'primary', onClick: handleOpenCreateModal },
+      { label: 'Add Product', icon: <AddIcon />, variant: 'contained', color: 'primary', onClick: handleOpenCreateModal },
     ],
-  }), [inventory, clearSelectionKey]);
+  }), [products, clearSelectionKey]);
 
   return (
     <Box sx={{ p: 2, pt: 3 }}>
@@ -171,7 +147,7 @@ export default function InventoryPage() {
         </Button>
       </Box>
 
-      <InventoryModal
+      <ProductListModal
         open={openModal}
         onClose={handleModalClose}
         mode={modalMode}
@@ -181,8 +157,8 @@ export default function InventoryPage() {
       <DeleteConfirmDialog
         open={openDeleteConfirm}
         onClose={() => setOpenDeleteConfirm(false)}
-        onConfirm={() => deleteMutation.mutate(selectedIds[0])}
-        itemType="inventory item"
+        onConfirm={() => deleteMutation.mutate(selectedIds.map(Number))}
+        itemType="product"
         count={selectedIds.length}
         isLoading={deleteMutation.isPending}
       />
