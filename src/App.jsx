@@ -102,6 +102,12 @@ function App() {
                   <Route path="/diagnosis" element={<DiagnosisPage />} />
                 </Route>
 
+                <Route element={<Can feature="billing" mode="redirect" />}>
+                  <Route path="/billing" element={<Navigate to="/billing/billing-details" replace />} />
+                  <Route path="/billing/billing-details" element={<BillingDetailsPage />} />
+                  <Route path="/billing/create" element={<CreateInvoicePage />} />
+                </Route>
+                 
                 <Route element={<Can feature="maintenance" mode="redirect" />}>
                   {/* Maintenance Routes */}
                   <Route path="/maintenance" element={<MaintenancePage />} />
@@ -119,11 +125,6 @@ function App() {
                   <Route path="/maintenance/referred-category" element={<ReferredCategoryManagementPage />} />
                   <Route path="/maintenance/warranty-type" element={<WarrantyTypeManagementPage />} />
                   <Route path="/maintenance/accessories" element={<AccessoryManagementPage />} />
-
-                  {/* Billing Routes */}
-                  <Route path="/billing" element={<Navigate to="/billing/billing-details" replace />} />
-                  <Route path="/billing/billing-details" element={<BillingDetailsPage />} />
-                  <Route path="/billing/create" element={<CreateInvoicePage />} />
 
                   <Route path="/maintenance/:section" element={<Box sx={{ p: 3 }}>Maintenance Section (WIP)</Box>} />
                   <Route path="/reports" element={<ReportsPage />} />

@@ -25,7 +25,7 @@ export default function StatusManagementPage() {
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
 
   const initialFormState = {
-    statusId: '', statusName: '', statusFlg: 1, statusDescription: '', statusType: '', allowedDepartmentIds: [], slaTimerAction: 'NONE',
+    statusId: '', statusName: '', statusFlg: 1, statusDescription: '', statusType: '', statusGroup: '', allowedDepartmentIds: [], slaTimerAction: 'NONE',
   };
   const [formData, setFormData] = useState(initialFormState);
 
@@ -69,6 +69,7 @@ export default function StatusManagementPage() {
         statusFlg: sToUpdate.statusFlg !== undefined ? sToUpdate.statusFlg : 1,
         statusDescription: sToUpdate.statusDescription || '',
         statusType: sToUpdate.statusType || '',
+        statusGroup: sToUpdate.statusGroup || '',
         allowedDepartmentIds: sToUpdate.allowedDepartmentIds ? sToUpdate.allowedDepartmentIds.split(',').filter(v => v.trim() !== '').map(v => Number(v.trim())) : [],
         slaTimerAction: sToUpdate.slaTimerAction || 'NONE',
       });
@@ -138,6 +139,7 @@ export default function StatusManagementPage() {
       statusFlg: formData.statusFlg,
       statusDescription: formData.statusDescription,
       statusType: formData.statusType,
+      statusGroup: formData.statusGroup,
       allowedDepartmentIds: formData.allowedDepartmentIds.length > 0 ? formData.allowedDepartmentIds.join(',') : null,
       slaTimerAction: formData.slaTimerAction || 'NONE',
     });
@@ -161,6 +163,7 @@ export default function StatusManagementPage() {
       { field: 'id', headerName: 'Status ID', width: 110 },
       { field: 'statusName', headerName: 'Status Name', flex: 1.5, renderType: 'link' },
       { field: 'statusType', headerName: 'Type', flex: 1 },
+      { field: 'statusGroup', headerName: 'Group', flex: 1 },
       { field: 'statusDescription', headerName: 'Description', flex: 2 },
       { field: 'allowedRoles', headerName: 'Allowed Roles', flex: 1 },
       { field: 'slaTimerAction', headerName: 'SLA Action', width: 160 },
@@ -247,6 +250,13 @@ export default function StatusManagementPage() {
             <TextField
               fullWidth size="small" placeholder="e.g. Ticket, Repair, System"
               name="statusType" value={formData.statusType} onChange={handleFormChange} required
+              sx={{ mb: 2 }}
+            />
+
+            <Typography sx={{ ...lbl, mt: 1 }}>Status Group</Typography>
+            <TextField
+              fullWidth size="small" placeholder="e.g. What user we see in notifications"
+              name="statusGroup" value={formData.statusGroup} onChange={handleFormChange} required
               sx={{ mb: 2 }}
             />
 

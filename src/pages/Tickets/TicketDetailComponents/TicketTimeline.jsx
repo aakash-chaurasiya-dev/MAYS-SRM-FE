@@ -1,5 +1,20 @@
 import { useState } from 'react';
-import { Box, Typography, Button, Paper, Divider, Dialog, DialogContent, CircularProgress } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Button,
+  Paper,
+  Divider,
+  Dialog,
+  DialogContent,
+  CircularProgress,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+} from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../../services/api';
@@ -18,11 +33,20 @@ const formatTimestamp = (value) => {
   });
 };
 
+const COLUMNS = [
+  { key: 'date', label: 'Date' },
+  { key: 'modifiedBy', label: 'Modified By' },
+  { key: 'assigned', label: 'Assigned By' },
+  { key: 'remark', label: 'Remark', align: 'center' },
+  { key: 'assignedTo', label: 'Assigned To' },
+  { key: 'status', label: 'Status' },
+];
+
 /**
  * TicketTimeline
- * 
- * Renders the top 3 activity logs directly in a panel.
- * Contains the "See More" modal which dynamically fetches all history for a ticket.
+ *
+ * Renders up to 10 activity logs as a single-row table.
+ * "See More" opens the full ticket logs modal.
  */
 export default function TicketTimeline({ ticketId, timeline = [] }) {
   const theme = useTheme();
@@ -31,46 +55,98 @@ export default function TicketTimeline({ ticketId, timeline = [] }) {
   const { data: fullLogs = [], isLoading } = useQuery({
     queryKey: ['ticket-logs', ticketId],
     queryFn: async () => {
-      console.log(`Fetching full logs for Ticket ID: ${ticketId}`);
       const res = await api.get(`/ticket-logs/${ticketId}`);
       return res.data;
     },
     enabled: !!(logDetailModalOpen && ticketId),
-    staleTime: 5 * 60 * 1000, // 5 minutes (prevents refetching every time modal opens)
+    staleTime: 5 * 60 * 1000,
   });
+
+  const entries = timeline.slice(0, 10);
+
+  const cellSx = {
+    fontSize: '12px',
+    py: 1,
+    px: 1.5,
+    borderColor: theme.palette.divider,
+    whiteSpace: 'nowrap',
+    verticalAlign: 'middle',
+  };
+
+  const headCellSx = {
+    ...cellSx,
+    fontSize: '11px',
+    fontWeight: 700,
+    color: theme.palette.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+    bgcolor: theme.palette.action.hover,
+  };
 
   return (
     <>
-      <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden' }}>
+      <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5, height: 'auto' }}>
         <Box sx={{ px: 2.5, py: 1.8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Activity Timeline</Typography>
-          <Button size="small" variant="text" sx={{ fontSize: '11px', minWidth: 0, p: '2px 6px' }} onClick={() => setLogDetailModalOpen(true)}>
+          <Button
+            size="small"
+            variant="text"
+            sx={{ fontSize: '11px', minWidth: 0, p: '2px 6px' }}
+            onClick={() => setLogDetailModalOpen(true)}
+          >
             See More
           </Button>
         </Box>
         <Divider />
-        <Box sx={{ p: 2.5 }}>
-          {timeline.length === 0 ? (
+        {entries.length === 0 ? (
+          <Box sx={{ p: 2.5 }}>
             <Typography sx={{ fontSize: '13px', color: theme.palette.text.secondary }}>
               No activity available for this ticket yet.
             </Typography>
-          ) : (
-            timeline.slice(0, 3).map((entry, i, arr) => (
-              <Box key={`${entry.user}-${entry.timestamp}-${i}`} sx={{ display: 'flex', gap: 1.5, mb: i < arr.length - 1 ? 2.5 : 0, position: 'relative' }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 0.3 }}>
-                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: entry.type === 'system' ? theme.palette.text.secondary : theme.palette.primary.main, flexShrink: 0 }} />
-                  {i < arr.length - 1 && <Box sx={{ width: 1, flex: 1, bgcolor: theme.palette.divider, mt: 0.5 }} />}
-                </Box>
-                <Box>
-                  <Typography sx={{ fontSize: '13px', fontWeight: 500 }}>
-                    <Box component="span" sx={{ fontWeight: 600 }}>{entry.user}</Box>{' — '}{entry.action}
-                  </Typography>
-                  <Typography sx={{ fontSize: '11px', color: theme.palette.text.secondary, mt: 0.3 }}>{entry.timestamp}</Typography>
-                </Box>
-              </Box>
-            ))
-          )}
-        </Box>
+          </Box>
+        ) : (
+          <TableContainer sx={{ overflowX: 'auto' }}>
+            <Table size="small" sx={{ tableLayout: 'auto', minWidth: 720 }}>
+              <TableHead>
+                <TableRow>
+                  {COLUMNS.map((col) => (
+                    <TableCell
+                      key={col.key}
+                      align={col.align || 'left'}
+                      sx={{
+                        ...headCellSx,
+                        textAlign: col.align || 'left',
+                      }}
+                    >
+                      {col.label}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {entries.map((entry, i) => (
+                  <TableRow key={`${entry.modifiedBy}-${entry.date}-${i}`} hover>
+                    {COLUMNS.map((col) => (
+                      <TableCell
+                        key={col.key}
+                        align={col.align || 'left'}
+                        sx={{
+                          ...cellSx,
+                          textAlign: col.align || 'left',
+                          whiteSpace: col.key === 'remark' ? 'normal' : 'nowrap',
+                          maxWidth: col.key === 'remark' ? 220 : 'none',
+                          wordBreak: col.key === 'remark' ? 'break-word' : 'normal',
+                        }}
+                      >
+                        {entry[col.key] || '—'}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
       </Paper>
 
       {/* Log Detail Modal */}
@@ -89,7 +165,7 @@ export default function TicketTimeline({ ticketId, timeline = [] }) {
                 <Box key={log.logId || i} sx={{ p: 2, border: '1px solid', borderColor: theme.palette.divider, borderRadius: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
-                      Modified By: {log.modifiedBy || 'System'} 
+                      Modified By: {log.modifiedBy || 'System'}
                       <Typography component="span" sx={{ color: theme.palette.text.secondary, ml: 1, fontSize: '12px', fontWeight: 400 }}>
                         ({formatTimestamp(log.modificationDate)})
                       </Typography>
@@ -124,7 +200,7 @@ export default function TicketTimeline({ ticketId, timeline = [] }) {
                       <b>Remarks:</b> {log.assignorRemarks}
                     </Typography>
                   )}
-                  
+
                   {log.changedFields && (() => {
                     try {
                       const changes = JSON.parse(log.changedFields);
