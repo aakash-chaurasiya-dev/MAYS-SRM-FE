@@ -42,11 +42,13 @@ export default defineConfig([
       'react-refresh/only-export-components': 'off',
     },
   },
-  // Jest unit/integration tests and test helpers
+  // Enable Jest/Node globals for test files and setup
   {
     files: [
+      'jest.setup.js',
       '**/*.test.{js,jsx}',
       '**/__tests__/**',
+      '**/__mocks__/**',
       'src/**/__test__/**',
       'src/**/__tests__/**',
       'src/**/__mocks__/**',
@@ -55,19 +57,7 @@ export default defineConfig([
       'jest.setup.js',
     ],
     languageOptions: {
-      globals: { ...globals.browser, ...globals.jest, ...globals.node },
-    },
-  },
-  // Cypress E2E tests
-  {
-    files: ['cypress/**/*.{js,jsx}'],
-    languageOptions: {
-      globals: {
-        ...globals.browser,
-        ...globals.mocha,
-        cy: 'readonly',
-        Cypress: 'readonly',
-      },
+      globals: { ...globals.jest, ...globals.node },
     },
   },
 ])

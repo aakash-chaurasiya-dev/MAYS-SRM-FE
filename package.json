@@ -11,10 +11,7 @@
     "preview": "vite preview",
     "test": "jest --forceExit",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage --forceExit",
-    "cypress:open": "cypress open",
-    "cypress:run": "cypress run",
-    "test:e2e": "cypress run"
+    "test:coverage": "jest --coverage --forceExit"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -46,7 +43,6 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "babel-jest": "^29.7.0",
-    "cypress": "^13.17.0",
     "eslint": "^10.2.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",

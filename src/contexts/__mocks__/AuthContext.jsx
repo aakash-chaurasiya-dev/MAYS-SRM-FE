@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext } from 'react';
 
 export const defaultAuthValue = {
   user: { roles: [{ authority: 'ROLE_ADMIN' }], role: 'ROLE_ADMIN', sub: 'test-user' },
