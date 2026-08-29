@@ -140,7 +140,7 @@ export default function ChargeEditModal({
             size="small"
             fullWidth
             disabled={disabled}
-            value={formData.amount || 0}
+            value={formData.amount}
             onChange={(e) => handleChange('amount', e.target.value)}
           />
         </Box>
