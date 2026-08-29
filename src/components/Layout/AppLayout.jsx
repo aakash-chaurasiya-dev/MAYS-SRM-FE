@@ -104,7 +104,7 @@ export default function AppLayout() {
         <Box
           sx={{
             flex: 1,
-            p: { xs: 2, sm: 3 }, // slightly smaller padding on mobile
+            p: { xs: 1, sm: 1.5 },
             overflow: 'auto',
           }}
         >

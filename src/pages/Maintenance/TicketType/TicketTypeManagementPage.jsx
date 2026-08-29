@@ -125,6 +125,11 @@ export default function TicketTypeManagementPage() {
     deleteMutation.mutate(selectedIds[0]);
   };
 
+  const selectedRowsAreLocked = selectedIds.some(id => {
+    const row = ticketTypes.find(b => String(b.id) === String(id));
+    return row?.isLocked;
+  });
+
   const config = useMemo(() => ({
     title: 'Ticket Type Management',
     subtitle: `${ticketTypes.length} ticket types configured`,
@@ -144,22 +149,23 @@ export default function TicketTypeManagementPage() {
     height: 480,
     gridKey: clearSelectionKey,
     getRowClassName: (params) => params.row?.isLocked ? 'locked-row' : '',
+    headerActions: [
+      { label: 'Update', icon: <EditOutlinedIcon />, variant: 'outlined', color: 'primary', disabled: selectedIds.length !== 1 || selectedRowsAreLocked, onClick: handleOpenUpdateModal },
+      { label: 'Delete', icon: <DeleteOutlinedIcon />, variant: 'outlined', color: 'error', disabled: selectedIds.length === 0 || selectedRowsAreLocked, onClick: () => setOpenDeleteConfirm(true) },
+    ],
     actions: [
       { label: 'Add Ticket Type', icon: <AddIcon />, variant: 'contained', color: 'primary', onClick: handleOpenCreateModal },
     ],
-  }), [ticketTypes, clearSelectionKey]);
+  }), [ticketTypes, clearSelectionKey, selectedIds, selectedRowsAreLocked]);
 
   const lbl = {
     fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary,
     textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.8, mt: 2,
   };
-  const selectedRowsAreLocked = selectedIds.some(id => {
-    const row = ticketTypes.find(b => String(b.id) === String(id));
-    return row?.isLocked;
-  });
+  
 
   return (
-    <Box sx={{ p: 2 }}>
+    <Box>
       {/* Breadcrumb / Back */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
         <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => navigate('/maintenance')}
@@ -182,28 +188,6 @@ export default function TicketTypeManagementPage() {
         rowSelectionModel={selectedIds}
         onRowSelectionModelChange={setSelectedIds}
       />
-
-      {/* Action Buttons for Update and Delete */}
-      <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-        <Button
-          variant="outlined"
-          color="primary"
-          startIcon={<EditOutlinedIcon />}
-          disabled={selectedIds.length !== 1 || selectedRowsAreLocked}
-          onClick={handleOpenUpdateModal}
-        >
-          Update
-        </Button>
-        <Button
-          variant="outlined"
-          color="error"
-          startIcon={<DeleteOutlinedIcon />}
-          disabled={selectedIds.length === 0 || selectedRowsAreLocked}
-          onClick={() => setOpenDeleteConfirm(true)}
-        >
-          Delete
-        </Button>
-      </Box>
 
       {/* ── Modal (Create/Update) ── */}
       <Dialog 

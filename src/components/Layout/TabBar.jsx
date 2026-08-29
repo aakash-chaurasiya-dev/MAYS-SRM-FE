@@ -32,7 +32,7 @@ export default function TabBar({ onMenuClick }) {
     <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
       <IconButton
         onClick={onMenuClick}
-        sx={{ ml: 1, mr: 1, color: 'text.secondary' }}
+        sx={{ ml: 0.5, mr: 0.5, color: 'text.secondary' }}
       >
         <MenuIcon />
       </IconButton>
@@ -43,7 +43,7 @@ export default function TabBar({ onMenuClick }) {
         scrollButtons="auto"
         aria-label="open pages tabs"
         sx={{
-          minHeight: '40px',
+          minHeight: '36px',
           '& .MuiTabs-indicator': {
             display: 'none', // We use custom styling for the active tab instead
           },
@@ -57,7 +57,7 @@ export default function TabBar({ onMenuClick }) {
             onClick={() => handleTabClick(tab.path)}
             sx={{
               p: 0,
-              minHeight: '40px',
+              minHeight: '36px',
               opacity: 1,
               mr: 0.5,
               border: '1px solid',
@@ -76,7 +76,7 @@ export default function TabBar({ onMenuClick }) {
               },
             }}
             label={(
-              <Box sx={{ display: 'flex', alignItems: 'center', px: 1.5, py: 0.75, gap: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', px: 1.25, py: 0.5, gap: 0.75 }}>
                 {tab.icon}
                 <span style={{ whiteSpace: 'nowrap' }}>{tab.title}</span>
                 {tab.isClosable && (

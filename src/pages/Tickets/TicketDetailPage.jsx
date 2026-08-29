@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { getUserRole } from '../../access/featureAccess';
+import { getUserRole, canAccess } from '../../access/featureAccess';
 
 // Import modular components
 import TicketHeader from './TicketDetailComponents/TicketHeader';
@@ -16,7 +16,7 @@ import TicketOperations from './TicketDetailComponents/TicketOperations';
 import TicketTimeline from './TicketDetailComponents/TicketTimeline';
 import TicketInternalUpdate from './TicketDetailComponents/TicketInternalUpdate';
 import TicketAccessories from './TicketDetailComponents/TicketAccessories';
-import TicketParts from './TicketDetailComponents/TicketParts';
+import TicketPartsSection from './TicketDetailComponents/TicketPartsSection';
 import TicketProgress from './TicketDetailComponents/TicketProgress';
 import TicketTimeTracker from './TicketDetailComponents/TicketTimeTracker';
 import SlaHoldRequestPanel from './TicketDetailComponents/SlaHoldRequestPanel';
@@ -37,35 +37,14 @@ const formatTimestamp = (value) => {
 /**
  * Helper to transform raw log records into timeline UI objects.
  */
-const createTimelineEntry = (log) => {
-  const actor = log?.modifiedBy || log?.assignorEmployeeName || 'System';
-  const timestamp = formatTimestamp(log?.modificationDate);
-
-  let actionParts = [];
-
-  if (log?.status) {
-    actionParts.push(`Status updated to ${log.status}`);
-  } else if (log?.oldStatus && log?.newStatus && log.oldStatus !== log.newStatus) {
-    actionParts.push(`Status updated from ${log.oldStatus} to ${log.newStatus}`);
-  }
-
-  if (log?.assigneeEmployeeName) {
-    actionParts.push(`Assigned to ${log.assigneeEmployeeName}`);
-  }
-
-  if (log?.assignorRemarks) {
-    actionParts.push(`Remarks: ${log.assignorRemarks}`);
-  }
-
-  const action = actionParts.length > 0 ? actionParts.join(' | ') : 'Ticket updated';
-
-  return {
-    user: actor,
-    action,
-    timestamp,
-    type: 'update',
-  };
-};
+const createTimelineEntry = (log) => ({
+  date: formatTimestamp(log?.modificationDate),
+  modifiedBy: log?.modifiedBy || 'System',
+  assigned: log?.assignorEmployeeName || '—',
+  assignedTo: log?.assigneeEmployeeName || '—',
+  status: log?.status || '—',
+  remark: log?.assignorRemarks || '—',
+});
 
 /**
  * TicketDetailPage (Main Container)
@@ -83,6 +62,7 @@ export default function TicketDetailPage() {
   const isNormalUser = rawRole === 'ROLE_USER';
   const isVendor = rawRole === 'ROLE_VENDOR';
   const isPortalUser = isNormalUser || isVendor;
+  const canEditTargetDate = canAccess(user, 'editTicketTargetDate');
 
   // Unified Edit State
   const [isEditMode, setIsEditMode] = useState(false);
@@ -259,7 +239,7 @@ export default function TicketDetailPage() {
 
         {/* Left Column */}
         <Box sx={{ flex: isPortalUser ? 1 : 0.7 }}>
-          <TicketProgress ref={progressRef} ticket={ticket} isEditMode={isEditMode} />
+          <TicketProgress ref={progressRef} ticket={ticket} isEditMode={isEditMode} canEditTargetDate={canEditTargetDate} />
           
           <TicketIssue
             ref={issueRef}
@@ -277,21 +257,35 @@ export default function TicketDetailPage() {
             />
           )}
 
-          <Stack direction="row" spacing={2.5} sx={{ flexWrap: 'wrap' }} useFlexGap>
-            <TicketCustomer
-              ref={customerRef}
-              ticket={ticket}
-              isNormalUser={isPortalUser}
-              isEditMode={isEditMode}
-            />
+          {isPortalUser ? (
+            <Stack direction="row" spacing={2.5} sx={{ flexWrap: 'wrap' }} useFlexGap>
+              <TicketCustomer
+                ref={customerRef}
+                ticket={ticket}
+                isNormalUser={isPortalUser}
+                isEditMode={isEditMode}
+              />
+              <TicketDevice
+                ref={deviceRef}
+                ticket={ticket}
+                isEditMode={false}
+                isNormalUser={isPortalUser}
+              />
+            </Stack>
+          ) : (
+            <TicketTimeline ticketId={id} timeline={timeline} />
+          )}
+
+          {!isPortalUser && (
             <TicketDevice
               ref={deviceRef}
               ticket={ticket}
-              // isEditMode={isEditMode}
-              isEditMode={false} // Kept read-only
+              isEditMode={false}
               isNormalUser={isPortalUser}
+              fullWidth
+              oneLine
             />
-          </Stack>
+          )}
 
           <TicketAccessories
             ref={accessoriesRef}
@@ -301,7 +295,7 @@ export default function TicketDetailPage() {
             isNormalUser={isPortalUser}
           />
 
-          <TicketParts
+          <TicketPartsSection
             ticketId={id}
             isNormalUser={isPortalUser}
           />
@@ -312,19 +306,22 @@ export default function TicketDetailPage() {
           />
         </Box>
 
-        {/* Right Column (Staff Only) */}
+        {/* Right Column ~30% (Staff Only) */}
         {!isPortalUser && (
-          <Box sx={{ flex: 0.3 }}>
+          <Box sx={{ flex: 0.3, minWidth: 0 }}>
             <TicketOperations
               ref={operationsRef}
               ticket={ticket}
               isEditMode={isEditMode}
             />
-            <SlaHoldRequestPanel ticketId={id} />
-            <TicketTimeline
-              ticketId={id}
-              timeline={timeline}
+            <TicketCustomer
+              ref={customerRef}
+              ticket={ticket}
+              isNormalUser={isPortalUser}
+              isEditMode={isEditMode}
+              fullWidth
             />
+            <SlaHoldRequestPanel ticketId={id} />
             <TicketTimeTracker ticketId={id} />
           </Box>
         )}

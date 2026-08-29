@@ -15,22 +15,18 @@ import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import Logo from '../../components/Logo/Logo';
 import { useTheme } from '@mui/material/styles';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const theme = useTheme();
-  const location = useLocation();
   const { login } = useAuth();
   
   const [mobileNo, setMobileNo] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  // Where to redirect after login (default to /dashboard)
-  const from = location.state?.from?.pathname || '/dashboard';
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -53,7 +49,7 @@ export default function LoginPage() {
     const result = await login({ mobileNo, password });
 
     if (result.success) {
-      navigate(from, { replace: true });
+      navigate('/dashboard', { replace: true });
     } else {
       setError(result.error || 'Failed to login');
       setIsLoading(false);
@@ -242,6 +238,7 @@ export default function LoginPage() {
               </Typography>
               <Link
                 component="button"
+                type="button"
                 variant="body2"
                 onClick={() => navigate('/forgot-password')}
                 underline="hover"
@@ -286,6 +283,7 @@ export default function LoginPage() {
             </Button>
 
             <Button
+              type="button"
               variant="outlined"
               fullWidth
               size="large"

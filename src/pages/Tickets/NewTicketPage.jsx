@@ -10,8 +10,9 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getUserRole } from '../../access/featureAccess';
+import { getUserRole, canAccess } from '../../access/featureAccess';
 import { useGlobalLoading } from '../../contexts/GlobalLoadingContext';
+import { getDefaultTargetDateLocal } from '../../utils/ticketDates';
 import ChargeDetails from '../Billing/components/ChargeDetails';
 import CustomerDetails from './NewTicketComponents/CustomerDetails.jsx';
 import DeviceInformation from './NewTicketComponents/DeviceInformation.jsx';
@@ -42,6 +43,7 @@ export default function NewTicketPage() {
   const isNormalUser = rawRole === 'ROLE_USER';
   const isVendor = rawRole === 'ROLE_VENDOR';
   const isStaff = !isNormalUser && !isVendor;
+  const canEditTargetDate = canAccess(user, 'editTicketTargetDate');
 
   // --- 1. Form State ---
   const [form, setForm] = useState({
@@ -63,8 +65,8 @@ export default function NewTicketPage() {
     issueDescription: '',
     departmentId: '',
     employeeId: '',
-    ticketStatusId: isVendor ? 3 : 1, // Registered for vendors, Open for staff
-    targetDate: '',
+    ticketStatusId: 1, // Defaulting to Open or initial status
+    targetDate: getDefaultTargetDateLocal(),
     vendorId: '',
     vendorUserId: '',
     customerAddress: '',
@@ -161,7 +163,15 @@ export default function NewTicketPage() {
   });
   const { data: products = [] } = useQuery({
     queryKey: ['products'],
-    queryFn: async () => (await api.get('/inventory')).data?.data || (await api.get('/inventory')).data || [],
+    queryFn: async () => {
+      const res = await api.get('/inventory/products', { params: { limit: 200 } });
+      const data = res.data?.data || res.data || [];
+      return data.map((p) => ({
+        ...p,
+        productId: p.partCatId,
+        productName: p.partName,
+      }));
+    },
     enabled: isStaff,
   });
   const { data: services = [] } = useQuery({
@@ -469,7 +479,8 @@ export default function NewTicketPage() {
 
         <Box sx={{ flex: 1 }}>
           <IssueDescription 
-            form={form} 
+            form={form}
+            setForm={setForm}
             handleChange={handleChange} 
             ticketTypes={ticketTypes} 
             referredCategories={referredCategories}
@@ -484,7 +495,8 @@ export default function NewTicketPage() {
               setForm={setForm} 
               handleChange={handleChange} 
               lbl={lbl} 
-              secHdr={secHdr} 
+              secHdr={secHdr}
+              canEditTargetDate={canEditTargetDate}
             />
           )}
         </Box>

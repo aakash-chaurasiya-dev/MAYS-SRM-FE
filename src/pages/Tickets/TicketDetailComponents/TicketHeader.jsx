@@ -1,6 +1,7 @@
 import { Box, Typography, Chip, IconButton, Button } from '@mui/material';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useTheme } from '@mui/material/styles';
 
 /**
@@ -15,6 +16,7 @@ export default function TicketHeader({
   error,
   isNormalUser,
   isEditMode,
+  onNavigateBack,
   onNavigateBilling,
   onEditClick,
   onCancelEdit,
@@ -40,14 +42,14 @@ export default function TicketHeader({
   return (
     <Box>
       {/* Top Breadcrumb / Location Header */}
-      {/* <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
         <IconButton size="small" onClick={onNavigateBack} sx={{ color: theme.palette.text.secondary }}>
           <ArrowBackIcon fontSize="small" />
         </IconButton>
         <Typography sx={{ fontSize: '11px', fontWeight: 600, color: theme.palette.text.secondary, letterSpacing: '0.04em' }}>
           Back
         </Typography>
-      </Box> */}
+      </Box> 
 
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 1.5 }}>
         {/* Title & Status Chips */}

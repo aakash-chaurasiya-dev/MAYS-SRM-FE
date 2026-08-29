@@ -25,7 +25,7 @@ export default function StatusManagementPage() {
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
 
   const initialFormState = {
-    statusId: '', statusName: '', statusFlg: 1, statusDescription: '', statusType: '', allowedDepartmentIds: [], slaTimerAction: 'NONE',
+    statusId: '', statusName: '', statusFlg: 1, statusDescription: '', statusType: '', statusGroup: '', allowedDepartmentIds: [], slaTimerAction: 'NONE',
   };
   const [formData, setFormData] = useState(initialFormState);
 
@@ -69,6 +69,7 @@ export default function StatusManagementPage() {
         statusFlg: sToUpdate.statusFlg !== undefined ? sToUpdate.statusFlg : 1,
         statusDescription: sToUpdate.statusDescription || '',
         statusType: sToUpdate.statusType || '',
+        statusGroup: sToUpdate.statusGroup || '',
         allowedDepartmentIds: sToUpdate.allowedDepartmentIds ? sToUpdate.allowedDepartmentIds.split(',').filter(v => v.trim() !== '').map(v => Number(v.trim())) : [],
         slaTimerAction: sToUpdate.slaTimerAction || 'NONE',
       });
@@ -138,6 +139,7 @@ export default function StatusManagementPage() {
       statusFlg: formData.statusFlg,
       statusDescription: formData.statusDescription,
       statusType: formData.statusType,
+      statusGroup: formData.statusGroup,
       allowedDepartmentIds: formData.allowedDepartmentIds.length > 0 ? formData.allowedDepartmentIds.join(',') : null,
       slaTimerAction: formData.slaTimerAction || 'NONE',
     });
@@ -146,6 +148,11 @@ export default function StatusManagementPage() {
   const handleDeleteConfirm = () => {
     deleteMutation.mutate(selectedIds[0]);
   };
+
+  const selectedRowsAreLocked = selectedIds.some(id => {
+    const row = statuses.find(b => String(b.id) === String(id));
+    return row?.isLocked;
+  });
 
   const config = useMemo(() => ({
     title: 'Status Management',
@@ -156,6 +163,7 @@ export default function StatusManagementPage() {
       { field: 'id', headerName: 'Status ID', width: 110 },
       { field: 'statusName', headerName: 'Status Name', flex: 1.5, renderType: 'link' },
       { field: 'statusType', headerName: 'Type', flex: 1 },
+      { field: 'statusGroup', headerName: 'Group', flex: 1 },
       { field: 'statusDescription', headerName: 'Description', flex: 2 },
       { field: 'allowedRoles', headerName: 'Allowed Roles', flex: 1 },
       { field: 'slaTimerAction', headerName: 'SLA Action', width: 160 },
@@ -185,49 +193,28 @@ export default function StatusManagementPage() {
     height: 480,
     gridKey: clearSelectionKey,
     getRowClassName: (params) => params.row?.isLocked ? 'locked-row' : '',
+    headerActions: [
+      { label: 'Update', icon: <EditOutlinedIcon />, variant: 'outlined', color: 'primary', disabled: selectedIds.length !== 1 || selectedRowsAreLocked, onClick: handleOpenUpdateModal },
+      { label: 'Delete', icon: <DeleteOutlinedIcon />, variant: 'outlined', color: 'error', disabled: selectedIds.length === 0 || selectedRowsAreLocked, onClick: () => setOpenDeleteConfirm(true) },
+    ],
     actions: [
       { label: 'Add Status', icon: <AddIcon />, variant: 'contained', color: 'primary', onClick: handleOpenCreateModal },
     ],
-  }), [statuses, clearSelectionKey, theme]);
+  }), [statuses, clearSelectionKey, theme, selectedIds, selectedRowsAreLocked]);
 
   const lbl = {
     fontSize: '12px', fontWeight: 700, color: theme.palette.text.secondary,
     textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.8, mt: 2,
   };
-  const selectedRowsAreLocked = selectedIds.some(id => {
-    const row = statuses.find(b => String(b.id) === String(id));
-    return row?.isLocked;
-  });
+  
 
   return (
-    <Box sx={{ p: 2 }}>
+    <Box>
       <List
         config={config}
         rowSelectionModel={selectedIds}
         onRowSelectionModelChange={setSelectedIds}
       />
-
-      {/* Action Buttons for Update and Delete */}
-      <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-        <Button
-          variant="outlined"
-          color="primary"
-          startIcon={<EditOutlinedIcon />}
-          disabled={selectedIds.length !== 1 || selectedRowsAreLocked}
-          onClick={handleOpenUpdateModal}
-        >
-          Update
-        </Button>
-        <Button
-          variant="outlined"
-          color="error"
-          startIcon={<DeleteOutlinedIcon />}
-          disabled={selectedIds.length === 0 || selectedRowsAreLocked}
-          onClick={() => setOpenDeleteConfirm(true)}
-        >
-          Delete
-        </Button>
-      </Box>
 
       {/* ── Modal (Create/Update) ── */}
       <Dialog
@@ -263,6 +250,13 @@ export default function StatusManagementPage() {
             <TextField
               fullWidth size="small" placeholder="e.g. Ticket, Repair, System"
               name="statusType" value={formData.statusType} onChange={handleFormChange} required
+              sx={{ mb: 2 }}
+            />
+
+            <Typography sx={{ ...lbl, mt: 1 }}>Status Group</Typography>
+            <TextField
+              fullWidth size="small" placeholder="e.g. What user we see in notifications"
+              name="statusGroup" value={formData.statusGroup} onChange={handleFormChange} required
               sx={{ mb: 2 }}
             />
 

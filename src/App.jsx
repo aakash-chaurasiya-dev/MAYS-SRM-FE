@@ -12,7 +12,12 @@ import RegisterPage from './pages/Register/RegisterPage';
 import ForgotPasswordPage from './pages/Auth/ForgotPasswordPage';
 import DashboardPage from './pages/Dashboard/DashboardPage';
 import DiagnosisPage from './pages/EngineerDiagnosis/DiagnosisPage';
-import InventoryPage from './pages/Inventory/InventoryPage';
+import ProductListPage from './pages/Inventory/ProductListPage';
+import PartPricesPage from './pages/Inventory/PartPricesPage';
+import InStockPartsPage from './pages/Inventory/InStockPartsPage';
+import TicketPartsListPage from './pages/Inventory/TicketPartsListPage';
+import PartsOrdersPage from './pages/Inventory/PartsOrdersPage';
+import PartsOrderDetailPage from './pages/Inventory/PartsOrderDetailPage';
 import NewTicketPage from './pages/Tickets/NewTicketPage';
 import TicketDetailPage from './pages/Tickets/TicketDetailPage';
 import MaintenancePage from './pages/Maintenance/MaintenancePage';
@@ -35,7 +40,6 @@ import BillingDetailsPage from './pages/Billing/BillingDetailsPage';
 import CreateInvoicePage from './pages/Billing/CreateInvoicePage';
 import ReportsPage from './pages/Reports/ReportsPage';
 import UserEntryReportPage from './pages/Reports/UserEntryReportPage';
-import OrderPartsPage from './pages/Inventory/OrderPartsPage';
 import EmployeeDetailsPage from './pages/EmployeeDetails/EmployeeDetails';
 import EmployeeProfilePage from './pages/EmployeeDetails/EmployeeProfilePage';
 import UserDetailsPage from './pages/UserDetails/UserDetailsPage';
@@ -45,25 +49,31 @@ import VendorProfilePage from './pages/VendorDetails/VendorProfilePage';
 import ProfilePage from './pages/Profile/ProfilePage';
 import EnquiriesPage from './pages/Enquiries/EnquiriesPage';
 
+//auth context
+import { useAuth } from './contexts/AuthContext';
+
 // Access
 import Can from './access/Can';
 import GlobalNotificationPopup from './components/GlobalNotificationPopup';
 import GlobalLoading from './components/GlobalLoading';
 
 function App() {
+  const { isAuthenticated, user, logout } = useAuth();
   return (
     <GlobalLoadingProvider>
       <BrowserRouter>
         <TabNavigationProvider>
           <Routes>
             {/* Public Routes */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+            <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <RegisterPage />} />
+            <Route path="/forgot-password" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <ForgotPasswordPage />} />
 
             {/* Authenticated Routes with Sidebar & TabBar */}
-            <Route element={<Can mode="redirect" />}>
+            <Route element={<Can  mode="redirect" />}>
+            
               <Route element={<AppLayout />}>
+
                 {/* Common Authenticated Routes (Accessible by all roles) */}
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
@@ -79,14 +89,25 @@ function App() {
                 </Route>
 
                 <Route element={<Can feature="inventory" mode="redirect" />}>
-                  <Route path="/inventory" element={<InventoryPage />} />
-                  <Route path="/inventory/parts" element={<OrderPartsPage />} />
+                  <Route path="/inventory" element={<Navigate to="/inventory/products" replace />} />
+                  <Route path="/inventory/products" element={<ProductListPage />} />
+                  <Route path="/inventory/prices" element={<PartPricesPage />} />
+                  <Route path="/inventory/in-stock" element={<InStockPartsPage />} />
+                  <Route path="/inventory/ticket-parts" element={<TicketPartsListPage />} />
+                  <Route path="/inventory/orders" element={<PartsOrdersPage />} />
+                  <Route path="/inventory/orders/:orderId" element={<PartsOrderDetailPage />} />
                 </Route>
 
                 <Route element={<Can feature="diagnosis" mode="redirect" />}>
                   <Route path="/diagnosis" element={<DiagnosisPage />} />
                 </Route>
 
+                <Route element={<Can feature="billing" mode="redirect" />}>
+                  <Route path="/billing" element={<Navigate to="/billing/billing-details" replace />} />
+                  <Route path="/billing/billing-details" element={<BillingDetailsPage />} />
+                  <Route path="/billing/create" element={<CreateInvoicePage />} />
+                </Route>
+                 
                 <Route element={<Can feature="maintenance" mode="redirect" />}>
                   {/* Maintenance Routes */}
                   <Route path="/maintenance" element={<MaintenancePage />} />
@@ -104,11 +125,6 @@ function App() {
                   <Route path="/maintenance/referred-category" element={<ReferredCategoryManagementPage />} />
                   <Route path="/maintenance/warranty-type" element={<WarrantyTypeManagementPage />} />
                   <Route path="/maintenance/accessories" element={<AccessoryManagementPage />} />
-
-                  {/* Billing Routes */}
-                  <Route path="/billing" element={<Navigate to="/billing/billing-details" replace />} />
-                  <Route path="/billing/billing-details" element={<BillingDetailsPage />} />
-                  <Route path="/billing/create" element={<CreateInvoicePage />} />
 
                   <Route path="/maintenance/:section" element={<Box sx={{ p: 3 }}>Maintenance Section (WIP)</Box>} />
                   <Route path="/reports" element={<ReportsPage />} />

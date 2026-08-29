@@ -10,7 +10,7 @@ import api from '../../../services/api';
  * Manages the display of customer information. 
  * Editing customer is currently disabled as it shouldn't change after creation.
  */
-const TicketCustomer = forwardRef(({ ticket, isNormalUser, isEditMode }, ref) => {
+const TicketCustomer = forwardRef(({ ticket, isNormalUser, isEditMode, fullWidth = false }, ref) => {
   const theme = useTheme();
   
   // const [customerOptions, setCustomerOptions] = useState([]);
@@ -62,7 +62,7 @@ const TicketCustomer = forwardRef(({ ticket, isNormalUser, isEditMode }, ref) =>
   };
 
   return (
-    <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5, width: { xs: '100%', md: 'calc(50% - 10px)' } }}>
+    <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5, width: fullWidth ? '100%' : { xs: '100%', md: 'calc(50% - 10px)' } }}>
       <Box sx={{ px: 2.5, py: 1.8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <PersonOutlinedIcon sx={{ fontSize: 18, color: theme.palette.text.secondary }} />
@@ -94,7 +94,7 @@ const TicketCustomer = forwardRef(({ ticket, isNormalUser, isEditMode }, ref) =>
           </Box>
         {/* )} */}
         
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: fullWidth ? '1fr' : 'repeat(2, 1fr)', gap: 2 }}>
           {[
             ['Ticket ID', ticket?.ticketId ? `TK-${ticket.ticketId}` : 'Not available'],
             ['Email', customerEmail], 

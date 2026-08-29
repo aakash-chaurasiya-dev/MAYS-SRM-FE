@@ -16,11 +16,14 @@ export const FEATURES = {
   inventory: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_PURCHASE'],
   diagnosis: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ENGINEER'],
   maintenance: ['ROLE_MANAGER', 'ROLE_EXECUTIVE'],
-  billing: ['ROLE_MANAGER', 'ROLE_EXECUTIVE'],
+  billing: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN','ROLE_PURCHASE'],
   reports: ['ROLE_MANAGER', 'ROLE_EXECUTIVE'],
   employees: ['ROLE_MANAGER', 'ROLE_EXECUTIVE'],
   users: ['ROLE_MANAGER', 'ROLE_EXECUTIVE'],
   vendors: ['ROLE_MANAGER', 'ROLE_EXECUTIVE'],
+  /** Who may change ticket target date on create/edit */
+  editTicketTargetDate: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN'],
+
 };
 
 export function getUserRole(user) {

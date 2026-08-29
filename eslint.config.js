@@ -51,6 +51,10 @@ export default defineConfig([
       '**/__mocks__/**',
       'src/**/__test__/**',
       'src/**/__tests__/**',
+      'src/**/__mocks__/**',
+      'src/test-utils/**',
+      'jest.config.js',
+      'jest.setup.js',
     ],
     languageOptions: {
       globals: { ...globals.jest, ...globals.node },

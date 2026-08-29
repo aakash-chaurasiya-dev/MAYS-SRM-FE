@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   Drawer,
@@ -12,6 +13,8 @@ import {
   Collapse,
   Avatar,
   Typography,
+  Badge,
+  Tooltip,
 } from '@mui/material';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
@@ -28,11 +31,15 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useGlobalLoading } from '../../contexts/GlobalLoadingContext';
 import Can from '../../access/Can';
 import { getUserRole } from '../../access/featureAccess';
+import api from '../../services/api';
 import Logo from '../Logo/Logo';
 
 const INVENTORY_SUBS = [
-  { label: 'Inventory List', path: '/inventory' },
-  { label: 'Order Parts', path: '/inventory/parts' },
+  { label: 'Product List', path: '/inventory/products' },
+  { label: 'Part Prices', path: '/inventory/prices' },
+  { label: 'In-Stock Parts', path: '/inventory/in-stock' },
+  { label: 'Ticket Parts', path: '/inventory/ticket-parts' },
+  { label: 'Parts Orders', path: '/inventory/orders' },
 ];
 
 const MAINTENANCE_SUBS = [
@@ -92,11 +99,41 @@ function SubNavList({ items, isActive, onNav, theme }) {
   );
 }
 
-function NavItem({ label, icon: Icon, path, active, desktopOpen, onNav, navBtnSx, iconSx, textSx, textProps }) {
+function NavItem({ label, icon: Icon, path, active, desktopOpen, onNav, navBtnSx, iconSx, textSx, textProps, badgeCount, badgeTooltip }) {
+  const showBadge = badgeCount > 0;
+
+  const iconContent = showBadge ? (
+    <Badge
+      badgeContent={badgeCount}
+      color="warning"
+      max={99}
+      sx={{
+        '& .MuiBadge-badge': {
+          fontSize: '10px',
+          height: 16,
+          minWidth: 16,
+          fontWeight: 700,
+        },
+      }}
+    >
+      <Icon />
+    </Badge>
+  ) : (
+    <Icon />
+  );
+
+  const wrappedIcon = badgeTooltip && showBadge ? (
+    <Tooltip title={badgeTooltip} placement="right" arrow>
+      <Box component="span" sx={{ display: 'inline-flex' }}>
+        {iconContent}
+      </Box>
+    </Tooltip>
+  ) : iconContent;
+
   return (
     <ListItemButton onClick={() => onNav(path)} sx={navBtnSx(active)}>
       <ListItemIcon sx={iconSx(active)}>
-        <Icon />
+        {wrappedIcon}
       </ListItemIcon>
       <ListItemText primary={label} sx={textSx} primaryTypographyProps={textProps(active)} />
     </ListItemButton>
@@ -174,6 +211,19 @@ export default function AppSidebar({
 
   const dashboardLabel = isNormalUser || isEngineer || isPurchase || isVendor ? 'My Tickets' : 'Dashboard';
   const enquiryLabel = isNormalUser ? 'My Enquiries' : 'Enquiry Management';
+
+  const { data: pendingEnquiryCount = 0 } = useQuery({
+    queryKey: ['enquiries-pending-count'],
+    queryFn: async () => {
+      const res = await api.get('/enquiries/pending/count');
+      return res.data?.count ?? 0;
+    },
+    refetchInterval: 60000,
+  });
+
+  const pendingEnquiryTooltip = isNormalUser
+    ? `${pendingEnquiryCount} enquiry${pendingEnquiryCount === 1 ? '' : 'ies'} awaiting response`
+    : `${pendingEnquiryCount} pending enquiry${pendingEnquiryCount === 1 ? '' : 'ies'} need attention`;
 
   const isActive = (path) => location.pathname === path;
 
@@ -300,6 +350,8 @@ export default function AppSidebar({
             iconSx={iconSx}
             textSx={textSx}
             textProps={textProps}
+            badgeCount={pendingEnquiryCount}
+             badgeTooltip={pendingEnquiryTooltip}
           />
         </Can>
 
@@ -308,7 +360,7 @@ export default function AppSidebar({
             label="Inventory"
             icon={Inventory2OutlinedIcon}
             sectionPath="/inventory"
-            overviewPath="/inventory"
+            overviewPath="/inventory/products"
             subs={INVENTORY_SUBS}
             open={inventoryOpen}
             setOpen={setInventoryOpen}

@@ -5,7 +5,7 @@ import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import { getUserRole } from '../../../access/featureAccess';
 
-export default function TicketAssignment({ form, setForm, handleChange, lbl, secHdr }) {
+export default function TicketAssignment({ form, setForm, handleChange, lbl, secHdr, canEditTargetDate = true }) {
   const { user } = useAuth();
   const userRole = getUserRole(user);
 
@@ -129,6 +129,7 @@ export default function TicketAssignment({ form, setForm, handleChange, lbl, sec
               size="small"
               value={form.targetDate || ''}
               onChange={handleChange('targetDate')}
+              disabled={!canEditTargetDate}
               sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
               InputLabelProps={{
                 shrink: true,
