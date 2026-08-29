@@ -163,7 +163,15 @@ export default function NewTicketPage() {
   });
   const { data: products = [] } = useQuery({
     queryKey: ['products'],
-    queryFn: async () => (await api.get('/inventory')).data?.data || (await api.get('/inventory')).data || [],
+    queryFn: async () => {
+      const res = await api.get('/inventory/products', { params: { limit: 200 } });
+      const data = res.data?.data || res.data || [];
+      return data.map((p) => ({
+        ...p,
+        productId: p.partCatId,
+        productName: p.partName,
+      }));
+    },
     enabled: isStaff,
   });
   const { data: services = [] } = useQuery({

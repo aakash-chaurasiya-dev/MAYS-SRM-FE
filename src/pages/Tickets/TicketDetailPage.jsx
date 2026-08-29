@@ -16,7 +16,7 @@ import TicketOperations from './TicketDetailComponents/TicketOperations';
 import TicketTimeline from './TicketDetailComponents/TicketTimeline';
 import TicketInternalUpdate from './TicketDetailComponents/TicketInternalUpdate';
 import TicketAccessories from './TicketDetailComponents/TicketAccessories';
-import TicketParts from './TicketDetailComponents/TicketParts';
+import TicketPartsSection from './TicketDetailComponents/TicketPartsSection';
 import TicketProgress from './TicketDetailComponents/TicketProgress';
 import TicketTimeTracker from './TicketDetailComponents/TicketTimeTracker';
 import SlaHoldRequestPanel from './TicketDetailComponents/SlaHoldRequestPanel';
@@ -302,7 +302,7 @@ export default function TicketDetailPage() {
             isNormalUser={isPortalUser}
           />
 
-          <TicketParts
+          <TicketPartsSection
             ticketId={id}
             isNormalUser={isPortalUser}
           />

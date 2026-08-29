@@ -35,8 +35,11 @@ import api from '../../services/api';
 import Logo from '../Logo/Logo';
 
 const INVENTORY_SUBS = [
-  { label: 'Inventory List', path: '/inventory' },
-  { label: 'Order Parts', path: '/inventory/parts' },
+  { label: 'Product List', path: '/inventory/products' },
+  { label: 'Part Prices', path: '/inventory/prices' },
+  { label: 'In-Stock Parts', path: '/inventory/in-stock' },
+  { label: 'Ticket Parts', path: '/inventory/ticket-parts' },
+  { label: 'Parts Orders', path: '/inventory/orders' },
 ];
 
 const MAINTENANCE_SUBS = [
@@ -357,7 +360,7 @@ export default function AppSidebar({
             label="Inventory"
             icon={Inventory2OutlinedIcon}
             sectionPath="/inventory"
-            overviewPath="/inventory"
+            overviewPath="/inventory/products"
             subs={INVENTORY_SUBS}
             open={inventoryOpen}
             setOpen={setInventoryOpen}
