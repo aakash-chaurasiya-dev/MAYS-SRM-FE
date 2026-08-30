@@ -167,7 +167,45 @@ export default function UserEntryReportPage() {
           </Typography>
         )
       },
-      { field: 'reason', headerName: 'Reason', flex: 2, renderType: 'chip' },
+      {
+        field: 'reason',
+        headerName: 'Reason (Type)',
+        flex: 2,
+        renderCell: (params) => {
+          const r = params.row;
+          let link = null;
+          let label = r.reason || r.entryType || 'Unknown';
+          
+          if (r.entryType === 'INWARD' && r.inwardId) {
+             label = `INWARD (#${r.inwardId})`;
+             // Could link to a specific inward view if it exists
+          } else if (r.entryType === 'OUTWARD' && r.outwardId) {
+             label = `OUTWARD (#${r.outwardId})`;
+             if (r.ticketId) link = `/tickets/${r.ticketId}`;
+          } else if (r.entryType === 'ENQUIRY' && r.enquiryId) {
+             label = `ENQUIRY (#${r.enquiryId})`;
+             link = `/enquiries`; // or to specific enquiry if supported
+          } else if (r.ticketId) {
+             link = `/tickets/${r.ticketId}`;
+          }
+
+          if (link) {
+            return (
+              <Typography
+                variant="body2"
+                sx={{ color: 'secondary.main', fontWeight: 600, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(link);
+                }}
+              >
+                {label}
+              </Typography>
+            );
+          }
+          return <Typography variant="body2" sx={{ fontWeight: 500, bgcolor: 'action.hover', px: 1, py: 0.5, borderRadius: 1 }}>{label}</Typography>;
+        }
+      },
       { field: 'entryDate', headerName: 'Entry Date', flex: 1.5 },
     ],
     searchable: true,

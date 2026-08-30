@@ -114,12 +114,8 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { showLoading, hideLoading } = useGlobalLoading();
 
-  const handleNewTicketClick = () => {
-    showLoading('Loading New Ticket...');
-    setTimeout(() => {
-      hideLoading();
-      navigate('/tickets/new');
-    }, 800);
+  const handleNewEnquiryClick = () => {
+    window.dispatchEvent(new CustomEvent('open-user-entry-modal'));
   };
 
   const [tickets, setTickets] = useState([]);
@@ -331,7 +327,7 @@ export default function DashboardPage() {
     columns: TICKET_COLUMNS,
     loading: loading,
     actions: isEmployeeWithSelfTickets ? [] : [
-      { label: 'New Ticket', icon: <AddOutlinedIcon />, onClick: handleNewTicketClick },
+      { label: 'New Enquiry', icon: <AddOutlinedIcon />, onClick: handleNewEnquiryClick },
     ],
     pagination: { pageSize: 10 },
     onPaginationChange: handlePaginationChange,
@@ -361,10 +357,10 @@ export default function DashboardPage() {
             <Button
               variant="contained"
               startIcon={<AddOutlinedIcon />}
-              onClick={handleNewTicketClick}
+              onClick={handleNewEnquiryClick}
               sx={{ fontWeight: 600, textTransform: 'none', py: 0.9 }}
             >
-              New Ticket
+              New Enquiry
             </Button>
           )}
         </Box>
@@ -399,10 +395,10 @@ export default function DashboardPage() {
               <Button
                 variant="outlined"
                 startIcon={<AddOutlinedIcon />}
-                onClick={handleNewTicketClick}
+                onClick={handleNewEnquiryClick}
                 sx={{ mt: 2, textTransform: 'none' }}
               >
-                Create Support Ticket
+                Create New Enquiry
               </Button>
             )}
           </Paper>

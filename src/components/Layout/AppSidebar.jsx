@@ -264,12 +264,8 @@ export default function AppSidebar({
     onMobileClose?.();
   };
 
-  const handleNewTicketClick = () => {
-    showLoading('Loading New Ticket...');
-    setTimeout(() => {
-      hideLoading();
-      handleNav('/tickets/new');
-    }, 800);
+  const handleNewEnquiryClick = () => {
+    window.dispatchEvent(new CustomEvent('open-user-entry-modal'));
   };
 
   const widthTransition = theme.transitions.create('width', {
@@ -481,7 +477,7 @@ export default function AppSidebar({
               variant="contained"
               fullWidth
               startIcon={desktopOpen ? <AddIcon /> : undefined}
-              onClick={handleNewTicketClick}
+              onClick={handleNewEnquiryClick}
               sx={{
                 borderRadius: '6px',
                 py: 0.9,
@@ -493,7 +489,7 @@ export default function AppSidebar({
                 justifyContent: 'center',
               }}
             >
-              {desktopOpen ? 'New Ticket' : <AddIcon fontSize="small" />}
+              {desktopOpen ? 'New Enquiry' : <AddIcon fontSize="small" />}
             </Button>
           </Box>
         </Can>
