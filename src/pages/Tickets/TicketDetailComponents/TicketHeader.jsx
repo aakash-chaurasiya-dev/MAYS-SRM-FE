@@ -21,6 +21,7 @@ export default function TicketHeader({
   onEditClick,
   onCancelEdit,
   onSaveClick,
+  onOutwardClick,
   saving
 }) {
   const theme = useTheme();
@@ -73,6 +74,9 @@ export default function TicketHeader({
         {/* Action Buttons (Staff Only) */}
         {!isNormalUser && (
           <Box sx={{ display: 'flex', gap: 1.5 }}>
+            <Button variant="contained" color="secondary" size="small" sx={{ fontSize: '12px' }} onClick={onOutwardClick}>
+              Mark Outward
+            </Button>
             <Button variant="outlined" color="primary" size="small" sx={{ fontSize: '12px' }} onClick={onNavigateBilling}>
               Billing Details
             </Button>

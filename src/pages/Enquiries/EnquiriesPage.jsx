@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Paper, Typography, TextField, Button, Divider,
   MenuItem, Stack, Chip, Dialog, DialogTitle, DialogContent,
@@ -24,6 +25,7 @@ export default function EnquiriesPage() {
   const theme = useTheme();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const rawRole = getUserRole(user);
   const isNormalUser = rawRole === 'ROLE_USER';
@@ -115,7 +117,27 @@ export default function EnquiriesPage() {
     },
   });
 
-  const submitting = createMutation.isPending || updateMutation.isPending;
+  const convertMutation = useMutation({
+    mutationFn: async (id) => {
+      const res = await api.post(`/enquiries/${id}/convert-to-ticket`);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      window.dispatchEvent(new CustomEvent('app-notification', {
+        detail: { message: 'Enquiry converted to Ticket successfully!', severity: 'success' }
+      }));
+      invalidateEnquiryCaches();
+      navigate(`/tickets/${data.ticketId}`);
+    },
+    onError: (error) => {
+      console.error('Failed to convert enquiry:', error);
+      window.dispatchEvent(new CustomEvent('app-notification', {
+        detail: { message: 'Failed to convert to Ticket.', severity: 'error' }
+      }));
+    },
+  });
+
+  const submitting = createMutation.isPending || updateMutation.isPending || convertMutation.isPending;
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
@@ -348,7 +370,28 @@ export default function EnquiriesPage() {
                 )}
 
                 {!isNormalUser && (
-                  <Box sx={{ mt: 2.5, display: 'flex', justifyContent: 'flex-end' }}>
+                  <Box sx={{ mt: 2.5, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                    {!enq.isConverted && (
+                      <Button
+                        variant="contained"
+                        color="secondary"
+                        size="small"
+                        onClick={() => convertMutation.mutate(enq.enquiryId)}
+                        disabled={convertMutation.isPending && convertMutation.variables === enq.enquiryId}
+                      >
+                        {convertMutation.isPending && convertMutation.variables === enq.enquiryId ? <CircularProgress size={20} color="inherit" /> : 'Convert to Ticket'}
+                      </Button>
+                    )}
+                    {enq.isConverted && (
+                      <Button
+                        variant="outlined"
+                        color="secondary"
+                        size="small"
+                        onClick={() => navigate(`/tickets/${enq.convertedTicketId}`)}
+                      >
+                        View Ticket (TICK-{enq.convertedTicketId})
+                      </Button>
+                    )}
                     <Button
                       variant="outlined"
                       size="small"

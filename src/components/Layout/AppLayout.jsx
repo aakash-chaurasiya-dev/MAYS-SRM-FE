@@ -21,15 +21,13 @@ export default function AppLayout() {
   const { user } = useAuth();
 
   useEffect(() => {
-    // Only proceed if user is fully loaded
-    if (!user) return;
+    const handleOpenEntryModal = () => setShowEntryModal(true);
+    window.addEventListener('open-user-entry-modal', handleOpenEntryModal);
+    return () => {
+      window.removeEventListener('open-user-entry-modal', handleOpenEntryModal);
+    };
+  }, []);
 
-    const hasAnswered = sessionStorage.getItem('hasAnsweredHereFor');
-
-    if (!hasAnswered && getUserRole(user) === 'ROLE_USER') {
-      setShowEntryModal(true);
-    }
-  }, [user]);
 
   const handleDrawerToggle = () => {
     if (isDesktop) {

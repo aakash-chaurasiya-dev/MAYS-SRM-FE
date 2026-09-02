@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Box, Stack, Typography, Button, CircularProgress } from '@mui/material';
+import { Box, Stack, Typography, Button, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
@@ -66,6 +66,14 @@ export default function TicketDetailPage() {
 
   // Unified Edit State
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // Outward Modal State
+  const [openOutwardModal, setOpenOutwardModal] = useState(false);
+  const [outwardForm, setOutwardForm] = useState({
+    handoverToName: '',
+    handoverToPhone: '',
+    outwardRemarks: ''
+  });
 
   // Component Refs for Unified Save
   const issueRef = useRef();
@@ -187,6 +195,40 @@ export default function TicketDetailPage() {
     updateTicketMutation.mutate(payload);
   };
 
+  const outwardMutation = useMutation({
+    mutationFn: async (payload) => {
+      const res = await api.post('/outward', payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      window.dispatchEvent(new CustomEvent('app-notification', {
+        detail: { message: 'Outward record created successfully!', severity: 'success' }
+      }));
+      setOpenOutwardModal(false);
+      setOutwardForm({ handoverToName: '', handoverToPhone: '', outwardRemarks: '' });
+      queryClient.invalidateQueries({ queryKey: ['ticket', id] });
+      queryClient.invalidateQueries({ queryKey: ['ticket-logs', id] });
+      queryClient.invalidateQueries({ queryKey: ['ticket-logs-latest', id] });
+    },
+    onError: (err) => {
+      console.error('Failed to create outward record', err);
+      window.dispatchEvent(new CustomEvent('app-notification', {
+        detail: { message: err.response?.data?.message || 'Unable to outward device', severity: 'error' }
+      }));
+    }
+  });
+
+  const handleOutwardSubmit = () => {
+    outwardMutation.mutate({
+      ticketId: Number(id),
+      userId: ticket?.userId,
+      serialNo: ticket?.device?.serialNo || 'N/A',
+      handoverToName: outwardForm.handoverToName || ticket?.userRefNo?.firstName || '',
+      handoverToPhone: outwardForm.handoverToPhone || ticket?.userRefNo?.mobileNo || '',
+      outwardRemarks: outwardForm.outwardRemarks
+    });
+  };
+
   const loading = isTicketLoading;
   const error = ticketError ? (ticketError.response?.data?.message || ticketError.message || 'Unable to load ticket details') : '';
 
@@ -232,6 +274,7 @@ export default function TicketDetailPage() {
         onEditClick={() => setIsEditMode(true)}
         onCancelEdit={() => setIsEditMode(false)}
         onSaveClick={handleSaveAll}
+        onOutwardClick={() => setOpenOutwardModal(true)}
         saving={updateTicketMutation.isPending}
       />
 
@@ -326,6 +369,49 @@ export default function TicketDetailPage() {
           </Box>
         )}
       </Stack>
+
+      {/* Outward Modal */}
+      <Dialog open={openOutwardModal} onClose={() => setOpenOutwardModal(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 600, borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+          Deliver / Mark Outward
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+            Complete the handover process for this device. This will close the ticket and generate an outward record.
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
+            <TextField 
+              size="small" 
+              label="Handed over to (Name)" 
+              value={outwardForm.handoverToName} 
+              onChange={e => setOutwardForm(prev => ({...prev, handoverToName: e.target.value}))} 
+              placeholder={ticket?.userRefNo?.firstName || 'Name'}
+            />
+            <TextField 
+              size="small" 
+              label="Phone No" 
+              value={outwardForm.handoverToPhone} 
+              onChange={e => setOutwardForm(prev => ({...prev, handoverToPhone: e.target.value}))}
+              placeholder={ticket?.userRefNo?.mobileNo || 'Phone'} 
+            />
+          </Box>
+          <TextField 
+            fullWidth 
+            size="small" 
+            label="Outward Remarks" 
+            multiline 
+            rows={2} 
+            value={outwardForm.outwardRemarks} 
+            onChange={e => setOutwardForm(prev => ({...prev, outwardRemarks: e.target.value}))} 
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 0 }}>
+          <Button onClick={() => setOpenOutwardModal(false)} disabled={outwardMutation.isPending}>Cancel</Button>
+          <Button variant="contained" color="secondary" onClick={handleOutwardSubmit} disabled={outwardMutation.isPending}>
+            {outwardMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Confirm Handover'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
