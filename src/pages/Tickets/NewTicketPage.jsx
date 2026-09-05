@@ -17,12 +17,8 @@ import ChargeDetails from '../Billing/components/ChargeDetails';
 import CustomerDetails from './NewTicketComponents/CustomerDetails.jsx';
 import DeviceInformation from './NewTicketComponents/DeviceInformation.jsx';
 import IssueDescription from './NewTicketComponents/IssueDescription.jsx';
-import TicketAssignment from './NewTicketComponents/TicketAssignment.jsx';
 import UploadAttachments from './NewTicketComponents/UploadAttachments.jsx';
 import TicketAccessoriesChecklist from './NewTicketComponents/TicketAccessoriesChecklist.jsx';
-
-const PRIORITIES = ['Low', 'Normal', 'High', 'Critical'];
-const WARRANTY_TYPES = ['Warranty', 'RMA', 'Out-of-Warranty', 'Internal'];
 
 const defaultLineItem = () => ({
   id: crypto.randomUUID(),

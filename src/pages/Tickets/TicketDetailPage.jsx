@@ -148,7 +148,6 @@ export default function TicketDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['sla-hold-active', id] });
       queryClient.invalidateQueries({ queryKey: ['sla-hold-pending'] });
 
-
       // Clear the internal note text box
       if (internalNoteRef.current?.clearNote) {
         internalNoteRef.current.clearNote();
@@ -261,6 +260,7 @@ export default function TicketDetailPage() {
     );
   }
 
+  // ============= MAIN RENDER =============
   return (
     <Box>
       <TicketHeader
@@ -278,12 +278,30 @@ export default function TicketDetailPage() {
         saving={updateTicketMutation.isPending}
       />
 
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={isPortalUser ? 0 : 2.5}>
+      {/* ===== LAYOUT FIX: Responsive two-column layout with zoom safety ===== */}
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        spacing={isPortalUser ? 0 : 2.5}
+        sx={{
+          width: '100%',
+          overflow: 'hidden',   // prevents any child overflow
+        }}
+      >
+        {/* Left Column (~70%) – contains most content */}
+        <Box
+          sx={{
+            flex: '7 1 0',        // grow and shrink equally
+            minWidth: 0,          // allows shrinking below content width
+            overflow: 'hidden',   // keep children inside
+          }}
+        >
+          <TicketProgress
+            ref={progressRef}
+            ticket={ticket}
+            isEditMode={isEditMode}
+            canEditTargetDate={canEditTargetDate}
+          />
 
-        {/* Left Column */}
-        <Box sx={{ flex: isPortalUser ? 1 : 0.7 }}>
-          <TicketProgress ref={progressRef} ticket={ticket} isEditMode={isEditMode} canEditTargetDate={canEditTargetDate} />
-          
           <TicketIssue
             ref={issueRef}
             ticket={ticket}
@@ -301,7 +319,7 @@ export default function TicketDetailPage() {
           )}
 
           {isPortalUser ? (
-            <Stack direction="row" spacing={2.5} sx={{ flexWrap: 'wrap' }} useFlexGap>
+            <Stack direction="row" spacing={2.5} sx={{ flexWrap: 'wrap', width: '100%' }} useFlexGap>
               <TicketCustomer
                 ref={customerRef}
                 ticket={ticket}
@@ -349,9 +367,17 @@ export default function TicketDetailPage() {
           />
         </Box>
 
-        {/* Right Column ~30% (Staff Only) */}
+        {/* Right Column (~30%) – Staff Only */}
         {!isPortalUser && (
-          <Box sx={{ flex: 0.3, minWidth: 0 }}>
+          <Box
+            sx={{
+              flex: '3 1 0',              // same grow/shrink as left
+              minWidth: '12.5rem',        // minimum 200px – prevents disappearing on zoom
+              overflow: 'hidden',         // keep children inside
+              // optional: set a basis to maintain ~30% width
+              // flexBasis: '30%',
+            }}
+          >
             <TicketOperations
               ref={operationsRef}
               ticket={ticket}
@@ -380,29 +406,29 @@ export default function TicketDetailPage() {
             Complete the handover process for this device. This will close the ticket and generate an outward record.
           </Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
-            <TextField 
-              size="small" 
-              label="Handed over to (Name)" 
-              value={outwardForm.handoverToName} 
-              onChange={e => setOutwardForm(prev => ({...prev, handoverToName: e.target.value}))} 
+            <TextField
+              size="small"
+              label="Handed over to (Name)"
+              value={outwardForm.handoverToName}
+              onChange={e => setOutwardForm(prev => ({ ...prev, handoverToName: e.target.value }))}
               placeholder={ticket?.userRefNo?.firstName || 'Name'}
             />
-            <TextField 
-              size="small" 
-              label="Phone No" 
-              value={outwardForm.handoverToPhone} 
-              onChange={e => setOutwardForm(prev => ({...prev, handoverToPhone: e.target.value}))}
-              placeholder={ticket?.userRefNo?.mobileNo || 'Phone'} 
+            <TextField
+              size="small"
+              label="Phone No"
+              value={outwardForm.handoverToPhone}
+              onChange={e => setOutwardForm(prev => ({ ...prev, handoverToPhone: e.target.value }))}
+              placeholder={ticket?.userRefNo?.mobileNo || 'Phone'}
             />
           </Box>
-          <TextField 
-            fullWidth 
-            size="small" 
-            label="Outward Remarks" 
-            multiline 
-            rows={2} 
-            value={outwardForm.outwardRemarks} 
-            onChange={e => setOutwardForm(prev => ({...prev, outwardRemarks: e.target.value}))} 
+          <TextField
+            fullWidth
+            size="small"
+            label="Outward Remarks"
+            multiline
+            rows={2}
+            value={outwardForm.outwardRemarks}
+            onChange={e => setOutwardForm(prev => ({ ...prev, outwardRemarks: e.target.value }))}
           />
         </DialogContent>
         <DialogActions sx={{ p: 2, pt: 0 }}>
