@@ -55,7 +55,7 @@ export default function UserEntryModal({ open, onClose }) {
   }, [open]);
 
   // Queries for dropdowns
-  const { data: deviceTypes = [] } = useQuery({ queryKey: ['deviceTypes'], queryFn: async () => (await api.get('/device-types')).data });
+  const { data: deviceTypes = [] } = useQuery({ queryKey: ['deviceTypes'], queryFn: async () => (await api.get('/devicetypes')).data });
   const { data: brands = [] } = useQuery({ queryKey: ['brands'], queryFn: async () => (await api.get('/brands')).data });
   const { data: models = [] } = useQuery({ queryKey: ['deviceModels', deviceForm.brandId], queryFn: async () => deviceForm.brandId ? (await api.get(`/device-models/brand/${deviceForm.brandId}`)).data : [], enabled: !!deviceForm.brandId });
   

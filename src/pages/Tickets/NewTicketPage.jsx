@@ -17,12 +17,9 @@ import ChargeDetails from '../Billing/components/ChargeDetails';
 import CustomerDetails from './NewTicketComponents/CustomerDetails.jsx';
 import DeviceInformation from './NewTicketComponents/DeviceInformation.jsx';
 import IssueDescription from './NewTicketComponents/IssueDescription.jsx';
-import TicketAssignment from './NewTicketComponents/TicketAssignment.jsx';
 import UploadAttachments from './NewTicketComponents/UploadAttachments.jsx';
 import TicketAccessoriesChecklist from './NewTicketComponents/TicketAccessoriesChecklist.jsx';
-
-const PRIORITIES = ['Low', 'Normal', 'High', 'Critical'];
-const WARRANTY_TYPES = ['Warranty', 'RMA', 'Out-of-Warranty', 'Internal'];
+import TicketAssignment from './NewTicketComponents/TicketAssignment.jsx';
 
 const defaultLineItem = () => ({
   id: crypto.randomUUID(),
@@ -122,7 +119,7 @@ export default function NewTicketPage() {
     enabled: isStaff || (isVendor && !!user?.userId),
   });
 
-  
+
   const { data: vendors = [] } = useQuery({
     queryKey: ['vendors'],
     queryFn: async () => (await api.get('/vendors')).data,
@@ -213,7 +210,7 @@ export default function NewTicketPage() {
   const addNewItem = (newItem) => {
     setItems(prev => [...prev, newItem]);
   };
-  
+
   const removeItem = (id) => setItems(prev => prev.filter(i => i.id !== id));
 
   const getChargeTypeInfo = (chargeTypeId) => {
@@ -249,20 +246,20 @@ export default function NewTicketPage() {
     if (form.customerId && (isStaff || isVendor) && customers.length > 0) {
       const customer = customers.find((c) => String(c.userId) === String(form.customerId));
       if (customer) {
-        setForm((prev) => ({ 
-          ...prev, 
-          phone: customer.mobileNo || '', 
+        setForm((prev) => ({
+          ...prev,
+          phone: customer.mobileNo || '',
           email: customer.emailId || '',
           customerAddress: customer.address || '',
           vendorId: customer.vendorId || prev.vendorId
         }));
       }
     } else if ((isStaff || isVendor) && !form.customerId && !form.customCustomerName) {
-      setForm((prev) => ({ 
-        ...prev, 
-        phone: '', 
-        email: '', 
-        customerAddress: '' 
+      setForm((prev) => ({
+        ...prev,
+        phone: '',
+        email: '',
+        customerAddress: ''
       }));
     }
   }, [form.customerId, customers, isStaff, isVendor, form.customCustomerName]);
@@ -280,7 +277,7 @@ export default function NewTicketPage() {
           if (!alreadyAdded) {
             const pendingStatus = billingStatuses.find(s => s.statusName?.toLowerCase() === 'pending');
             const ctService = chargeTypes.find(ct => (ct.chargeName || '').toLowerCase().includes('service'));
-            
+
             setItems(prev => [...prev, {
               ...defaultLineItem(),
               chargeTypeId: ctService ? ctService.chargeTypeId : '',
@@ -308,17 +305,17 @@ export default function NewTicketPage() {
   const createTicketMutation = useMutation({
     mutationFn: async () => {
       let finalCustomerId = form.customerId;
-      
+
       if (!finalCustomerId && form.customCustomerName && (isStaff || isVendor)) {
         const nameParts = form.customCustomerName.trim().split(' ');
         const firstName = nameParts[0] || 'Unknown';
         const lastName = nameParts.slice(1).join(' ') || '';
-        const newUserPayload = { 
-          firstName, 
-          lastName, 
-          mobileNo: form.phone, 
-          emailId: form.email, 
-          password: 'Mays123', 
+        const newUserPayload = {
+          firstName,
+          lastName,
+          mobileNo: form.phone,
+          emailId: form.email,
+          password: 'Mays123',
           isActive: true,
           address: form.customerAddress || '',
           vendorId: form.vendorId ? Number(form.vendorId) : null
@@ -388,13 +385,13 @@ export default function NewTicketPage() {
     },
     onSuccess: () => {
       hideLoading();
-      window.dispatchEvent(new CustomEvent('app-notification', { detail: { message: 'Ticket created successfully!', severity: 'success' }}));
+      window.dispatchEvent(new CustomEvent('app-notification', { detail: { message: 'Ticket created successfully!', severity: 'success' } }));
       navigate('/dashboard');
     },
     onError: (error) => {
       hideLoading();
       console.error('Failed to create ticket:', error);
-      window.dispatchEvent(new CustomEvent('app-notification', { detail: { message: 'Failed to create ticket or customer', severity: 'error' }}));
+      window.dispatchEvent(new CustomEvent('app-notification', { detail: { message: 'Failed to create ticket or customer', severity: 'error' } }));
     }
   });
 
@@ -437,28 +434,28 @@ export default function NewTicketPage() {
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2.5}>
         <Box sx={{ flex: 1 }}>
-          <CustomerDetails 
+          <CustomerDetails
             isNormalUser={isNormalUser}
             isVendor={isVendor}
-            form={form} 
-            setForm={setForm} 
-            handleChange={handleChange} 
-            customers={customers} 
-            vendors={vendors} 
-            lbl={lbl} 
-            secHdr={secHdr} 
+            form={form}
+            setForm={setForm}
+            handleChange={handleChange}
+            customers={customers}
+            vendors={vendors}
+            lbl={lbl}
+            secHdr={secHdr}
           />
 
-          <DeviceInformation 
-            form={form} 
-            setForm={setForm} 
-            handleChange={handleChange} 
-            handleDeviceTypeChange={handleDeviceTypeChange} 
-            deviceTypes={deviceTypes} 
-            brands={brands} 
-            models={models} 
-            lbl={lbl} 
-            secHdr={secHdr} 
+          <DeviceInformation
+            form={form}
+            setForm={setForm}
+            handleChange={handleChange}
+            handleDeviceTypeChange={handleDeviceTypeChange}
+            deviceTypes={deviceTypes}
+            brands={brands}
+            models={models}
+            lbl={lbl}
+            secHdr={secHdr}
           />
 
           <UploadAttachments secHdr={secHdr} files={pendingFiles} onChange={setPendingFiles} />
@@ -468,48 +465,48 @@ export default function NewTicketPage() {
             <Paper elevation={1} sx={{ borderRadius: '3px', overflow: 'hidden', mb: 2.5 }}>
               <Box sx={secHdr}><Typography sx={{ fontSize: '14px', fontWeight: 600 }}>Ticket Accessories</Typography></Box>
               <Divider />
-              <TicketAccessoriesChecklist 
-                deviceTypeId={form.deviceTypeId} 
-                selectedAccessories={selectedAccessories} 
-                onChange={setSelectedAccessories} 
+              <TicketAccessoriesChecklist
+                deviceTypeId={form.deviceTypeId}
+                selectedAccessories={selectedAccessories}
+                onChange={setSelectedAccessories}
               />
             </Paper>
           )}
         </Box>
 
         <Box sx={{ flex: 1 }}>
-          <IssueDescription 
+          <IssueDescription
             form={form}
             setForm={setForm}
-            handleChange={handleChange} 
-            ticketTypes={ticketTypes} 
+            handleChange={handleChange}
+            ticketTypes={ticketTypes}
             referredCategories={referredCategories}
             warrantyTypes={warrantyTypes}
-            lbl={lbl} 
-            secHdr={secHdr} 
+            lbl={lbl}
+            secHdr={secHdr}
           />
 
           {!isNormalUser && !isVendor && (
-            <TicketAssignment 
-              form={form} 
-              setForm={setForm} 
-              handleChange={handleChange} 
-              lbl={lbl} 
+            <TicketAssignment
+              form={form}
+              setForm={setForm}
+              handleChange={handleChange}
+              lbl={lbl}
               secHdr={secHdr}
               canEditTargetDate={canEditTargetDate}
             />
           )}
         </Box>
       </Stack>
-      
+
       {/* --- Billing Charges --- */}
       {isStaff && (
         <Box sx={{ mt: 1 }}>
-          <ChargeDetails 
-            items={items} 
-            chargeTypes={chargeTypes} 
-            products={products} 
-            services={services} 
+          <ChargeDetails
+            items={items}
+            chargeTypes={chargeTypes}
+            products={products}
+            services={services}
             statuses={billingStatuses}
             paymentModes={paymentModes}
             getNewItemTemplate={getNewItemTemplate}

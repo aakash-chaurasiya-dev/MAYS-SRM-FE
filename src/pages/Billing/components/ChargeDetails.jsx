@@ -194,12 +194,13 @@ export default function ChargeDetails({
                 'Product',
                 'Service',
                 'Payment Mode',
+                'UTR',
                 'Status',
                 'Amount (₹)',
               ].map((h, i) => (
                 <TableCell
                   key={h}
-                  align={i === 6 ? 'right' : 'left'}
+                  align={h === 'Amount (₹)' ? 'right' : 'left'}
                   sx={{
                     fontSize: '10px',
                     fontWeight: 700,
@@ -292,6 +293,10 @@ export default function ChargeDetails({
 
                   <TableCell sx={{ minWidth: 120 }}>
                     {pm ? pm.paymentMode : '—'}
+                  </TableCell>
+
+                  <TableCell sx={{ minWidth: 120 }}>
+                    {item.utr || '—'}
                   </TableCell>
 
                   <TableCell sx={{ minWidth: 120 }}>

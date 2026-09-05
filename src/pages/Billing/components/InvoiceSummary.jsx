@@ -27,8 +27,8 @@ export default function InvoiceSummary({ form, setField, totals }) {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           {[
             { label: 'Sub Total', value: fmtINR(subTotal) },
-            { label: 'CGST (9%)', value: fmtINR(cgst) },
-            { label: 'SGST (9%)', value: fmtINR(sgst) },
+            { label: 'CGST (0%)', value: fmtINR(cgst) },
+            { label: 'SGST (0%)', value: fmtINR(sgst) },
             { label: 'IGST (0%)', value: fmtINR(0) },
           ].map(({ label, value }) => (
             <Box key={label} sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>

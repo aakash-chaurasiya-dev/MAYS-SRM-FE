@@ -4,8 +4,22 @@ import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
 
 /* ── Invoice Preview — centered Dialog modal ── */
-export default function InvoicePreview({ open, onClose, form, items, totals }) {
+export default function InvoicePreview({ open, onClose, form, items }) {
   const fmtINR = (n) => `₹ ${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
+  // ---- Invoice calculations ---
+  const subTotal = items.reduce((sum, item) => {
+    const amount = Math.abs(Number(item.rate || 0));
+    return sum + amount;
+  }, 0);
+
+  const cgst = 0;
+  const sgst = 0;
+  const grandRaw = subTotal + cgst + sgst;
+  const grandTotal = Math.round(grandRaw);
+  const roundOff = Number((grandRaw - grandTotal).toFixed(2));
+  const totals = { subTotal, cgst, sgst, grandTotal, roundOff };
+
 
   return (
     <Dialog
@@ -65,7 +79,7 @@ export default function InvoicePreview({ open, onClose, form, items, totals }) {
                 Complete IT Solutions
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.8 }}>
-                402, Tech Square, Phase 7<br />
+                <br />
                 Industrial Area, Mohali, PB 160062<br />
                 <strong>GSTIN: 03AABCW0001Z1Z0</strong>
               </Typography>
@@ -150,8 +164,8 @@ export default function InvoicePreview({ open, onClose, form, items, totals }) {
                   GST Breakdown (18%)
                 </Typography>
                 {[
-                  { label: 'CGST (9%)', value: fmtINR(totals.cgst) },
-                  { label: 'SGST (9%)', value: fmtINR(totals.sgst) },
+                  { label: 'CGST (0%)', value: fmtINR(totals.cgst) },
+                  { label: 'SGST (0%)', value: fmtINR(totals.sgst) },
                 ].map(({ label, value }) => (
                   <Box key={label} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                     <Typography sx={{ fontSize: '12px', color: 'text.secondary' }}>{label}</Typography>

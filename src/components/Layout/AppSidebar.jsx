@@ -189,7 +189,7 @@ export default function AppSidebar({
   mobileOpen,
   desktopOpen,
   onMobileClose,
-  drawerWidth,
+  drawerWidth, // now a number representing rem
   onStartResizing,
   isResizing,
 }) {
@@ -276,7 +276,7 @@ export default function AppSidebar({
   const drawerContent = (
     <Box
       sx={{
-        width: { xs: 240, md: drawerWidth },
+        width: { xs: 240, md: `${drawerWidth}rem` }, // ← using rem for md
         height: '100%',
         bgcolor: theme.palette.background.paper,
         display: 'flex',
@@ -347,7 +347,7 @@ export default function AppSidebar({
             textSx={textSx}
             textProps={textProps}
             badgeCount={pendingEnquiryCount}
-             badgeTooltip={pendingEnquiryTooltip}
+            badgeTooltip={pendingEnquiryTooltip}
           />
         </Can>
 
@@ -536,13 +536,14 @@ export default function AppSidebar({
     boxSizing: 'border-box',
     overflow: 'hidden',
     transition: isResizing ? 'none' : widthTransition,
+    width: `${drawerWidth}rem`, // ← using rem
   };
 
   return (
     <Box
       component="nav"
       sx={{
-        width: { md: drawerWidth },
+        width: { md: `${drawerWidth}rem` }, // ← using rem
         flexShrink: { md: 0 },
         transition: isResizing ? 'none' : widthTransition,
       }}
@@ -554,7 +555,7 @@ export default function AppSidebar({
         ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': { ...drawerPaperSx, width: 240 },
+          '& .MuiDrawer-paper': { ...drawerPaperSx, width: 240 }, // mobile drawer remains 240px
         }}
       >
         {drawerContent}
@@ -564,7 +565,7 @@ export default function AppSidebar({
         open
         sx={{
           display: { xs: 'none', md: 'block' },
-          '& .MuiDrawer-paper': { ...drawerPaperSx, width: drawerWidth },
+          '& .MuiDrawer-paper': drawerPaperSx,
         }}
       >
         {drawerContent}

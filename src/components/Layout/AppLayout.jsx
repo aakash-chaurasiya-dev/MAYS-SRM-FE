@@ -37,7 +37,7 @@ export default function AppLayout() {
     }
   };
 
-  const [sidebarWidth, setSidebarWidth] = useState(240);
+  const [sidebarWidth, setSidebarWidth] = useState(15);
   const [isResizing, setIsResizing] = useState(false);
 
   const startResizing = useCallback(() => {
@@ -50,8 +50,10 @@ export default function AppLayout() {
 
   const resize = useCallback((e) => {
     if (isResizing) {
-      const newWidth = Math.min(Math.max(e.clientX, 200), 500);
-      setSidebarWidth(newWidth);
+      const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
+      const newWidthPx = Math.min(Math.max(e.clientX, 200), 500);
+      const newWidthRem = newWidthPx / rootFontSize;
+      setSidebarWidth(Math.min(Math.max(newWidthRem, 12), 30)); // clamp between 12rem and 30rem
     }
   }, [isResizing]);
 
@@ -64,7 +66,7 @@ export default function AppLayout() {
     };
   }, [resize, stopResizing]);
 
-  const drawerWidth = desktopOpen ? sidebarWidth : 64;
+  const drawerWidth = desktopOpen ? sidebarWidth : 4;
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', cursor: isResizing ? 'ew-resize' : 'auto', userSelect: isResizing ? 'none' : 'auto' }}>
@@ -84,16 +86,15 @@ export default function AppLayout() {
       <Box
         component="main"
         sx={{
-          flexGrow: 1,
+          flexGrow: 1,           // was already there
+          flex: 1,               // add this
+          minWidth: 0,           // add this – prevents overflow
           display: 'flex',
           flexDirection: 'column',
           bgcolor: theme.palette.background.default,
           minHeight: '100vh',
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          transition: isResizing ? 'none' : theme.transitions.create('width', {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.enteringScreen,
-          }),
+          overflow: 'hidden',    // add this
+          // remove the 'width' line entirely
         }}
       >
         <TabBar onMenuClick={handleDrawerToggle} />

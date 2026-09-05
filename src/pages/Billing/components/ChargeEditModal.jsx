@@ -134,6 +134,18 @@ export default function ChargeEditModal({
             </FormControl>
           )}
 
+          {isPaid && paymentModes.find(pm => pm.payModeId === formData.paymentModeId)?.paymentMode?.toLowerCase() === 'upi' && (
+            <TextField
+              label="UTR Number"
+              type="text"
+              size="small"
+              fullWidth
+              disabled={disabled}
+              value={formData.utr || ''}
+              onChange={(e) => handleChange('utr', e.target.value)}
+            />
+          )}
+
           <TextField
             label="Amount (₹)"
             type="number"
