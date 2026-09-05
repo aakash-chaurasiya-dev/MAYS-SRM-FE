@@ -29,11 +29,12 @@
   box-sizing: border-box;
 }
 
+
 html {
   zoom: 75%;
   /* 🔥 Yeh line add karo - default 75% zoom effect */
 }
-
+/* 
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -46,4 +47,4 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
-}
+} */

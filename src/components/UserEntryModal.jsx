@@ -58,10 +58,10 @@ export default function UserEntryModal({ open, onClose }) {
   const { data: deviceTypes = [] } = useQuery({ queryKey: ['deviceTypes'], queryFn: async () => (await api.get('/devicetypes')).data });
   const { data: brands = [] } = useQuery({ queryKey: ['brands'], queryFn: async () => (await api.get('/brands')).data });
   const { data: models = [] } = useQuery({ queryKey: ['deviceModels', deviceForm.brandId], queryFn: async () => deviceForm.brandId ? (await api.get(`/device-models/brand/${deviceForm.brandId}`)).data : [], enabled: !!deviceForm.brandId });
-  
+
   // Eligible tickets for outward
-  const { data: eligibleTickets = [] } = useQuery({ 
-    queryKey: ['eligibleTickets', user?.userId], 
+  const { data: eligibleTickets = [] } = useQuery({
+    queryKey: ['eligibleTickets', user?.userId],
     queryFn: async () => (await api.get(`/tickets/user/${user?.userId}/eligible-outward`)).data,
     enabled: reason === 'Outward' && !!user?.userId
   });
@@ -131,11 +131,11 @@ export default function UserEntryModal({ open, onClose }) {
     <Box sx={{ mt: 1 }}>
       <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, color: 'primary.main' }}>Customer Details</Typography>
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
-        <TextField size="small" label="Name *" value={customerForm.customerName} onChange={e => setCustomerForm(prev => ({...prev, customerName: e.target.value}))} />
-        <TextField size="small" label="Mobile No *" value={customerForm.mobileNo} onChange={e => setCustomerForm(prev => ({...prev, mobileNo: e.target.value}))} />
-        <TextField size="small" label="Email" value={customerForm.emailId} onChange={e => setCustomerForm(prev => ({...prev, emailId: e.target.value}))} />
+        <TextField size="small" label="Name *" value={customerForm.customerName} onChange={e => setCustomerForm(prev => ({ ...prev, customerName: e.target.value }))} />
+        <TextField size="small" label="Mobile No *" value={customerForm.mobileNo} onChange={e => setCustomerForm(prev => ({ ...prev, mobileNo: e.target.value }))} />
+        <TextField size="small" label="Email" value={customerForm.emailId} onChange={e => setCustomerForm(prev => ({ ...prev, emailId: e.target.value }))} />
       </Box>
-      <TextField fullWidth size="small" label="Address" value={customerForm.address} onChange={e => setCustomerForm(prev => ({...prev, address: e.target.value}))} />
+      <TextField fullWidth size="small" label="Address" value={customerForm.address} onChange={e => setCustomerForm(prev => ({ ...prev, address: e.target.value }))} />
     </Box>
   );
 
@@ -143,21 +143,21 @@ export default function UserEntryModal({ open, onClose }) {
     <Box sx={{ mt: 2 }}>
       <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, color: 'primary.main' }}>Device Details</Typography>
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
-        <TextField size="small" label="Serial No *" value={deviceForm.serialNo} onChange={e => setDeviceForm(prev => ({...prev, serialNo: e.target.value}))} />
-        <TextField size="small" select label="Device Type" value={deviceForm.deviceTypeId} onChange={e => setDeviceForm(prev => ({...prev, deviceTypeId: e.target.value}))}>
+        <TextField size="small" label="Serial No *" value={deviceForm.serialNo} onChange={e => setDeviceForm(prev => ({ ...prev, serialNo: e.target.value }))} />
+        <TextField size="small" select label="Device Type" value={deviceForm.deviceTypeId} onChange={e => setDeviceForm(prev => ({ ...prev, deviceTypeId: e.target.value }))}>
           <MenuItem value=""><em>None</em></MenuItem>
           {deviceTypes.map(dt => <MenuItem key={dt.deviceTypeId} value={dt.deviceTypeId}>{dt.name}</MenuItem>)}
         </TextField>
-        <TextField size="small" select label="Brand" value={deviceForm.brandId} onChange={e => setDeviceForm(prev => ({...prev, brandId: e.target.value, modelId: ''}))}>
+        <TextField size="small" select label="Brand" value={deviceForm.brandId} onChange={e => setDeviceForm(prev => ({ ...prev, brandId: e.target.value, modelId: '' }))}>
           <MenuItem value=""><em>None</em></MenuItem>
           {brands.map(b => <MenuItem key={b.brandId} value={b.brandId}>{b.name}</MenuItem>)}
         </TextField>
-        <TextField size="small" select label="Model" value={deviceForm.modelId} onChange={e => setDeviceForm(prev => ({...prev, modelId: e.target.value}))} disabled={!deviceForm.brandId}>
+        <TextField size="small" select label="Model" value={deviceForm.modelId} onChange={e => setDeviceForm(prev => ({ ...prev, modelId: e.target.value }))} disabled={!deviceForm.brandId}>
           <MenuItem value=""><em>None</em></MenuItem>
           {models.map(m => <MenuItem key={m.modelId} value={m.modelId}>{m.name}</MenuItem>)}
         </TextField>
       </Box>
-      <TextField fullWidth size="small" label="Custom Model / Notes" value={deviceForm.customModelName} onChange={e => setDeviceForm(prev => ({...prev, customModelName: e.target.value}))} />
+      <TextField fullWidth size="small" label="Custom Model / Notes" value={deviceForm.customModelName} onChange={e => setDeviceForm(prev => ({ ...prev, customModelName: e.target.value }))} />
     </Box>
   );
 
@@ -174,7 +174,7 @@ export default function UserEntryModal({ open, onClose }) {
           label="Purpose"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          sx={{ mb: 2 }}
+          sx={{ mb: 2, mt: 2 }}
         >
           <MenuItem value="" disabled><em>Select purpose...</em></MenuItem>
           <MenuItem value="Enquiry">Enquiry</MenuItem>
@@ -195,15 +195,15 @@ export default function UserEntryModal({ open, onClose }) {
             <Divider sx={{ my: 1 }} />
             {reason === 'Enquiry' && (
               <Box>
-                 <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, color: 'primary.main' }}>Enquiry Details</Typography>
-                 <TextField fullWidth size="small" label="Subject / Enquiry For" sx={{ mb: 2 }} value={enquiryForm.enquiryFor} onChange={e => setEnquiryForm(prev => ({...prev, enquiryFor: e.target.value}))} />
-                 <TextField fullWidth size="small" label="Query / Description" multiline rows={3} value={enquiryForm.queryText} onChange={e => setEnquiryForm(prev => ({...prev, queryText: e.target.value}))} />
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, color: 'primary.main' }}>Enquiry Details</Typography>
+                <TextField fullWidth size="small" label="Subject / Enquiry For" sx={{ mb: 2 }} value={enquiryForm.enquiryFor} onChange={e => setEnquiryForm(prev => ({ ...prev, enquiryFor: e.target.value }))} />
+                <TextField fullWidth size="small" label="Query / Description" multiline rows={3} value={enquiryForm.queryText} onChange={e => setEnquiryForm(prev => ({ ...prev, queryText: e.target.value }))} />
               </Box>
             )}
             {reason === 'Inward' && (
               <Box>
-                 <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, color: 'primary.main' }}>Inward Remarks</Typography>
-                 <TextField fullWidth size="small" label="Receipt / Condition Notes" multiline rows={3} value={inwardForm.inwardRemarks} onChange={e => setInwardForm(prev => ({...prev, inwardRemarks: e.target.value}))} />
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, color: 'primary.main' }}>Inward Remarks</Typography>
+                <TextField fullWidth size="small" label="Receipt / Condition Notes" multiline rows={3} value={inwardForm.inwardRemarks} onChange={e => setInwardForm(prev => ({ ...prev, inwardRemarks: e.target.value }))} />
               </Box>
             )}
           </Box>
@@ -216,11 +216,11 @@ export default function UserEntryModal({ open, onClose }) {
               options={eligibleTickets}
               getOptionLabel={(option) => `Ticket #${option.ticketId} - ${option.device?.serialNo || 'N/A'}`}
               value={outwardForm.ticketId}
-              onChange={(e, val) => setOutwardForm(prev => ({...prev, ticketId: val}))}
+              onChange={(e, val) => setOutwardForm(prev => ({ ...prev, ticketId: val }))}
               renderInput={(params) => <TextField {...params} size="small" label="Select Eligible Ticket" />}
               sx={{ mb: 2 }}
             />
-            
+
             {outwardForm.ticketId && (
               <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1, mb: 2 }}>
                 <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>Ticket Summary:</Typography>
