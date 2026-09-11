@@ -13,6 +13,7 @@ export const KNOWN_ROLES = [
 export const FEATURES = {
   enquiries: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN', 'ROLE_USER', 'ROLE_VENDOR'],
   newTicket: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN', 'ROLE_USER', 'ROLE_VENDOR'],
+  newEnquiry: ['ROLE_USER'],
   inventory: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_PURCHASE'],
   diagnosis: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ENGINEER'],
   maintenance: ['ROLE_MANAGER', 'ROLE_EXECUTIVE'],
@@ -23,6 +24,7 @@ export const FEATURES = {
   vendors: ['ROLE_MANAGER', 'ROLE_EXECUTIVE'],
   /** Who may change ticket target date on create/edit */
   editTicketTargetDate: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN'],
+  enquiries_Permission :['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN']
 
 };
 

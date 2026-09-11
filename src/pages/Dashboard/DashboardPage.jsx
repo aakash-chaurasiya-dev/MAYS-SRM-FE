@@ -114,8 +114,13 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { showLoading, hideLoading } = useGlobalLoading();
 
+  // ── New Enquiry / New Ticket handlers ──
   const handleNewEnquiryClick = () => {
-    window.dispatchEvent(new CustomEvent('open-user-entry-modal'));
+    navigate('/enquiries?new=1');
+  };
+
+  const handleNewTicketClick = () => {
+    navigate('/tickets/new');
   };
 
   const [tickets, setTickets] = useState([]);
@@ -143,7 +148,7 @@ export default function DashboardPage() {
     refetchInterval: 60000,
   });
 
-  // 1. Fetch Stats (Admin/Manager only) - Automatically refreshes every 60 seconds
+  // 1. Fetch Stats (Admin/Manager only)
   const { data: stats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
@@ -175,7 +180,6 @@ export default function DashboardPage() {
   const { data: userTickets, isLoading: loadingUserTickets } = useQuery({
     queryKey: ['dashboard-ticket-list-user', user?.userId],
     queryFn: async () => {
-      // Using user.userId from AuthContext instead of fetching /auth/me again
       const ticketsResponse = await api.get(`/tickets/user/dashboard/${user.userId}`);
       return ticketsResponse.data || [];
     },
@@ -202,7 +206,7 @@ export default function DashboardPage() {
     enabled: isVendor && !!user?.userId,
   });
 
-  // Sync React Query data to local state only for Admin/Manager (for pagination append logic)
+  // Sync React Query data to local state only for Admin/Manager
   useEffect(() => {
     if (!isPortalUser && !isEmployeeWithSelfTickets && adminTicketsInitial) {
       setTickets(adminTicketsInitial);
@@ -231,7 +235,7 @@ export default function DashboardPage() {
     if (isPortalUser || isEmployeeWithSelfTickets) return;
 
     const currentPage = newModel.page;
-    const nextPage = currentPage + 1; // Always prefetch the next contiguous page
+    const nextPage = currentPage + 1;
 
     if (!fetchedPages.has(nextPage)) {
       try {
@@ -279,7 +283,6 @@ export default function DashboardPage() {
     }),
   ];
 
-  // Map raw API data to grid rows gracefully handling DTO fields
   const mappedRows = displayTickets.map(t => {
     const tId = t.ticketId || t.id;
     const fName = t.userFirstName || t.userMaster?.firstName || '';
@@ -323,11 +326,12 @@ export default function DashboardPage() {
 
   const listConfig = {
     title: isEmployeeWithSelfTickets ? 'My Tickets' : (selectedDept === 'All' ? 'Tickets' : `${selectedDept} Tickets`),
-    rows: mappedRows, // List handles its own internal search/filtering
+    rows: mappedRows,
     columns: TICKET_COLUMNS,
     loading: loading,
+    // Staff/Manager view: "New Ticket". Employee self-tickets: no action.
     actions: isEmployeeWithSelfTickets ? [] : [
-      { label: 'New Enquiry', icon: <AddOutlinedIcon />, onClick: handleNewEnquiryClick },
+      { label: 'New Ticket', icon: <AddOutlinedIcon />, onClick: handleNewTicketClick },
     ],
     pagination: { pageSize: 10 },
     onPaginationChange: handlePaginationChange,
@@ -339,6 +343,10 @@ export default function DashboardPage() {
 
   /* ── Customer / Vendor Portal (Mobile Friendly) ── */
   if (isPortalUser) {
+    // User → New Enquiry, Vendor → New Ticket
+    const portalButtonLabel = isVendor ? 'New Ticket' : 'New Enquiry';
+    const portalButtonHandler = isVendor ? handleNewTicketClick : handleNewEnquiryClick;
+
     return (
       <Box>
         {/* Header */}
@@ -353,16 +361,14 @@ export default function DashboardPage() {
                 : 'Track the progress of your repair requests'}
             </Typography>
           </Box>
-          {isVendor && (
-            <Button
-              variant="contained"
-              startIcon={<AddOutlinedIcon />}
-              onClick={handleNewEnquiryClick}
-              sx={{ fontWeight: 600, textTransform: 'none', py: 0.9 }}
-            >
-              New Enquiry
-            </Button>
-          )}
+          <Button
+            variant="contained"
+            startIcon={<AddOutlinedIcon />}
+            onClick={portalButtonHandler}
+            sx={{ fontWeight: 600, textTransform: 'none', py: 0.9 }}
+          >
+            {portalButtonLabel}
+          </Button>
         </Box>
 
         {/* Search Input */}
@@ -391,14 +397,14 @@ export default function DashboardPage() {
                   ? 'You have not created any tickets yet.'
                   : 'You have not submitted any repair tickets.'}
             </Typography>
-            {!searchQuery && isVendor && (
+            {!searchQuery && (
               <Button
                 variant="outlined"
                 startIcon={<AddOutlinedIcon />}
-                onClick={handleNewEnquiryClick}
+                onClick={portalButtonHandler}
                 sx={{ mt: 2, textTransform: 'none' }}
               >
-                Create New Enquiry
+                {portalButtonLabel}
               </Button>
             )}
           </Paper>

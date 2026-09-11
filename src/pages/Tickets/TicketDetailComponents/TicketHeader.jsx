@@ -6,9 +6,10 @@ import { useTheme } from '@mui/material/styles';
 
 /**
  * TicketHeader
- * 
- * Displays the top section of the ticket detail page, including the back button, 
- * ticket title, status chips, and global action buttons (Edit/Save, Billing).
+ *
+ * Top section of the ticket detail page: back button, ticket title, status chips,
+ * and global action buttons (Edit/Save, Billing). Outward is now handled by
+ * TicketEnquiryOutwardPanel — not here.
  */
 export default function TicketHeader({
   ticket,
@@ -21,19 +22,16 @@ export default function TicketHeader({
   onEditClick,
   onCancelEdit,
   onSaveClick,
-  onOutwardClick,
-  saving
+  saving,
 }) {
   const theme = useTheme();
 
-  // Handle derived values safely
   const ticketCode = ticket?.ticketId ? `TK-${ticket.ticketId}` : 'Not available';
   const deviceName = ticket?.deviceModelName || 'Not available';
   const ticketTitle = deviceName !== 'Not available' ? `${deviceName}` : 'Ticket details';
 
   const statusDisplay = ticket?.ticketStatusName || ticket?.status || 'Open';
 
-  // Determine color for the status chip
   let statusChipColor = 'default';
   if (['CLOSED', 'RESOLVED'].includes(statusDisplay.toUpperCase())) statusChipColor = 'success';
   else if (statusDisplay.toUpperCase() === 'IN PROGRESS') statusChipColor = 'info';
@@ -42,17 +40,37 @@ export default function TicketHeader({
 
   return (
     <Box>
-      {/* Top Breadcrumb / Location Header */}
+      {/* Breadcrumb / Location Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
-        <IconButton size="small" onClick={onNavigateBack} sx={{ color: theme.palette.text.secondary }}>
+        <IconButton
+          size="small"
+          onClick={onNavigateBack}
+          sx={{ color: theme.palette.text.secondary }}
+        >
           <ArrowBackIcon fontSize="small" />
         </IconButton>
-        <Typography sx={{ fontSize: '11px', fontWeight: 600, color: theme.palette.text.secondary, letterSpacing: '0.04em' }}>
+        <Typography
+          sx={{
+            fontSize: '11px',
+            fontWeight: 600,
+            color: theme.palette.text.secondary,
+            letterSpacing: '0.04em',
+          }}
+        >
           Back
         </Typography>
-      </Box> 
+      </Box>
 
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 1.5 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 2,
+          mb: 1.5,
+        }}
+      >
         {/* Title & Status Chips */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
           <Typography sx={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>
@@ -61,7 +79,13 @@ export default function TicketHeader({
           <Chip
             label={ticketCode}
             size="small"
-            sx={{ fontWeight: 600, borderRadius: '2px', bgcolor: `${theme.palette.primary.main}14`, color: theme.palette.primary.main, height: 22 }}
+            sx={{
+              fontWeight: 600,
+              borderRadius: '2px',
+              bgcolor: `${theme.palette.primary.main}14`,
+              color: theme.palette.primary.main,
+              height: 22,
+            }}
           />
           <Chip
             label={statusDisplay.toUpperCase()}
@@ -74,22 +98,44 @@ export default function TicketHeader({
         {/* Action Buttons (Staff Only) */}
         {!isNormalUser && (
           <Box sx={{ display: 'flex', gap: 1.5 }}>
-            <Button variant="contained" color="secondary" size="small" sx={{ fontSize: '12px' }} onClick={onOutwardClick}>
-              Mark Outward
-            </Button>
-            <Button variant="outlined" color="primary" size="small" sx={{ fontSize: '12px' }} onClick={onNavigateBilling}>
+            <Button
+              variant="outlined"
+              color="primary"
+              size="small"
+              sx={{ fontSize: '12px' }}
+              onClick={onNavigateBilling}
+            >
               Billing Details
             </Button>
             {!isEditMode ? (
-              <Button variant="outlined" size="small" startIcon={<EditOutlinedIcon />} sx={{ fontSize: '12px' }} onClick={onEditClick}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<EditOutlinedIcon />}
+                sx={{ fontSize: '12px' }}
+                onClick={onEditClick}
+              >
                 Edit
               </Button>
             ) : (
               <>
-                <Button variant="text" size="small" sx={{ fontSize: '12px' }} onClick={onCancelEdit} disabled={saving}>
+                <Button
+                  variant="text"
+                  size="small"
+                  sx={{ fontSize: '12px' }}
+                  onClick={onCancelEdit}
+                  disabled={saving}
+                >
                   Cancel
                 </Button>
-                <Button variant="contained" size="small" startIcon={<SaveOutlinedIcon />} sx={{ fontSize: '12px' }} onClick={onSaveClick} disabled={saving}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<SaveOutlinedIcon />}
+                  sx={{ fontSize: '12px' }}
+                  onClick={onSaveClick}
+                  disabled={saving}
+                >
                   {saving ? 'Saving...' : 'Save'}
                 </Button>
               </>
@@ -98,7 +144,6 @@ export default function TicketHeader({
         )}
       </Box>
 
-      {/* Error Messaging */}
       {error && (
         <Typography sx={{ fontSize: '13px', color: 'error.main', mb: 2 }}>
           {error}

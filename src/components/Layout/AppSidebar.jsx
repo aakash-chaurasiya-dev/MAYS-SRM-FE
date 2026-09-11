@@ -471,28 +471,54 @@ export default function AppSidebar({
           />
         </Can>
 
-        <Can feature="newTicket">
-          <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
-            <Button
-              variant="contained"
-              fullWidth
-              startIcon={desktopOpen ? <AddIcon /> : undefined}
-              onClick={handleNewEnquiryClick}
-              sx={{
-                borderRadius: '6px',
-                py: 0.9,
-                fontSize: '13px',
-                fontWeight: 600,
-                textTransform: 'none',
-                minWidth: desktopOpen ? 'auto' : 40,
-                px: desktopOpen ? 2 : 0,
-                justifyContent: 'center',
-              }}
-            >
-              {desktopOpen ? 'New Enquiry' : <AddIcon fontSize="small" />}
-            </Button>
-          </Box>
-        </Can>
+        {/* New Enquiry / New Ticket button */}
+        {isNormalUser ? (
+          <Can feature="enquiries">
+            <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
+              <Button
+                variant="contained"
+                fullWidth
+                startIcon={desktopOpen ? <AddIcon /> : undefined}
+                onClick={() => handleNav('/enquiries?new=1')}
+                sx={{
+                  borderRadius: '6px',
+                  py: 0.9,
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  minWidth: desktopOpen ? 'auto' : 40,
+                  px: desktopOpen ? 2 : 0,
+                  justifyContent: 'center',
+                }}
+              >
+                {desktopOpen ? 'New Enquiry' : <AddIcon fontSize="small" />}
+              </Button>
+            </Box>
+          </Can>
+        ) : (
+          <Can feature="newTicket">
+            <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
+              <Button
+                variant="contained"
+                fullWidth
+                startIcon={desktopOpen ? <AddIcon /> : undefined}
+                onClick={() => handleNav('/tickets/new')}
+                sx={{
+                  borderRadius: '6px',
+                  py: 0.9,
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  minWidth: desktopOpen ? 'auto' : 40,
+                  px: desktopOpen ? 2 : 0,
+                  justifyContent: 'center',
+                }}
+              >
+                {desktopOpen ? 'New Ticket' : <AddIcon fontSize="small" />}
+              </Button>
+            </Box>
+          </Can>
+        )}
       </MuiList>
 
       <Box sx={{ mt: 'auto', p: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
