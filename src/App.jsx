@@ -71,8 +71,8 @@ function App() {
             <Route path="/forgot-password" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <ForgotPasswordPage />} />
 
             {/* Authenticated Routes with Sidebar & TabBar */}
-            <Route element={<Can  mode="redirect" />}>
-            
+            <Route element={<Can mode="redirect" />}>
+
               <Route element={<AppLayout />}>
 
                 {/* Common Authenticated Routes (Accessible by all roles) */}
@@ -84,7 +84,7 @@ function App() {
                 <Route path="/tickets/:id" element={<TicketDetailPage />} />
 
                 {/* Feature-gated routes — roles from FEATURES in access/featureAccess.js */}
-                <Route element={<Can feature="enquiries" mode="redirect" />}>
+                <Route element={<Can feature="newTicket" mode="redirect" />}>
                   <Route path="/tickets/new" element={<NewTicketPage />} />
                   <Route path="/enquiries" element={<EnquiriesPage />} />
                   <Route path="/enquiries/:id" element={<EnquiryDetailPage />} />
@@ -109,7 +109,7 @@ function App() {
                   <Route path="/billing/billing-details" element={<BillingDetailsPage />} />
                   <Route path="/billing/create" element={<CreateInvoicePage />} />
                 </Route>
-                 
+
                 <Route element={<Can feature="maintenance" mode="redirect" />}>
                   {/* Maintenance Routes */}
                   <Route path="/maintenance" element={<MaintenancePage />} />

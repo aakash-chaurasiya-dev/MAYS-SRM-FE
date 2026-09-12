@@ -114,14 +114,23 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { showLoading, hideLoading } = useGlobalLoading();
 
-  // ── New Enquiry / New Ticket handlers ──
   const handleNewEnquiryClick = () => {
-    navigate('/enquiries?new=1');
+    window.dispatchEvent(new CustomEvent('open-user-entry-modal'));
   };
 
-  const handleNewTicketClick = () => {
-    navigate('/tickets/new');
+  const handleNav = (path) => {
+    navigate(path);
   };
+
+
+  const handleNewTicketClick = () => {
+    showLoading('Loading New Ticket...');
+    setTimeout(() => {
+      hideLoading();
+      handleNav('/tickets/new');
+    }, 800);
+  };
+
 
   const [tickets, setTickets] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -361,14 +370,16 @@ export default function DashboardPage() {
                 : 'Track the progress of your repair requests'}
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddOutlinedIcon />}
-            onClick={portalButtonHandler}
-            sx={{ fontWeight: 600, textTransform: 'none', py: 0.9 }}
-          >
-            {portalButtonLabel}
-          </Button>
+          {isVendor && (
+            <Button
+              variant="contained"
+              startIcon={<AddOutlinedIcon />}
+              onClick={handleNewTicketClick}
+              sx={{ fontWeight: 600, textTransform: 'none', py: 0.9 }}
+            >
+              New Ticket
+            </Button>
+          )}
         </Box>
 
         {/* Search Input */}
@@ -401,10 +412,10 @@ export default function DashboardPage() {
               <Button
                 variant="outlined"
                 startIcon={<AddOutlinedIcon />}
-                onClick={portalButtonHandler}
+                onClick={handleNewTicketClick}
                 sx={{ mt: 2, textTransform: 'none' }}
               >
-                {portalButtonLabel}
+                Create New Ticket
               </Button>
             )}
           </Paper>
@@ -419,10 +430,10 @@ export default function DashboardPage() {
                   p: 2.5,
                   borderRadius: '4px',
                   borderLeft: `4px solid ${ticket.status === 'RESOLVED' || ticket.status === 'CLOSED'
-                      ? theme.palette.success.main
-                      : ticket.status === 'IN PROGRESS'
-                        ? theme.palette.warning.main
-                        : theme.palette.error.main
+                    ? theme.palette.success.main
+                    : ticket.status === 'IN PROGRESS'
+                      ? theme.palette.warning.main
+                      : theme.palette.error.main
                     }`,
                   cursor: 'pointer',
                   transition: 'box-shadow 0.2s, transform 0.2s',

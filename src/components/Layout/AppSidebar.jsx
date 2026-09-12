@@ -264,6 +264,15 @@ export default function AppSidebar({
     onMobileClose?.();
   };
 
+  const handleNewTicketClick = () => {
+    showLoading('Loading New Ticket...');
+    setTimeout(() => {
+      hideLoading();
+      handleNav('/tickets/new');
+    }, 800);
+  };
+
+
   const handleNewEnquiryClick = () => {
     window.dispatchEvent(new CustomEvent('open-user-entry-modal'));
   };
@@ -470,16 +479,14 @@ export default function AppSidebar({
             textProps={textProps}
           />
         </Can>
-
-        {/* New Enquiry / New Ticket button */}
-        {isNormalUser ? (
-          <Can feature="enquiries">
+        {(isNormalUser) ? (
+          <Can feature="newEnquiry">
             <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
               <Button
                 variant="contained"
                 fullWidth
                 startIcon={desktopOpen ? <AddIcon /> : undefined}
-                onClick={() => handleNav('/enquiries?new=1')}
+                onClick={handleNewEnquiryClick}
                 sx={{
                   borderRadius: '6px',
                   py: 0.9,
@@ -494,15 +501,14 @@ export default function AppSidebar({
                 {desktopOpen ? 'New Enquiry' : <AddIcon fontSize="small" />}
               </Button>
             </Box>
-          </Can>
-        ) : (
+          </Can>) : (
           <Can feature="newTicket">
             <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
               <Button
                 variant="contained"
                 fullWidth
                 startIcon={desktopOpen ? <AddIcon /> : undefined}
-                onClick={() => handleNav('/tickets/new')}
+                onClick={handleNewTicketClick}
                 sx={{
                   borderRadius: '6px',
                   py: 0.9,
