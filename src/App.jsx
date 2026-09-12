@@ -39,6 +39,7 @@ import AccessoryManagementPage from './pages/Maintenance/Accessory/AccessoryMana
 import BillingDetailsPage from './pages/Billing/BillingDetailsPage';
 import CreateInvoicePage from './pages/Billing/CreateInvoicePage';
 import ReportsPage from './pages/Reports/ReportsPage';
+import EnquiryDetailPage from './pages/Enquiries/EnquiryDetailPage';
 import UserEntryReportPage from './pages/Reports/UserEntryReportPage';
 import EmployeeDetailsPage from './pages/EmployeeDetails/EmployeeDetails';
 import EmployeeProfilePage from './pages/EmployeeDetails/EmployeeProfilePage';
@@ -86,6 +87,7 @@ function App() {
                 <Route element={<Can feature="newTicket" mode="redirect" />}>
                   <Route path="/tickets/new" element={<NewTicketPage />} />
                   <Route path="/enquiries" element={<EnquiriesPage />} />
+                  <Route path="/enquiries/:id" element={<EnquiryDetailPage />} />
                 </Route>
 
                 <Route element={<Can feature="inventory" mode="redirect" />}>

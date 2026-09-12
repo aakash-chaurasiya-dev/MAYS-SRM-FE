@@ -43,4 +43,8 @@ export const ROUTE_CONFIG = {
   '/users/:id': { title: (params) => `User Profile #${params.id}`, icon: <BadgeOutlinedIcon fontSize="small" />, isClosable: true },
   '/vendors': { title: (params) => `Vendors`, icon: <BadgeOutlinedIcon fontSize="small" />, isClosable: true },
   '/vendors/:id': { title: (params) => `Vendor Profile #${params.id}`, icon: <BadgeOutlinedIcon fontSize="small" />, isClosable: true },
+  '/enquiries/:id': { title: (params) => `Enquiry Profile #${params.id}`, icon: <BadgeOutlinedIcon fontSize="small" />, isClosable: true },
+  '/enquiries/new': { title: 'New Enquiry', icon: <AddIcon fontSize="small" />, isClosable: true },
+  '/enquiries': { title: 'Enquiries', icon: <BadgeOutlinedIcon fontSize="small" />, isClosable: true },
+
 };

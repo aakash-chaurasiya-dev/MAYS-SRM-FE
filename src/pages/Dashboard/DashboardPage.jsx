@@ -114,9 +114,9 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { showLoading, hideLoading } = useGlobalLoading();
 
-  // const handleNewEnquiryClick = () => {
-  //   window.dispatchEvent(new CustomEvent('open-user-entry-modal'));
-  // };
+  const handleNewEnquiryClick = () => {
+    window.dispatchEvent(new CustomEvent('open-user-entry-modal'));
+  };
 
   const handleNav = (path) => {
     navigate(path);
@@ -157,7 +157,7 @@ export default function DashboardPage() {
     refetchInterval: 60000,
   });
 
-  // 1. Fetch Stats (Admin/Manager only) - Automatically refreshes every 60 seconds
+  // 1. Fetch Stats (Admin/Manager only)
   const { data: stats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
@@ -189,7 +189,6 @@ export default function DashboardPage() {
   const { data: userTickets, isLoading: loadingUserTickets } = useQuery({
     queryKey: ['dashboard-ticket-list-user', user?.userId],
     queryFn: async () => {
-      // Using user.userId from AuthContext instead of fetching /auth/me again
       const ticketsResponse = await api.get(`/tickets/user/dashboard/${user.userId}`);
       return ticketsResponse.data || [];
     },
@@ -216,7 +215,7 @@ export default function DashboardPage() {
     enabled: isVendor && !!user?.userId,
   });
 
-  // Sync React Query data to local state only for Admin/Manager (for pagination append logic)
+  // Sync React Query data to local state only for Admin/Manager
   useEffect(() => {
     if (!isPortalUser && !isEmployeeWithSelfTickets && adminTicketsInitial) {
       setTickets(adminTicketsInitial);
@@ -245,7 +244,7 @@ export default function DashboardPage() {
     if (isPortalUser || isEmployeeWithSelfTickets) return;
 
     const currentPage = newModel.page;
-    const nextPage = currentPage + 1; // Always prefetch the next contiguous page
+    const nextPage = currentPage + 1;
 
     if (!fetchedPages.has(nextPage)) {
       try {
@@ -293,7 +292,6 @@ export default function DashboardPage() {
     }),
   ];
 
-  // Map raw API data to grid rows gracefully handling DTO fields
   const mappedRows = displayTickets.map(t => {
     const tId = t.ticketId || t.id;
     const fName = t.userFirstName || t.userMaster?.firstName || '';
@@ -337,9 +335,10 @@ export default function DashboardPage() {
 
   const listConfig = {
     title: isEmployeeWithSelfTickets ? 'My Tickets' : (selectedDept === 'All' ? 'Tickets' : `${selectedDept} Tickets`),
-    rows: mappedRows, // List handles its own internal search/filtering
+    rows: mappedRows,
     columns: TICKET_COLUMNS,
     loading: loading,
+    // Staff/Manager view: "New Ticket". Employee self-tickets: no action.
     actions: isEmployeeWithSelfTickets ? [] : [
       { label: 'New Ticket', icon: <AddOutlinedIcon />, onClick: handleNewTicketClick },
     ],
@@ -353,6 +352,10 @@ export default function DashboardPage() {
 
   /* ── Customer / Vendor Portal (Mobile Friendly) ── */
   if (isPortalUser) {
+    // User → New Enquiry, Vendor → New Ticket
+    const portalButtonLabel = isVendor ? 'New Ticket' : 'New Enquiry';
+    const portalButtonHandler = isVendor ? handleNewTicketClick : handleNewEnquiryClick;
+
     return (
       <Box>
         {/* Header */}
@@ -405,7 +408,7 @@ export default function DashboardPage() {
                   ? 'You have not created any tickets yet.'
                   : 'You have not submitted any repair tickets.'}
             </Typography>
-            {!searchQuery && isVendor && (
+            {!searchQuery && (
               <Button
                 variant="outlined"
                 startIcon={<AddOutlinedIcon />}
@@ -427,10 +430,10 @@ export default function DashboardPage() {
                   p: 2.5,
                   borderRadius: '4px',
                   borderLeft: `4px solid ${ticket.status === 'RESOLVED' || ticket.status === 'CLOSED'
-                      ? theme.palette.success.main
-                      : ticket.status === 'IN PROGRESS'
-                        ? theme.palette.warning.main
-                        : theme.palette.error.main
+                    ? theme.palette.success.main
+                    : ticket.status === 'IN PROGRESS'
+                      ? theme.palette.warning.main
+                      : theme.palette.error.main
                     }`,
                   cursor: 'pointer',
                   transition: 'box-shadow 0.2s, transform 0.2s',

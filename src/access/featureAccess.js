@@ -24,6 +24,7 @@ export const FEATURES = {
   vendors: ['ROLE_MANAGER', 'ROLE_EXECUTIVE'],
   /** Who may change ticket target date on create/edit */
   editTicketTargetDate: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN'],
+  enquiries_Permission :['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN']
 
 };
 

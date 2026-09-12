@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Radio, RadioGroup, FormControlLabel, FormControl, TextField, Typography, CircularProgress, Box, Divider, MenuItem, Autocomplete } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useAuth } from '../contexts/AuthContext';
-import api from '../services/api';
+import { useAuth } from '../../contexts/AuthContext';
+import api from '../../services/api';
 
 export default function UserEntryModal({ open, onClose }) {
   const { user } = useAuth();

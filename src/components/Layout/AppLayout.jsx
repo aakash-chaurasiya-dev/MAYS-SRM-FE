@@ -3,7 +3,7 @@ import { Box, useMediaQuery } from '@mui/material';
 import KeepAliveOutlet from './KeepAliveOutlet';
 import AppSidebar from './AppSidebar';
 import TabBar from './TabBar';
-import UserEntryModal from '../UserEntryModal';
+import NewEnquiryModal from '../../pages/Enquiries/NewEnquiryModal';
 import { useTheme } from '@mui/material/styles';
 import { useAuth } from '../../contexts/AuthContext';
 import { getUserRole } from '../../access/featureAccess';
@@ -111,7 +111,7 @@ export default function AppLayout() {
         </Box>
       </Box>
       
-      <UserEntryModal 
+      <NewEnquiryModal 
         open={showEntryModal} 
         onClose={() => setShowEntryModal(false)} 
       />
