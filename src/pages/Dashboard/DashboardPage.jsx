@@ -114,9 +114,23 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { showLoading, hideLoading } = useGlobalLoading();
 
-  const handleNewEnquiryClick = () => {
-    window.dispatchEvent(new CustomEvent('open-user-entry-modal'));
+  // const handleNewEnquiryClick = () => {
+  //   window.dispatchEvent(new CustomEvent('open-user-entry-modal'));
+  // };
+
+  const handleNav = (path) => {
+    navigate(path);
   };
+
+
+  const handleNewTicketClick = () => {
+    showLoading('Loading New Ticket...');
+    setTimeout(() => {
+      hideLoading();
+      handleNav('/tickets/new');
+    }, 800);
+  };
+
 
   const [tickets, setTickets] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -327,7 +341,7 @@ export default function DashboardPage() {
     columns: TICKET_COLUMNS,
     loading: loading,
     actions: isEmployeeWithSelfTickets ? [] : [
-      { label: 'New Enquiry', icon: <AddOutlinedIcon />, onClick: handleNewEnquiryClick },
+      { label: 'New Ticket', icon: <AddOutlinedIcon />, onClick: handleNewTicketClick },
     ],
     pagination: { pageSize: 10 },
     onPaginationChange: handlePaginationChange,
@@ -357,10 +371,10 @@ export default function DashboardPage() {
             <Button
               variant="contained"
               startIcon={<AddOutlinedIcon />}
-              onClick={handleNewEnquiryClick}
+              onClick={handleNewTicketClick}
               sx={{ fontWeight: 600, textTransform: 'none', py: 0.9 }}
             >
-              New Enquiry
+              New Ticket
             </Button>
           )}
         </Box>
@@ -395,10 +409,10 @@ export default function DashboardPage() {
               <Button
                 variant="outlined"
                 startIcon={<AddOutlinedIcon />}
-                onClick={handleNewEnquiryClick}
+                onClick={handleNewTicketClick}
                 sx={{ mt: 2, textTransform: 'none' }}
               >
-                Create New Enquiry
+                Create New Ticket
               </Button>
             )}
           </Paper>

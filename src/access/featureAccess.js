@@ -12,11 +12,12 @@ export const KNOWN_ROLES = [
 /** Single policy map for routes, sidebar, and page gates */
 export const FEATURES = {
   enquiries: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN', 'ROLE_USER', 'ROLE_VENDOR'],
-  newTicket: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN', 'ROLE_USER', 'ROLE_VENDOR'],
+  newTicket: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN','ROLE_VENDOR'],
+  newEnquiry: [ 'ROLE_USER'],
   inventory: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_PURCHASE'],
   diagnosis: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ENGINEER'],
   maintenance: ['ROLE_MANAGER', 'ROLE_EXECUTIVE'],
-  billing: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN','ROLE_PURCHASE'],
+  billing: ['ROLE_MANAGER', 'ROLE_EXECUTIVE', 'ROLE_ADMIN', 'ROLE_PURCHASE'],
   reports: ['ROLE_MANAGER', 'ROLE_EXECUTIVE'],
   employees: ['ROLE_MANAGER', 'ROLE_EXECUTIVE'],
   users: ['ROLE_MANAGER', 'ROLE_EXECUTIVE'],

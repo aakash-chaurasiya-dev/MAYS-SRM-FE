@@ -59,7 +59,7 @@ export default function LoginPage() {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        height: '100vh',
         display: 'flex',
         flexDirection: { xs: 'column', md: 'row' },
         bgcolor: '#f4f5f7',
@@ -320,57 +320,7 @@ export default function LoginPage() {
             </Link>
           </Typography>
         </Paper>
-
-        {/* ── Station Info ── */}
-        <Box sx={{ display: 'flex', gap: 3, mt: 3, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <Chip
-            icon={<FiberManualRecordIcon sx={{ fontSize: '10px !important' }} />}
-            label="STATION ID: MAIN-SHOP-01"
-            size="small"
-            sx={{
-              fontSize: '11px',
-              fontWeight: 600,
-              letterSpacing: '0.04em',
-              bgcolor: theme.palette.background.paper,
-              border: `1px solid ${theme.palette.divider}`,
-              borderRadius: '3px',
-              color: theme.palette.text.secondary,
-              '& .MuiChip-icon': { color: theme.palette.text.secondary },
-            }}
-          />
-          <Chip
-            icon={<FiberManualRecordIcon sx={{ fontSize: '10px !important', color: '#006c47 !important' }} />}
-            label="SYSTEM STATUS: OPERATIONAL"
-            size="small"
-            sx={{
-              fontSize: '11px',
-              fontWeight: 600,
-              letterSpacing: '0.04em',
-              bgcolor: theme.palette.background.paper,
-              border: `1px solid ${theme.palette.divider}`,
-              borderRadius: '3px',
-              color: theme.palette.text.secondary,
-            }}
-          />
-        </Box>
-
-        {/* ── Footer ── */}
-        <Box sx={{ mt: 4, textAlign: 'center' }}>
-          <Typography sx={{ fontSize: '12px', color: theme.palette.text.secondary, mb: 1, maxWidth: 400 }}>
-            Access restricted to authorized personnel. All session data is logged and monitored for security compliance under internal protocol TK-GLOBAL.
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
-            <Link href="#" underline="hover" sx={{ fontSize: '12px', color: theme.palette.text.secondary }}>
-              Privacy Policy
-            </Link>
-            <Link href="#" underline="hover" sx={{ fontSize: '12px', color: theme.palette.text.secondary }}>
-              Support Desk
-            </Link>
-            <Link href="#" underline="hover" sx={{ fontSize: '12px', color: theme.palette.text.secondary }}>
-              Compliance
-            </Link>
-          </Box>
-        </Box>
+        
       </Box>
     </Box>
   );

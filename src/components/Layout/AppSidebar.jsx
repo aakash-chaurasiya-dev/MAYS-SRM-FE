@@ -264,6 +264,15 @@ export default function AppSidebar({
     onMobileClose?.();
   };
 
+  const handleNewTicketClick = () => {
+    showLoading('Loading New Ticket...');
+    setTimeout(() => {
+      hideLoading();
+      handleNav('/tickets/new');
+    }, 800);
+  };
+
+
   const handleNewEnquiryClick = () => {
     window.dispatchEvent(new CustomEvent('open-user-entry-modal'));
   };
@@ -470,29 +479,52 @@ export default function AppSidebar({
             textProps={textProps}
           />
         </Can>
-
-        <Can feature="newTicket">
-          <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
-            <Button
-              variant="contained"
-              fullWidth
-              startIcon={desktopOpen ? <AddIcon /> : undefined}
-              onClick={handleNewEnquiryClick}
-              sx={{
-                borderRadius: '6px',
-                py: 0.9,
-                fontSize: '13px',
-                fontWeight: 600,
-                textTransform: 'none',
-                minWidth: desktopOpen ? 'auto' : 40,
-                px: desktopOpen ? 2 : 0,
-                justifyContent: 'center',
-              }}
-            >
-              {desktopOpen ? 'New Enquiry' : <AddIcon fontSize="small" />}
-            </Button>
-          </Box>
-        </Can>
+        {(isNormalUser) ? (
+          <Can feature="newEnquiry">
+            <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
+              <Button
+                variant="contained"
+                fullWidth
+                startIcon={desktopOpen ? <AddIcon /> : undefined}
+                onClick={handleNewEnquiryClick}
+                sx={{
+                  borderRadius: '6px',
+                  py: 0.9,
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  minWidth: desktopOpen ? 'auto' : 40,
+                  px: desktopOpen ? 2 : 0,
+                  justifyContent: 'center',
+                }}
+              >
+                {desktopOpen ? 'New Enquiry' : <AddIcon fontSize="small" />}
+              </Button>
+            </Box>
+          </Can>) : (
+          <Can feature="newTicket">
+            <Box sx={{ px: desktopOpen ? 0.5 : 0, mt: 1.5 }}>
+              <Button
+                variant="contained"
+                fullWidth
+                startIcon={desktopOpen ? <AddIcon /> : undefined}
+                onClick={handleNewTicketClick}
+                sx={{
+                  borderRadius: '6px',
+                  py: 0.9,
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  minWidth: desktopOpen ? 'auto' : 40,
+                  px: desktopOpen ? 2 : 0,
+                  justifyContent: 'center',
+                }}
+              >
+                {desktopOpen ? 'New Ticket' : <AddIcon fontSize="small" />}
+              </Button>
+            </Box>
+          </Can>
+        )}
       </MuiList>
 
       <Box sx={{ mt: 'auto', p: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
