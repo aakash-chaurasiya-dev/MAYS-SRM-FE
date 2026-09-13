@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create an Axios instance
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api', // Replace with your API base URL
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8081/api', // Replace with your API base URL
   headers: {
     'Content-Type': 'application/json',
   },
@@ -38,7 +38,7 @@ api.interceptors.response.use(
         message = 'Session expired. Please log in again.';
         localStorage.removeItem('token');
         if (window.location.pathname !== '/login') {
-           window.location.href = '/login';
+          window.location.href = '/login';
         }
       } else if (status === 403) {
         message = 'You are not allowed to access this page.';
@@ -48,7 +48,7 @@ api.interceptors.response.use(
       } else if (status === 404) {
         message = 'The requested resource was not found.';
         severity = 'warning';
-      }else if (status === 409) {
+      } else if (status === 409) {
         message = 'The requested resource already exists.';
         severity = 'warning';
       } else if (status >= 500) {
@@ -59,8 +59,8 @@ api.interceptors.response.use(
     }
 
     // Dispatch custom dynamic error event
-    window.dispatchEvent(new CustomEvent('api-error', { 
-      detail: { message, severity, status } 
+    window.dispatchEvent(new CustomEvent('api-error', {
+      detail: { message, severity, status }
     }));
 
     return Promise.reject(error);
