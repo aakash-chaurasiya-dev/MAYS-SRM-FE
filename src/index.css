@@ -30,9 +30,25 @@
 }
 
 
-html {
-  zoom: 75%;
-  /* 🔥 Yeh line add karo - default 75% zoom effect */
+
+
+@media (min-width: 768px) {
+  html {
+    zoom: 75%;
+    /* 🔥 Yeh line add karo - default 75% zoom effect only for desktop */
+  }
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 /* 
 body {

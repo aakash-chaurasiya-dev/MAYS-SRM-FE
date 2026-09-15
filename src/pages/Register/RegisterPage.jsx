@@ -16,13 +16,13 @@ import Logo from '../../components/Logo/Logo';
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import api from '../../services/api';
 import { useNavigate } from 'react-router-dom';
+import { validateEmail, validateMobile, validatePassword } from '../../utils/validation';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -46,8 +46,19 @@ export default function RegisterPage() {
   const [otpState, setOtpState] = useState({
     sent: false,
     validated: false,
-    code: ''
+    code: '',
   });
+
+  // Field-level inline validation errors
+  const [fieldErrors, setFieldErrors] = useState({
+    mobileNo: '',
+    emailId: '',
+    password: '',
+    confirmPassword: '',
+  });
+
+  const setFieldError = (field, message) =>
+    setFieldErrors((prev) => ({ ...prev, [field]: message || '' }));
 
   useEffect(() => {
     const fetchBranches = async () => {
@@ -63,7 +74,51 @@ export default function RegisterPage() {
   }, []);
 
   const handleChange = (field) => (e) => {
-    setForm((prev) => ({ ...prev, [field]: e.target.value }));
+    let value = e.target.value;
+
+    // ── Mobile: digits only, max 10, live validation ──
+    if (field === 'mobileNo') {
+      value = value.replace(/\D/g, '').slice(0, 10);
+      setForm((prev) => ({ ...prev, mobileNo: value }));
+      if (!value) setFieldError('mobileNo', '');
+      else if (value.length < 10) setFieldError('mobileNo', 'Mobile number must be exactly 10 digits');
+      else if (!validateMobile(value)) setFieldError('mobileNo', 'Mobile number must start with 6, 7, 8 or 9');
+      else setFieldError('mobileNo', '');
+      return;
+    }
+
+    // ── Email: live validation ──
+    if (field === 'emailId') {
+      setForm((prev) => ({ ...prev, emailId: value }));
+      if (!value.trim()) setFieldError('emailId', '');
+      else if (!validateEmail(value.trim())) setFieldError('emailId', 'Enter a valid email address');
+      else setFieldError('emailId', '');
+      return;
+    }
+
+    // ── Password: live validation ──
+    if (field === 'password') {
+      setForm((prev) => ({ ...prev, password: value }));
+      const pwdError = value ? validatePassword(value) : '';
+      setFieldError('password', pwdError);
+      // Re-check confirm live
+      if (form.confirmPassword) {
+        setFieldError(
+          'confirmPassword',
+          form.confirmPassword !== value ? 'Passwords do not match' : ''
+        );
+      }
+      return;
+    }
+
+    // ── Confirm password: live match check ──
+    if (field === 'confirmPassword') {
+      setForm((prev) => ({ ...prev, confirmPassword: value }));
+      setFieldError('confirmPassword', value && value !== form.password ? 'Passwords do not match' : '');
+      return;
+    }
+
+    setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -71,7 +126,12 @@ export default function RegisterPage() {
     setErrorMsg('');
     setSuccessMsg('');
 
-    // Validations
+    if (!otpState.validated) {
+      setErrorMsg('Please verify your email OTP before registering.');
+      return;
+    }
+
+    // Final validation pass
     if (!form.firstName.trim()) {
       setErrorMsg('First Name is required');
       return;
@@ -84,8 +144,16 @@ export default function RegisterPage() {
       setErrorMsg('Mobile Number is required');
       return;
     }
+    if (!validateMobile(form.mobileNo.trim())) {
+      setErrorMsg('Please enter a valid 10-digit mobile number starting with 6-9.');
+      return;
+    }
     if (!form.emailId.trim()) {
       setErrorMsg('Email Address is required');
+      return;
+    }
+    if (!validateEmail(form.emailId.trim())) {
+      setErrorMsg('Please enter a valid email address.');
       return;
     }
     if (!form.branchId) {
@@ -94,6 +162,11 @@ export default function RegisterPage() {
     }
     if (!form.password) {
       setErrorMsg('Password is required');
+      return;
+    }
+    const passwordError = validatePassword(form.password);
+    if (passwordError) {
+      setErrorMsg(passwordError);
       return;
     }
     if (form.password !== form.confirmPassword) {
@@ -120,7 +193,6 @@ export default function RegisterPage() {
       }, 2000);
     } catch (err) {
       console.error('Registration error', err);
-      // Retrieve the message from the API error
       const message = err.response?.data?.message || 'Registration failed. Please try again.';
       setErrorMsg(message);
     } finally {
@@ -129,8 +201,9 @@ export default function RegisterPage() {
   };
 
   const handleSendOtp = async () => {
-    if (!form.emailId.trim()) {
-      setErrorMsg('Please enter an Email Address first');
+    if (!form.emailId.trim() || !validateEmail(form.emailId)) {
+      setErrorMsg('Please enter a valid Email Address');
+      setFieldError('emailId', 'Enter a valid email address');
       return;
     }
     setIsLoading(true);
@@ -138,7 +211,7 @@ export default function RegisterPage() {
     setSuccessMsg('');
     try {
       await api.post('/auth/send-otp', { emailId: form.emailId, purpose: 'REGISTER' });
-      setOtpState(prev => ({ ...prev, sent: true }));
+      setOtpState((prev) => ({ ...prev, sent: true }));
       setSuccessMsg('OTP sent to your email!');
     } catch (err) {
       setErrorMsg(err.response?.data?.error || 'Failed to send OTP');
@@ -156,8 +229,12 @@ export default function RegisterPage() {
     setErrorMsg('');
     setSuccessMsg('');
     try {
-      await api.post('/auth/verify-otp', { emailId: form.emailId, otp: otpState.code, purpose: 'REGISTER' });
-      setOtpState(prev => ({ ...prev, validated: true }));
+      await api.post('/auth/verify-otp', {
+        emailId: form.emailId,
+        otp: otpState.code,
+        purpose: 'REGISTER',
+      });
+      setOtpState((prev) => ({ ...prev, validated: true }));
       setSuccessMsg('OTP verified! Please complete your registration details.');
     } catch (err) {
       setErrorMsg(err.response?.data?.error || 'Invalid OTP');
@@ -178,7 +255,8 @@ export default function RegisterPage() {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        flex: 1,
+        minHeight: '100%',
         display: 'flex',
         flexDirection: { xs: 'column', md: 'row' },
         bgcolor: '#f4f5f7',
@@ -200,76 +278,20 @@ export default function RegisterPage() {
           py: { xs: 6, md: 0 },
         }}
       >
-        {/* Decorative circles */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: -60,
-            right: -60,
-            width: 200,
-            height: 200,
-            borderRadius: '50%',
-            bgcolor: 'rgba(255,255,255,0.06)',
-          }}
-        />
-        <Box
-          sx={{
-            position: 'absolute',
-            bottom: -40,
-            left: -40,
-            width: 160,
-            height: 160,
-            borderRadius: '50%',
-            bgcolor: 'rgba(255,255,255,0.04)',
-          }}
-        />
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '30%',
-            left: -80,
-            width: 240,
-            height: 240,
-            borderRadius: '50%',
-            bgcolor: 'rgba(255,255,255,0.03)',
-          }}
-        />
+        <Box sx={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.06)' }} />
+        <Box sx={{ position: 'absolute', bottom: -40, left: -40, width: 160, height: 160, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.04)' }} />
+        <Box sx={{ position: 'absolute', top: '30%', left: -80, width: 240, height: 240, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.03)' }} />
 
         <Box sx={{ mb: 4, zIndex: 1 }}>
           <Logo variant="full" mode="dark" />
         </Box>
-        <Typography
-          sx={{
-            color: 'rgba(255,255,255,0.7)',
-            fontSize: '14px',
-            fontWeight: 400,
-            textAlign: 'center',
-            maxWidth: 300,
-            lineHeight: 1.6,
-          }}
-        >
+        <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', fontWeight: 400, textAlign: 'center', maxWidth: 300, lineHeight: 1.6 }}>
           New Account Registration
         </Typography>
 
-        <Divider
-          sx={{
-            width: 60,
-            mt: 4,
-            mb: 3,
-            borderColor: 'rgba(255,255,255,0.2)',
-            borderWidth: '1.5px',
-          }}
-        />
+        <Divider sx={{ width: 60, mt: 4, mb: 3, borderColor: 'rgba(255,255,255,0.2)', borderWidth: '1.5px' }} />
 
-        <Typography
-          sx={{
-            color: 'rgba(255,255,255,0.5)',
-            fontSize: '12px',
-            fontWeight: 600,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-          }}
-        >
+        <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           Mays Computer Repair & Solutions
         </Typography>
       </Box>
@@ -287,32 +309,11 @@ export default function RegisterPage() {
           overflow: 'auto',
         }}
       >
-        <Paper
-          elevation={2}
-          sx={{
-            width: '100%',
-            maxWidth: 520,
-            p: 5,
-            borderRadius: '4px',
-          }}
-        >
-          <Typography
-            sx={{
-              fontSize: '20px',
-              fontWeight: 600,
-              color: theme.palette.text.primary,
-              mb: 0.5,
-            }}
-          >
+        <Paper elevation={2} sx={{ width: '100%', maxWidth: 520, p: 5, borderRadius: '4px' }}>
+          <Typography sx={{ fontSize: '20px', fontWeight: 600, color: theme.palette.text.primary, mb: 0.5 }}>
             Create an Account
           </Typography>
-          <Typography
-            sx={{
-              fontSize: '14px',
-              color: theme.palette.text.secondary,
-              mb: 2.5,
-            }}
-          >
+          <Typography sx={{ fontSize: '14px', color: theme.palette.text.secondary, mb: 2.5 }}>
             Please fill in your details to request access to the system.
           </Typography>
 
@@ -330,7 +331,7 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit}>
             {/* Email Address & OTP Button */}
-            <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'flex-end' }}>
+            <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'flex-start' }}>
               <Box sx={{ flex: 1 }}>
                 <Typography sx={labelSx}>Email Address</Typography>
                 <TextField
@@ -340,6 +341,8 @@ export default function RegisterPage() {
                   value={form.emailId}
                   onChange={handleChange('emailId')}
                   disabled={otpState.validated}
+                  error={Boolean(fieldErrors.emailId)}
+                  helperText={fieldErrors.emailId}
                   slotProps={{
                     input: {
                       startAdornment: (
@@ -352,11 +355,11 @@ export default function RegisterPage() {
                 />
               </Box>
               {!otpState.validated && (
-                <Button 
-                  variant="outlined" 
+                <Button
+                  variant="outlined"
                   onClick={handleSendOtp}
-                  disabled={isLoading || !form.emailId}
-                  sx={{ height: 40, whiteSpace: 'nowrap' }}
+                  disabled={isLoading || !form.emailId || Boolean(fieldErrors.emailId)}
+                  sx={{ height: 40, whiteSpace: 'nowrap', mt: '22px' }}
                 >
                   {otpState.sent ? 'Resend OTP' : 'Get OTP'}
                 </Button>
@@ -365,7 +368,7 @@ export default function RegisterPage() {
 
             {/* OTP Input Box */}
             {otpState.sent && !otpState.validated && (
-              <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'flex-end' }}>
+              <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'flex-start' }}>
                 <Box sx={{ flex: 1 }}>
                   <Typography sx={labelSx}>Enter OTP</Typography>
                   <TextField
@@ -373,207 +376,211 @@ export default function RegisterPage() {
                     size="small"
                     placeholder="123456"
                     value={otpState.code}
-                    onChange={(e) => setOtpState(prev => ({ ...prev, code: e.target.value }))}
+                    onChange={(e) =>
+                      setOtpState((prev) => ({
+                        ...prev,
+                        code: e.target.value.replace(/\D/g, '').slice(0, 6),
+                      }))
+                    }
+                    slotProps={{ htmlInput: { maxLength: 6, inputMode: 'numeric' } }}
                   />
                 </Box>
-                <Button 
-                  variant="contained" 
+                <Button
+                  variant="contained"
                   onClick={handleVerifyOtp}
                   disabled={isLoading || !otpState.code}
-                  sx={{ height: 40, px: 4 }}
+                  sx={{ height: 40, px: 4, mt: '22px' }}
                 >
                   Validate
                 </Button>
               </Box>
             )}
-            {/* Rest of the form, always shown now */}
-            <>
-                {/* First Name & Last Name */}
-                <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography sx={labelSx}>First Name</Typography>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      placeholder="e.g. John"
-                      value={form.firstName}
-                      onChange={handleChange('firstName')}
-                      slotProps={{
-                        input: {
-                          startAdornment: (
-                            <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}>
-                              <PersonOutlinedIcon fontSize="small" />
-                            </Box>
-                          ),
-                        },
-                      }}
-                    />
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography sx={labelSx}>Last Name</Typography>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      placeholder="e.g. Doe"
-                      value={form.lastName}
-                      onChange={handleChange('lastName')}
-                      slotProps={{
-                        input: {
-                          startAdornment: (
-                            <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}>
-                              <PersonOutlinedIcon fontSize="small" />
-                            </Box>
-                          ),
-                        },
-                      }}
-                    />
-                  </Box>
-                </Box>
 
-                {/* Mobile Number */}
-                <Box sx={{ mb: 2 }}>
-                  <Typography sx={labelSx}>Mobile Number</Typography>
+            <>
+              {/* First Name & Last Name */}
+              <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                <Box sx={{ flex: 1 }}>
+                  <Typography sx={labelSx}>First Name</Typography>
                   <TextField
                     fullWidth
                     size="small"
-                    placeholder="e.g. 9876543210"
-                    value={form.mobileNo}
-                    onChange={handleChange('mobileNo')}
+                    placeholder="e.g. John"
+                    value={form.firstName}
+                    onChange={handleChange('firstName')}
                     slotProps={{
                       input: {
                         startAdornment: (
                           <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}>
-                            <PhoneOutlinedIcon fontSize="small" />
+                            <PersonOutlinedIcon fontSize="small" />
                           </Box>
                         ),
                       },
                     }}
                   />
                 </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography sx={labelSx}>Last Name</Typography>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="e.g. Doe"
+                    value={form.lastName}
+                    onChange={handleChange('lastName')}
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}>
+                            <PersonOutlinedIcon fontSize="small" />
+                          </Box>
+                        ),
+                      },
+                    }}
+                  />
+                </Box>
+              </Box>
 
-                {/* Branch */}
-                <Typography sx={labelSx}>Branch</Typography>
+              {/* Mobile Number */}
+              <Box sx={{ mb: 2 }}>
+                <Typography sx={labelSx}>Mobile Number</Typography>
                 <TextField
                   fullWidth
                   size="small"
-                  select
-                  value={form.branchId}
-                  onChange={handleChange('branchId')}
+                  placeholder="e.g. 9876543210"
+                  value={form.mobileNo}
+                  onChange={handleChange('mobileNo')}
+                  error={Boolean(fieldErrors.mobileNo)}
+                  helperText={fieldErrors.mobileNo}
                   slotProps={{
-                    select: {
-                      displayEmpty: true,
-                    },
+                    htmlInput: { maxLength: 10, inputMode: 'numeric', pattern: '[0-9]*' },
                     input: {
                       startAdornment: (
                         <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}>
-                          <BusinessOutlinedIcon fontSize="small" />
+                          <PhoneOutlinedIcon fontSize="small" />
                         </Box>
                       ),
                     },
                   }}
-                  sx={{ mb: 2 }}
-                >
-                  <MenuItem value="" disabled>
-                    Select your branch…
-                  </MenuItem>
-                  {branches.map((branch) => (
-                    <MenuItem key={branch.branchId} value={branch.branchId}>
-                      {branch.branchName}
-                    </MenuItem>
-                  ))}
-                </TextField>
-
-                {/* Address */}
-                <Typography sx={labelSx}>Address</Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  multiline
-                  rows={2}
-                  placeholder="Enter your home/office address"
-                  value={form.address}
-                  onChange={handleChange('address')}
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <Box sx={{ mr: 1, mt: 0.5, display: 'flex', alignSelf: 'flex-start', color: theme.palette.text.secondary }}>
-                          <HomeOutlinedIcon fontSize="small" />
-                        </Box>
-                      ),
-                    },
-                  }}
-                  sx={{ mb: 2 }}
                 />
+              </Box>
 
-                {/* Password & Confirm */}
-                <Box sx={{ display: 'flex', gap: 2, mb: 3.5 }}>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography sx={labelSx}>Password</Typography>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      type="password"
-                      placeholder="Create password"
-                      value={form.password}
-                      onChange={handleChange('password')}
-                      slotProps={{
-                        input: {
-                          startAdornment: (
-                            <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}>
-                              <LockOutlinedIcon fontSize="small" />
-                            </Box>
-                          ),
-                        },
-                      }}
-                    />
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography sx={labelSx}>Confirm Password</Typography>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      type="password"
-                      placeholder="Re-enter password"
-                      value={form.confirmPassword}
-                      onChange={handleChange('confirmPassword')}
-                      slotProps={{
-                        input: {
-                          startAdornment: (
-                            <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}>
-                              <LockOutlinedIcon fontSize="small" />
-                            </Box>
-                          ),
-                        },
-                      }}
-                    />
-                  </Box>
+              {/* Branch */}
+              <Typography sx={labelSx}>Branch</Typography>
+              <TextField
+                fullWidth
+                size="small"
+                select
+                value={form.branchId}
+                onChange={handleChange('branchId')}
+                slotProps={{
+                  select: { displayEmpty: true },
+                  input: {
+                    startAdornment: (
+                      <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}>
+                        <BusinessOutlinedIcon fontSize="small" />
+                      </Box>
+                    ),
+                  },
+                }}
+                sx={{ mb: 2 }}
+              >
+                <MenuItem value="" disabled>
+                  Select your branch…
+                </MenuItem>
+                {branches.map((branch) => (
+                  <MenuItem key={branch.branchId} value={branch.branchId}>
+                    {branch.branchName}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              {/* Address */}
+              <Typography sx={labelSx}>Address</Typography>
+              <TextField
+                fullWidth
+                size="small"
+                multiline
+                rows={2}
+                placeholder="Enter your home/office address"
+                value={form.address}
+                onChange={handleChange('address')}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <Box sx={{ mr: 1, mt: 0.5, display: 'flex', alignSelf: 'flex-start', color: theme.palette.text.secondary }}>
+                        <HomeOutlinedIcon fontSize="small" />
+                      </Box>
+                    ),
+                  },
+                }}
+                sx={{ mb: 2 }}
+              />
+
+              {/* Password & Confirm */}
+              <Box sx={{ display: 'flex', gap: 2, mb: 3.5 }}>
+                <Box sx={{ flex: 1 }}>
+                  <Typography sx={labelSx}>Password</Typography>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="password"
+                    placeholder="Create password"
+                    value={form.password}
+                    onChange={handleChange('password')}
+                    error={Boolean(fieldErrors.password)}
+                    helperText={fieldErrors.password}
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}>
+                            <LockOutlinedIcon fontSize="small" />
+                          </Box>
+                        ),
+                      },
+                    }}
+                  />
                 </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography sx={labelSx}>Confirm Password</Typography>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="password"
+                    placeholder="Re-enter password"
+                    value={form.confirmPassword}
+                    onChange={handleChange('confirmPassword')}
+                    error={Boolean(fieldErrors.confirmPassword)}
+                    helperText={fieldErrors.confirmPassword}
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <Box sx={{ mr: 1, display: 'flex', color: theme.palette.text.secondary }}>
+                            <LockOutlinedIcon fontSize="small" />
+                          </Box>
+                        ),
+                      },
+                    }}
+                  />
+                </Box>
+              </Box>
 
-                <Button
-                  type="submit"
-                  variant="contained"
-                  fullWidth
-                  size="large"
-                  disabled={isLoading || !otpState.validated}
-                  sx={{
-                    py: 1.2,
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    mb: 2,
-                  }}
-                >
-                  {isLoading ? 'Registering...' : (!otpState.validated ? 'Please Validate OTP First' : 'Register Account')}
-                </Button>
-              </>
+              <Button
+                type="submit"
+                variant="contained"
+                fullWidth
+                size="large"
+                disabled={isLoading || !otpState.validated}
+                sx={{ py: 1.2, fontSize: '14px', fontWeight: 600, mb: 2 }}
+              >
+                {isLoading
+                  ? 'Registering...'
+                  : !otpState.validated
+                    ? 'Please Validate OTP First'
+                    : 'Register Account'}
+              </Button>
+            </>
           </form>
 
-          <Typography
-            sx={{
-              textAlign: 'center',
-              fontSize: '13px',
-              color: theme.palette.text.secondary,
-            }}
-          >
+          <Typography sx={{ textAlign: 'center', fontSize: '13px', color: theme.palette.text.secondary }}>
             Already have credentials?{' '}
             <Link
               href="/login"
