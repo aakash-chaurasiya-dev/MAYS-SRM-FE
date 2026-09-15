@@ -228,9 +228,9 @@ export default function TicketDetailPage() {
       <Stack
         direction={{ xs: 'column', md: 'row' }}
         spacing={isPortalUser ? 0 : 2.5}
-        sx={{ width: '100%', overflow: 'hidden' }}
+        sx={{ width: '100%' }}
       >
-        <Box sx={{ flex: '7 1 0', minWidth: 0, overflow: 'hidden' }}>
+        <Box sx={{ flex: { xs: '1 1 auto', md: '7 1 0' }, minWidth: 0, overflow: 'hidden' }}>
           <TicketProgress
             ref={progressRef}
             ticket={ticket}
@@ -294,7 +294,7 @@ export default function TicketDetailPage() {
         </Box>
 
         {!isPortalUser && (
-          <Box sx={{ flex: '3 1 0', minWidth: '12.5rem', overflow: 'hidden' }}>
+          <Box sx={{ flex: { xs: '1 1 auto', md: '3 1 0' }, minWidth: '12.5rem', overflow: 'hidden' }}>
             <TicketOperations ref={operationsRef} ticket={ticket} isEditMode={isEditMode} />
             <TicketCustomer
               ref={customerRef}
